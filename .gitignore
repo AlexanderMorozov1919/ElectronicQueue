@@ -1,7 +1,31 @@
+# Файлы окружения
+.env                # Основной файл
+.env.local          # Локальные переопределения
+.env.*              # Все вариации (например, .env.development)
+.env.example        # Шаблон (но его можно оставить в репозитории)
+
+# Логи и временные файлы
+logs/
+*.log
+tmp/
+temp/
+
+# Системные файлы
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Бинарники и зависимости
+/bin/
+/vendor/
+/node_modules/
 *.exe
 *.exe~
 *.dll
 *.lib
-*.txt
-.env
-logs
+*.so
+
+# Автогенерируемые файлы
+*.sqlite3
+*.db

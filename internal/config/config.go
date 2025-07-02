@@ -1,10 +1,10 @@
 package config
 
 import (
-	"log"
 	"os"
 
 	"github.com/joho/godotenv"
+	"go.uber.org/zap"
 )
 
 // Config содержит переменные среды
@@ -22,8 +22,12 @@ type Config struct {
 
 // LoadConfig загружает переменные среды из .env и возвращает структуру Config
 func LoadConfig() (*Config, error) {
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+	sugar := logger.Sugar()
+
 	if err := godotenv.Load(); err != nil {
-		log.Printf("No .env file found, relying on environment variables. %v", err)
+		sugar.Warn("No .env file found, relying on environment variables") // Предупреждение
 	}
 
 	cfg := &Config{
