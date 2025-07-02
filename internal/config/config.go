@@ -27,7 +27,7 @@ func LoadConfig() (*Config, error) {
 	sugar := logger.Sugar()
 
 	if err := godotenv.Load(); err != nil {
-		sugar.Warn("No .env file found, relying on environment variables") // Предупреждение
+		sugar.Warn("No .env file found, relying on environment variables")
 	}
 
 	cfg := &Config{
