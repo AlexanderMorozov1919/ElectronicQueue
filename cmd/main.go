@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"ElectronicQueue/internal/config"
@@ -20,12 +21,12 @@ func main() {
 	if err != nil {
 		sugar.Fatalf("Config error: %v", err) // Логирование через Zap
 	}
+	fmt.Printf("Environment loaded succesfully\n")
 
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
 		log.Fatalf("Database connection error: %v", err)
 	}
 
-	logger.Info("Database connected", zap.String("name", db.Name()))
-
+	fmt.Printf("Successful connect to database: \"%s\"\n", db.Name())
 }
