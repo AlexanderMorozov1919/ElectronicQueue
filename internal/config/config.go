@@ -9,13 +9,15 @@ import (
 
 // Config содержит переменные среды
 type Config struct {
-	DBUser     string
-	DBPassword string
-	DBHost     string
-	DBPort     string
-	DBName     string
-	DBSSLMode  string
-	ServerPort string
+	DBUser        string
+	DBPassword    string
+	DBHost        string
+	DBPort        string
+	DBName        string
+	DBSSLMode     string
+	ServerPort    string
+	JWTSecret     string
+	JWTExpiration string
 }
 
 // LoadConfig загружает переменные среды из .env и возвращает структуру Config
@@ -25,13 +27,15 @@ func LoadConfig() (*Config, error) {
 	}
 
 	cfg := &Config{
-		DBUser:     getEnv("DB_USER"),
-		DBPassword: getEnv("DB_PASSWORD"),
-		DBHost:     getEnv("DB_HOST"),
-		DBPort:     getEnv("DB_PORT"),
-		DBName:     getEnv("DB_NAME"),
-		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
-		ServerPort: getEnv("SERVER_PORT", "8080"),
+		DBUser:        getEnv("DB_USER"),
+		DBPassword:    getEnv("DB_PASSWORD"),
+		DBHost:        getEnv("DB_HOST"),
+		DBPort:        getEnv("DB_PORT"),
+		DBName:        getEnv("DB_NAME"),
+		DBSSLMode:     getEnv("DB_SSLMODE", "disable"),
+		ServerPort:    getEnv("SERVER_PORT", "8080"),
+		JWTSecret:     getEnv("JWT_SECRET"),
+		JWTExpiration: getEnv("JWT_EXPIRATION", "24h"),
 	}
 
 	return cfg, nil

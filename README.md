@@ -27,6 +27,8 @@ DB_PORT=5432                # Порт базы данных PostgreSQL
 DB_NAME=el_queue            # Имя базы данных
 DB_SSLMODE=disable          # Режим SSL для подключения к БД
 SERVER_PORT=8080            # Порт, на котором запускается сервер
+JWT_SECRET=your-secret-key  # Секретный ключ для подписи JWT
+JWT_EXPIRATION=24h          # Время жизни токена (например, 24h)
 ```
 
 #### 3. Установка (через bash / git bash)
