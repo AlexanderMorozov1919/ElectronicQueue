@@ -1,0 +1,7 @@
+*.exe
+*.exe~
+*.dll
+*.lib
+*.txt
+.env
+logs
