@@ -19,7 +19,7 @@ func main() {
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		sugar.Fatalf("Config error: %v", err) // Логирование через Zap
+		sugar.Fatalf("Config error: %v", err)
 	}
 	fmt.Printf("Environment loaded succesfully\n")
 
