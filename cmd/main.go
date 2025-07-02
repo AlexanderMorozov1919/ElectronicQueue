@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"ElectronicQueue/internal/config"
@@ -28,5 +27,6 @@ func main() {
 		log.Fatalf("Database connection error: %v", err)
 	}
 
-	fmt.Printf("Successful connect to database: \"%s\"\n", db.Name())
+	logger.Info("Database connected", zap.String("name", db.Name()))
+
 }
