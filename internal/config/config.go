@@ -53,5 +53,5 @@ func getEnv(key string, defaultValue ...string) string {
 	if len(defaultValue) > 0 {
 		return defaultValue[0]
 	}
-	return ""
+	return " "
 }
