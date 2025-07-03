@@ -43,6 +43,7 @@ func main() {
 			fmt.Printf("Ошибка синхронизации логов: %v\n", err)
 		}
 	}()
+	defer logger.Sync()
 
 	log := logger.Default()
 
