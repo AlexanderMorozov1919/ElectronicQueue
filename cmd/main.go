@@ -1,13 +1,34 @@
 package main
 
 import (
+
+	"ElectronicQueue/internal/logger"
+
+	"fmt"
+
 	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/database"
-	"ElectronicQueue/internal/logger"
-	"fmt"
+
+	//_ "ElectronicQueue/internal/handler" // Раскомментируем, когда создадим обработчики
+	//_ "ElectronicQueue/internal/service" // Раскомментируем, когда создадим сервисы
+	_ "ElectronicQueue/internal/repository"
+
+	_ "ElectronicQueue/docs"
+
+	"github.com/gin-gonic/gin"
+
+
+
 )
 
+// @title ElectronicQueue API
+// @version 1.0
+// @description Это сервер для электронной очереди
+
+// @host localhost:8080
+// @BasePath /api/v1
 func main() {
+
 
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
@@ -38,8 +59,10 @@ func main() {
 	// Проверка записи в файл
 	log.Info("Проверка лог-файла в папке logs/")
 
+	// Подключение к базе данных
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
+
 		log.WithError(err).Fatal("Database connection failed")
 	}
 	log.WithField("dbname", db.Name()).Info("Database connected successfully")
