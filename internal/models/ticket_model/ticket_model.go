@@ -2,8 +2,6 @@ package ticket_model
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
 
 // TicketStatus определяет перечисление для статусов талонов.
@@ -19,13 +17,13 @@ const (
 
 // Ticket представляет собой модель талона электронной очереди.
 type Ticket struct {
-	ID           uint           `gorm:"primaryKey;autoIncrement;column:ticket_id" json:"id"`
-	TicketNumber string         `gorm:"type:varchar(20);not null;unique;column:ticket_number" json:"ticket_number"`
-	Status       TicketStatus   `gorm:"type:varchar(20);not null" json:"status"`
-	CreatedAt    time.Time      `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
-	CalledAt     gorm.DeletedAt `gorm:"column:called_at" json:"called_at,omitempty"`
-	StartedAt    gorm.DeletedAt `gorm:"column:started_at" json:"started_at,omitempty"`
-	CompletedAt  gorm.DeletedAt `gorm:"column:completed_at" json:"completed_at,omitempty"`
+	ID           uint         `gorm:"primaryKey;autoIncrement;column:ticket_id" json:"id"`
+	TicketNumber string       `gorm:"type:varchar(20);not null;unique;column:ticket_number" json:"ticket_number"`
+	Status       TicketStatus `gorm:"type:varchar(20);not null" json:"status"`
+	CreatedAt    time.Time    `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
+	CalledAt     *time.Time   `gorm:"column:called_at" json:"called_at,omitempty"`
+	StartedAt    *time.Time   `gorm:"column:started_at" json:"started_at,omitempty"`
+	CompletedAt  *time.Time   `gorm:"column:completed_at" json:"completed_at,omitempty"`
 }
 
 // TicketResponse определяет данные, возвращаемые API.
