@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-	"go.uber.org/zap"
+	"github.com/sirupsen/logrus"
 )
 
 // Config содержит переменные среды
@@ -18,16 +18,16 @@ type Config struct {
 	ServerPort    string
 	JWTSecret     string
 	JWTExpiration string
+	LogFile       string `mapstructure:"LOG_FILE"`
 }
 
 // LoadConfig загружает переменные среды из .env и возвращает структуру Config
 func LoadConfig() (*Config, error) {
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
-	sugar := logger.Sugar()
+	// Инициализация логгера
+	log := logrus.New()
 
 	if err := godotenv.Load(); err != nil {
-		sugar.Warn("No .env file found, relying on environment variables")
+		log.Warn("No .env file found, using environment variables")
 	}
 
 	cfg := &Config{
@@ -40,6 +40,7 @@ func LoadConfig() (*Config, error) {
 		ServerPort:    getEnv("SERVER_PORT", "8080"),
 		JWTSecret:     getEnv("JWT_SECRET"),
 		JWTExpiration: getEnv("JWT_EXPIRATION", "24h"),
+		LogFile:       getEnv("LOG_FILE"),
 	}
 
 	return cfg, nil
