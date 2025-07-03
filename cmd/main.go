@@ -1,6 +1,9 @@
 package main
 
 import (
+
+	"ElectronicQueue/internal/logger"
+
 	"fmt"
 
 	"ElectronicQueue/internal/config"
@@ -14,7 +17,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"go.uber.org/zap"
+
+
 )
 
 // @title ElectronicQueue API
@@ -24,33 +28,45 @@ import (
 // @host localhost:8080
 // @BasePath /api/v1
 func main() {
-	// Инициализация логгера
-	logger, _ := zap.NewProduction(zap.AddCaller(), zap.Fields(
-		zap.String("app", "electronic_queue"),
-	))
-	defer logger.Sync()
-	sugar := logger.Sugar()
+
 
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		sugar.Fatalf("Config error: %v", err)
+		fmt.Printf("Ошибка загрузки конфига: %v\n", err)
+		return
 	}
-	fmt.Printf("Environment loaded succesfully\n")
+	// Инициализация логгера
+	logger.Init(cfg.LogFile)
+	defer func() {
+		if err := logger.Sync(); err != nil {
+			fmt.Printf("Ошибка синхронизации логов: %v\n", err)
+		}
+	}()
+
+	log := logger.Default()
+
+	log.Info("Application starting...")
+	log.WithField("version", "1.0.0").Info("Configuration loaded")
+
+	// 3. Тестируем логирование
+	log.Info("Тестовый запуск логгера")
+	log.WithField("example", true).Warn("Предупреждение с дополнительным полем")
+
+	// 4. Имитация ошибки
+	log.WithField("config", cfg).Error("Пример ошибки")
+
+	// Проверка записи в файл
+	log.Info("Проверка лог-файла в папке logs/")
 
 	// Подключение к базе данных
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
-		sugar.Fatalf("Database connection error: %v", err)
-	}
-	sugar.Infof("Successful connect to database: \"%s\"\n", db.Name())
 
-	// Инициализация роутера Gin
-	router := gin.Default()
-
-	// Запуск сервера
-	sugar.Infof("Starting server on %s", "localhost:8080") // Заменить на cfg.ServerAddress
-	if err := router.Run(); err != nil {                   // router.Run(cfg.ServerAddress)
-		sugar.Fatalf("Failed to run server: %v", err)
+		log.WithError(err).Fatal("Database connection failed")
 	}
+	log.WithField("dbname", db.Name()).Info("Database connected successfully")
+
+	fmt.Printf("Конфиг логгера:\nФайл: %s\n", cfg.LogFile)
+
 }
