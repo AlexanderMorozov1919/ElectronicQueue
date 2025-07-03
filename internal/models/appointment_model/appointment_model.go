@@ -3,9 +3,9 @@ package appointment_model
 import (
 	"time"
 
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/models/ticket_model"
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/patient_model"
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/schedule_model"
+	"ElectronicQueue/internal/models/patient_model"
+	"ElectronicQueue/internal/models/schedule_model"
+	"ElectronicQueue/internal/models/ticket_model"
 )
 
 // Appointment представляет собой модель записи на прием (связь между пациентом, расписанием и талоном).

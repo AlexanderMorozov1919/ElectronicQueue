@@ -1,7 +1,7 @@
 package doctor_model
 
 import (
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/schedule_model"
+	"ElectronicQueue/internal/models/schedule_model"
 )
 
 // Doctor представляет собой модель врача в базе данных.

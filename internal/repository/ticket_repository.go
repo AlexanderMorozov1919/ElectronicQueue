@@ -1,7 +1,8 @@
 package repository
 
 import (
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/ticket_model"
+	"ElectronicQueue/internal/models/ticket_model"
+
 	"gorm.io/gorm"
 )
 

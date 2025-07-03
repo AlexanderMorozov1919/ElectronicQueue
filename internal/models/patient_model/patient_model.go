@@ -2,19 +2,16 @@ package patient_model
 
 import (
 	"time"
-
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/appointment_model"
 )
 
 // Patient представляет собой модель пациента в базе данных.
 type Patient struct {
-	ID             uint                            `gorm:"primaryKey;autoIncrement;column:patient_id" json:"id"`
-	PassportSeries string                          `gorm:"type:varchar(4);not null;uniqueIndex:idx_passport;column:passport_series" json:"passport_series"`
-	PassportNumber string                          `gorm:"type:varchar(6);not null;uniqueIndex:idx_passport;column:passport_number" json:"passport_number"`
-	FullName       string                          `gorm:"type:varchar(100);not null;column:full_name" json:"full_name"`
-	BirthDate      time.Time                       `gorm:"type:date;column:birth_date" json:"birth_date"`
-	Phone          string                          `gorm:"type:varchar(20)" json:"phone"`
-	Appointments   []appointment_model.Appointment `gorm:"foreignKey:PatientID;constraint:OnDelete:CASCADE" json:"appointments,omitempty"`
+	ID             uint      `gorm:"primaryKey;autoIncrement;column:patient_id" json:"id"`
+	PassportSeries string    `gorm:"type:varchar(4);not null;uniqueIndex:idx_passport;column:passport_series" json:"passport_series"`
+	PassportNumber string    `gorm:"type:varchar(6);not null;uniqueIndex:idx_passport;column:passport_number" json:"passport_number"`
+	FullName       string    `gorm:"type:varchar(100);not null;column:full_name" json:"full_name"`
+	BirthDate      time.Time `gorm:"type:date;column:birth_date" json:"birth_date"`
+	Phone          string    `gorm:"type:varchar(20)" json:"phone"`
 }
 
 // PatientResponse определяет данные, возвращаемые API.
@@ -36,9 +33,9 @@ type CreatePatientRequest struct {
 
 // UpdatePatientRequest определяет структуру для обновления существующего пациента.
 type UpdatePatientRequest struct {
-	PassportSeries string    `json:"passport_series,omitempty,len=4"`
-	PassportNumber string    `json:"passport_number,omitempty,len=6"`
-	FullName       string    `json:"full_name,omitempty"`
-	BirthDate      time.Time `json:"birth_date,omitempty"`
-	Phone          string    `json:"phone,omitempty"`
+	PassportSeries string     `json:"passport_series,omitempty,len=4"`
+	PassportNumber string     `json:"passport_number,omitempty,len=6"`
+	FullName       string     `json:"full_name,omitempty"`
+	BirthDate      *time.Time `json:"birth_date,omitempty"`
+	Phone          string     `json:"phone,omitempty"`
 }

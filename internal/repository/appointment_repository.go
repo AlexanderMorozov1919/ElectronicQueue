@@ -1,7 +1,8 @@
 package repository
 
 import (
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/appointment_model"
+	"ElectronicQueue/internal/models/appointment_model"
+
 	"gorm.io/gorm"
 )
 

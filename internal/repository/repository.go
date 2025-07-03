@@ -3,11 +3,12 @@ package repository
 import (
 	"time"
 
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/appointment_model"
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/doctor_model"
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/patient_model"
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/schedule_model"
-	"github.com/AlexanderMorozov1919/ElectronicQueue/internal/models/ticket_model"
+	"ElectronicQueue/internal/models/appointment_model"
+	"ElectronicQueue/internal/models/doctor_model"
+	"ElectronicQueue/internal/models/patient_model"
+	"ElectronicQueue/internal/models/schedule_model"
+	"ElectronicQueue/internal/models/ticket_model"
+
 	"gorm.io/gorm"
 )
 
