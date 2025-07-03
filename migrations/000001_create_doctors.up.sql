@@ -1,6 +1,6 @@
 CREATE TABLE doctors (
-    id integer NOT NULL,
-    full_name character varying(255) NOT NULL,
-    specialty character varying(255),
-    office_number character varying(50)
+    doctor_id SERIAL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    specialization VARCHAR(100) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE
 );
