@@ -33,8 +33,8 @@ type CreatePatientRequest struct {
 
 // UpdatePatientRequest определяет структуру для обновления существующего пациента.
 type UpdatePatientRequest struct {
-	PassportSeries string     `json:"passport_series,omitempty,len=4"`
-	PassportNumber string     `json:"passport_number,omitempty,len=6"`
+	PassportSeries string     `json:"passport_series,omitempty" binding:"omitempty,len=4"`
+	PassportNumber string     `json:"passport_number,omitempty" binding:"omitempty,len=6"`
 	FullName       string     `json:"full_name,omitempty"`
 	BirthDate      *time.Time `json:"birth_date,omitempty"`
 	Phone          string     `json:"phone,omitempty"`
