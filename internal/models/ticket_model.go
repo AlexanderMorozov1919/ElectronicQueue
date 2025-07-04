@@ -1,4 +1,4 @@
-package ticket_model
+package models
 
 import (
 	"time"
@@ -8,7 +8,6 @@ import (
 type TicketStatus string
 
 const (
-	StatusCreated    TicketStatus = "создан"
 	StatusWaiting    TicketStatus = "ожидает"
 	StatusInvited    TicketStatus = "приглашен"
 	StatusInProgress TicketStatus = "на_приеме"

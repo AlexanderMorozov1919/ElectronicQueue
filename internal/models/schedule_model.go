@@ -1,4 +1,4 @@
-package schedule_model
+package models
 
 import (
 	"time"

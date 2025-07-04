@@ -1,7 +1,12 @@
 package main
 
 import (
+
 	"encoding/json"
+
+	"ElectronicQueue/internal/logger"
+
+
 	"fmt"
 	"io"
 	"os"
@@ -11,14 +16,23 @@ import (
 
 	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/database"
-	"ElectronicQueue/internal/logger"
+
 	"ElectronicQueue/internal/models/ticket_model"
 
-	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
+
+	"ElectronicQueue/internal/handlers"
+	"ElectronicQueue/internal/repository"
+	"ElectronicQueue/internal/services"
+
+	_ "ElectronicQueue/docs"
+
+	"github.com/gin-gonic/gin"
+
 )
 
 func main() {
+
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -35,6 +49,7 @@ func main() {
 	}()
 
 	log := logger.Default()
+
 	log.Info("Application starting...")
 	log.WithField("version", "1.0.0").Info("Configuration loaded")
 	log.Info("Тестовый запуск логгера")
@@ -42,7 +57,8 @@ func main() {
 	log.WithField("config", cfg).Error("Пример ошибки")
 	log.Info("Проверка лог-файла в папке logs/")
 
-	// Подключение к базе данных через GORM
+
+	// Подключение к базе данных
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
 		log.WithError(err).Fatal("Database connection failed")
@@ -139,8 +155,27 @@ func main() {
 		os.Exit(0)
 	}()
 
+
 	fmt.Printf("Сервер запущен на порту: %s\n", cfg.ServerPort)
 	if err := r.Run(":" + cfg.ServerPort); err != nil {
 		log.WithError(err).Fatal("Failed to start server")
 	}
+
+	r := gin.Default()
+
+	repo := repository.NewRepository(db)
+
+	ticketService := services.NewTicketService(repo.Ticket)
+	ticketHandler := handlers.NewTicketHandler(ticketService)
+
+	// Регистрация роутов терминала
+	r.GET("/terminal/service", ticketHandler.GetServicePage)
+	r.GET("/terminal/service/select", ticketHandler.GetSelectServicePage)
+	r.POST("/terminal/service/make_appointment", ticketHandler.HandleService("make_appointment"))
+	r.POST("/terminal/service/confirm_appointment", ticketHandler.HandleService("confirm_appointment"))
+	r.POST("/terminal/service/lab_tests", ticketHandler.HandleService("lab_tests"))
+	r.POST("/terminal/service/documents", ticketHandler.HandleService("documents"))
+
+	r.Run(":" + cfg.BackendPort)
+
 }

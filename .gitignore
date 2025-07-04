@@ -6,8 +6,11 @@ logs/
 *.log
 tmp/
 temp/
+
+# Локальная документация
 *.txt
 *.docx
+*.pdf
 
 # Системные файлы
 .DS_Store

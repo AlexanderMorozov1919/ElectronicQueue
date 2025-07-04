@@ -26,9 +26,14 @@ DB_HOST=localhost           # Адрес сервера базы данных Po
 DB_PORT=5432                # Порт базы данных PostgreSQL
 DB_NAME=el_queue            # Имя базы данных
 DB_SSLMODE=disable          # Режим SSL для подключения к БД
-SERVER_PORT=8080            # Порт, на котором запускается сервер
+
+BACKEND_PORT=8080           # Порт, на котором запускается backend-сервер
+FRONTEND_PORT=3000          # Порт, на котором запускается frontend-сервер
+
 JWT_SECRET=your-secret-key  # Секретный ключ для подписи JWT
 JWT_EXPIRATION=24h          # Время жизни токена (например, 24h)
+
+LOG_FILE=logs/app.log       # Путь к файлу логов приложения
 ```
 
 #### 3. Установка (через bash / git bash)
@@ -39,14 +44,20 @@ JWT_EXPIRATION=24h          # Время жизни токена (наприме
 
 #### 4. Запуск программы
 
-```sh
-./main.exe
-```
-или
+##### Backend
 ```sh
 go run cmd/main.go
 ```
 
+##### Frontend
+```sh
+go run frontend/server.go
+```
+
+##### UI
+```
+http://localhost:8080/terminal/service
+```
 #### 5. Удаление (базы данных)
 
 ```sh

@@ -1,4 +1,4 @@
-package patient_model
+package models
 
 import (
 	"time"
@@ -12,6 +12,7 @@ type Patient struct {
 	FullName       string    `gorm:"type:varchar(100);not null;column:full_name" json:"full_name"`
 	BirthDate      time.Time `gorm:"type:date;column:birth_date" json:"birth_date"`
 	Phone          string    `gorm:"type:varchar(20)" json:"phone"`
+	OmsNumber      string    `gorm:"type:varchar(16);not null;column:oms_number" json:"oms_number"`
 }
 
 // PatientResponse определяет данные, возвращаемые API.
@@ -20,6 +21,7 @@ type PatientResponse struct {
 	FullName  string    `json:"full_name"`
 	BirthDate time.Time `json:"birth_date"`
 	Phone     string    `json:"phone"`
+	OmsNumber string    `json:"oms_number"`
 }
 
 // CreatePatientRequest определяет структуру для создания нового пациента.
@@ -29,6 +31,7 @@ type CreatePatientRequest struct {
 	FullName       string    `json:"full_name" binding:"required"`
 	BirthDate      time.Time `json:"birth_date" binding:"required"`
 	Phone          string    `json:"phone"`
+	OmsNumber      string    `json:"oms_number" binding:"required,len=16"`
 }
 
 // UpdatePatientRequest определяет структуру для обновления существующего пациента.
@@ -38,4 +41,5 @@ type UpdatePatientRequest struct {
 	FullName       string     `json:"full_name,omitempty"`
 	BirthDate      *time.Time `json:"birth_date,omitempty"`
 	Phone          string     `json:"phone,omitempty"`
+	OmsNumber      string     `json:"oms_number,omitempty" binding:"omitempty,len=16"`
 }

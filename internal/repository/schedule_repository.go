@@ -3,7 +3,7 @@ package repository
 import (
 	"time"
 
-	"ElectronicQueue/internal/models/schedule_model"
+	"ElectronicQueue/internal/models"
 
 	"gorm.io/gorm"
 )
@@ -17,24 +17,24 @@ func NewScheduleRepository(db *gorm.DB) ScheduleRepository {
 	return &scheduleRepo{db: db}
 }
 
-func (r *scheduleRepo) Create(schedule *schedule_model.Schedule) error {
+func (r *scheduleRepo) Create(schedule *models.Schedule) error {
 	return r.db.Create(schedule).Error
 }
 
-func (r *scheduleRepo) Update(schedule *schedule_model.Schedule) error {
+func (r *scheduleRepo) Update(schedule *models.Schedule) error {
 	return r.db.Save(schedule).Error
 }
 
-func (r *scheduleRepo) GetByID(id uint) (*schedule_model.Schedule, error) {
-	var schedule schedule_model.Schedule
+func (r *scheduleRepo) GetByID(id uint) (*models.Schedule, error) {
+	var schedule models.Schedule
 	if err := r.db.First(&schedule, id).Error; err != nil {
 		return nil, err
 	}
 	return &schedule, nil
 }
 
-func (r *scheduleRepo) FindByDoctorAndDate(doctorID uint, date time.Time) ([]schedule_model.Schedule, error) {
-	var schedules []schedule_model.Schedule
+func (r *scheduleRepo) FindByDoctorAndDate(doctorID uint, date time.Time) ([]models.Schedule, error) {
+	var schedules []models.Schedule
 	// Ищем по началу дня, чтобы игнорировать время :)
 	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
