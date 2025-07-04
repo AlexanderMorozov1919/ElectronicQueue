@@ -9,6 +9,7 @@ import (
 	"ElectronicQueue/internal/database"
 	"ElectronicQueue/internal/handlers"
 	"ElectronicQueue/internal/repository"
+	"ElectronicQueue/internal/services"
 
 	_ "ElectronicQueue/docs"
 
@@ -55,8 +56,10 @@ func main() {
 
 	repo := repository.NewRepository(db)
 
+	ticketService := services.NewTicketService(repo.Ticket)
+	ticketHandler := handlers.NewTicketHandler(ticketService)
+
 	// Регистрация роутов терминала
-	ticketHandler := handlers.NewTicketHandler(repo.Ticket)
 	r.GET("/terminal/service", ticketHandler.GetServicePage)
 	r.GET("/terminal/service/select", ticketHandler.GetSelectServicePage)
 	r.POST("/terminal/service/make_appointment", ticketHandler.HandleService("make_appointment"))
