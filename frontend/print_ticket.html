@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Печать талона</title>
+</head>
+<body>
+    <h1>Вы выбрали: <span id="service-name">{{ .ServiceName }}</span></h1>
+    <p>Печатать талон</p>
+    <form id="print-form" method="post" action="/terminal/service/display_ticket">
+        <input type="hidden" name="service" id="service-input" value="{{ .Service }}">
+        <button type="submit" name="print" value="yes">Да</button>
+        <button type="submit" name="print" value="no">Нет</button>
+    </form>
+</body>
+</html>

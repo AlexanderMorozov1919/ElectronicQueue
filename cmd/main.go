@@ -54,6 +54,8 @@ func main() {
 
 	r := gin.Default()
 
+	r.LoadHTMLFiles("frontend/print_ticket.html", "frontend/display_ticket.html")
+
 	repo := repository.NewRepository(db)
 
 	ticketService := services.NewTicketService(repo.Ticket)
@@ -66,6 +68,9 @@ func main() {
 	r.POST("/terminal/service/confirm_appointment", ticketHandler.HandleService("confirm_appointment"))
 	r.POST("/terminal/service/lab_tests", ticketHandler.HandleService("lab_tests"))
 	r.POST("/terminal/service/documents", ticketHandler.HandleService("documents"))
+	r.GET("/terminal/service/print_ticket", ticketHandler.HandlePrintTicketPage)
+	r.GET("/terminal/service/display_ticket", ticketHandler.HandleDisplayTicketPage)
+	r.POST("/terminal/service/display_ticket", ticketHandler.HandleDisplayTicketPost)
 
 	r.Run(":" + cfg.BackendPort)
 }

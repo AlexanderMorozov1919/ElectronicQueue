@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ if .IsPrinted }}Ваш электронный талон{{ else }}Возьмите талон{{ end }}</title>
+    <meta http-equiv="refresh" content="5;url=/terminal/service">
+</head>
+<body>
+    <h1>{{ if .IsPrinted }}Ваш электронный талон{{ else }}Возьмите талон{{ end }}</h1>
+    <h2>Услуга: <span id="service-name">{{ .ServiceName }}</span></h2>
+    {{ if .IsPrinted }}
+        <h2>Номер талона: <span id="ticket-number">{{ .TicketNumber }}</span></h2>
+    {{ end }}
+    <p>закроется через 5 сек.</p>
+</body>
+</html>
