@@ -15,7 +15,8 @@ type Config struct {
 	DBPort        string
 	DBName        string
 	DBSSLMode     string
-	ServerPort    string
+	BackendPort   string
+	FrontendPort  string
 	JWTSecret     string
 	JWTExpiration string
 	LogFile       string `mapstructure:"LOG_FILE"`
@@ -37,7 +38,8 @@ func LoadConfig() (*Config, error) {
 		DBPort:        getEnv("DB_PORT"),
 		DBName:        getEnv("DB_NAME"),
 		DBSSLMode:     getEnv("DB_SSLMODE", "disable"),
-		ServerPort:    getEnv("SERVER_PORT", "8080"),
+		BackendPort:   getEnv("BACKEND_PORT", "8080"),
+		FrontendPort:  getEnv("FRONTEND_PORT", "3000"),
 		JWTSecret:     getEnv("JWT_SECRET"),
 		JWTExpiration: getEnv("JWT_EXPIRATION", "24h"),
 		LogFile:       getEnv("LOG_FILE"),

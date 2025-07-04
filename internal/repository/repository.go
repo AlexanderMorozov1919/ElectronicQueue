@@ -3,54 +3,50 @@ package repository
 import (
 	"time"
 
-	"ElectronicQueue/internal/models/appointment_model"
-	"ElectronicQueue/internal/models/doctor_model"
-	"ElectronicQueue/internal/models/patient_model"
-	"ElectronicQueue/internal/models/schedule_model"
-	"ElectronicQueue/internal/models/ticket_model"
+	"ElectronicQueue/internal/models"
 
 	"gorm.io/gorm"
 )
 
 // DoctorRepository определяет методы для взаимодействия с данными врачей.
 type DoctorRepository interface {
-	Create(doctor *doctor_model.Doctor) error
-	Update(doctor *doctor_model.Doctor) error
+	Create(doctor *models.Doctor) error
+	Update(doctor *models.Doctor) error
 	Delete(id uint) error
-	GetByID(id uint) (*doctor_model.Doctor, error)
-	GetAll(onlyActive bool) ([]doctor_model.Doctor, error)
+	GetByID(id uint) (*models.Doctor, error)
+	GetAll(onlyActive bool) ([]models.Doctor, error)
 }
 
 // PatientRepository определяет методы для взаимодействия с данными пациентов.
 type PatientRepository interface {
-	Create(patient *patient_model.Patient) error
-	Update(patient *patient_model.Patient) error
-	GetByID(id uint) (*patient_model.Patient, error)
-	FindByPassport(series, number string) (*patient_model.Patient, error)
+	Create(patient *models.Patient) error
+	Update(patient *models.Patient) error
+	GetByID(id uint) (*models.Patient, error)
+	FindByPassport(series, number string) (*models.Patient, error)
 }
 
 // TicketRepository определяет методы для взаимодействия с талонами.
 type TicketRepository interface {
-	Create(ticket *ticket_model.Ticket) error
-	Update(ticket *ticket_model.Ticket) error
-	GetByID(id uint) (*ticket_model.Ticket, error)
-	FindByStatuses(statuses []ticket_model.TicketStatus) ([]ticket_model.Ticket, error)
+	Create(ticket *models.Ticket) error
+	Update(ticket *models.Ticket) error
+	GetByID(id uint) (*models.Ticket, error)
+	FindByStatuses(statuses []models.TicketStatus) ([]models.Ticket, error)
+	GetMaxTicketNumber() (int, error) // Новый метод
 }
 
 // ScheduleRepository определяет методы для взаимодействия с расписанием.
 type ScheduleRepository interface {
-	Create(schedule *schedule_model.Schedule) error
-	Update(schedule *schedule_model.Schedule) error
-	GetByID(id uint) (*schedule_model.Schedule, error)
-	FindByDoctorAndDate(doctorID uint, date time.Time) ([]schedule_model.Schedule, error)
+	Create(schedule *models.Schedule) error
+	Update(schedule *models.Schedule) error
+	GetByID(id uint) (*models.Schedule, error)
+	FindByDoctorAndDate(doctorID uint, date time.Time) ([]models.Schedule, error)
 }
 
 // AppointmentRepository определяет методы для взаимодействия с записями на прием.
 type AppointmentRepository interface {
-	Create(appointment *appointment_model.Appointment) error
-	Update(appointment *appointment_model.Appointment) error
-	GetByID(id uint) (*appointment_model.Appointment, error)
-	FindByTicketID(ticketID uint) (*appointment_model.Appointment, error)
+	Create(appointment *models.Appointment) error
+	Update(appointment *models.Appointment) error
+	GetByID(id uint) (*models.Appointment, error)
 }
 
 // Repository содержит все репозитории приложения.

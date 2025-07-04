@@ -1,16 +1,12 @@
-package doctor_model
-
-import (
-	"ElectronicQueue/internal/models/schedule_model"
-)
+package models
 
 // Doctor представляет собой модель врача в базе данных.
 type Doctor struct {
-	ID             uint                      `gorm:"primaryKey;autoIncrement;column:doctor_id" json:"id"`
-	FullName       string                    `gorm:"type:varchar(100);not null;column:full_name" json:"full_name"`
-	Specialization string                    `gorm:"type:varchar(100);not null" json:"specialization"`
-	IsActive       bool                      `gorm:"default:true;column:is_active" json:"is_active"`
-	Schedules      []schedule_model.Schedule `gorm:"foreignKey:DoctorID;constraint:OnDelete:SET NULL" json:"schedules,omitempty"`
+	ID             uint       `gorm:"primaryKey;autoIncrement;column:doctor_id" json:"id"`
+	FullName       string     `gorm:"type:varchar(100);not null;column:full_name" json:"full_name"`
+	Specialization string     `gorm:"type:varchar(100);not null" json:"specialization"`
+	IsActive       bool       `gorm:"default:true;column:is_active" json:"is_active"`
+	Schedules      []Schedule `gorm:"foreignKey:DoctorID;constraint:OnDelete:SET NULL" json:"schedules,omitempty"`
 }
 
 // DoctorResponse определяет данные, возвращаемые API.
