@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"ElectronicQueue/internal/models/doctor_model"
+	"ElectronicQueue/internal/models"
 
 	"gorm.io/gorm"
 )
@@ -15,28 +15,28 @@ func NewDoctorRepository(db *gorm.DB) DoctorRepository {
 	return &doctorRepo{db: db}
 }
 
-func (r *doctorRepo) Create(doctor *doctor_model.Doctor) error {
+func (r *doctorRepo) Create(doctor *models.Doctor) error {
 	return r.db.Create(doctor).Error
 }
 
-func (r *doctorRepo) Update(doctor *doctor_model.Doctor) error {
+func (r *doctorRepo) Update(doctor *models.Doctor) error {
 	return r.db.Save(doctor).Error
 }
 
 func (r *doctorRepo) Delete(id uint) error {
-	return r.db.Delete(&doctor_model.Doctor{}, id).Error
+	return r.db.Delete(&models.Doctor{}, id).Error
 }
 
-func (r *doctorRepo) GetByID(id uint) (*doctor_model.Doctor, error) {
-	var doctor doctor_model.Doctor
+func (r *doctorRepo) GetByID(id uint) (*models.Doctor, error) {
+	var doctor models.Doctor
 	if err := r.db.First(&doctor, id).Error; err != nil {
 		return nil, err
 	}
 	return &doctor, nil
 }
 
-func (r *doctorRepo) GetAll(onlyActive bool) ([]doctor_model.Doctor, error) {
-	var doctors []doctor_model.Doctor
+func (r *doctorRepo) GetAll(onlyActive bool) ([]models.Doctor, error) {
+	var doctors []models.Doctor
 	query := r.db
 	if onlyActive {
 		query = query.Where("is_active = ?", true)

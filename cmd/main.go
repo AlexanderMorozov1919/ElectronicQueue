@@ -1,24 +1,18 @@
 package main
 
 import (
-
 	"ElectronicQueue/internal/logger"
 
 	"fmt"
 
 	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/database"
-
-	//_ "ElectronicQueue/internal/handler" // Раскомментируем, когда создадим обработчики
-	//_ "ElectronicQueue/internal/service" // Раскомментируем, когда создадим сервисы
-	_ "ElectronicQueue/internal/repository"
+	"ElectronicQueue/internal/handlers"
+	"ElectronicQueue/internal/repository"
 
 	_ "ElectronicQueue/docs"
 
 	"github.com/gin-gonic/gin"
-
-
-
 )
 
 // @title ElectronicQueue API
@@ -29,13 +23,13 @@ import (
 // @BasePath /api/v1
 func main() {
 
-
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		fmt.Printf("Ошибка загрузки конфига: %v\n", err)
 		return
 	}
+
 	// Инициализация логгера
 	logger.Init(cfg.LogFile)
 	defer func() {
@@ -47,19 +41,6 @@ func main() {
 
 	log := logger.Default()
 
-	log.Info("Application starting...")
-	log.WithField("version", "1.0.0").Info("Configuration loaded")
-
-	// 3. Тестируем логирование
-	log.Info("Тестовый запуск логгера")
-	log.WithField("example", true).Warn("Предупреждение с дополнительным полем")
-
-	// 4. Имитация ошибки
-	log.WithField("config", cfg).Error("Пример ошибки")
-
-	// Проверка записи в файл
-	log.Info("Проверка лог-файла в папке logs/")
-
 	// Подключение к базе данных
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
@@ -70,4 +51,18 @@ func main() {
 
 	fmt.Printf("Конфиг логгера:\nФайл: %s\n", cfg.LogFile)
 
+	r := gin.Default()
+
+	repo := repository.NewRepository(db)
+
+	// Регистрация роутов терминала
+	ticketHandler := handlers.NewTicketHandler(repo.Ticket)
+	r.GET("/terminal/service", ticketHandler.GetServicePage)
+	r.GET("/terminal/service/select", ticketHandler.GetSelectServicePage)
+	r.POST("/terminal/service/make_appointment", ticketHandler.HandleService("make_appointment"))
+	r.POST("/terminal/service/confirm_appointment", ticketHandler.HandleService("confirm_appointment"))
+	r.POST("/terminal/service/lab_tests", ticketHandler.HandleService("lab_tests"))
+	r.POST("/terminal/service/documents", ticketHandler.HandleService("documents"))
+
+	r.Run(":" + cfg.BackendPort)
 }
