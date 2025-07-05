@@ -135,8 +135,14 @@ func main() {
 	ticketService := services.NewTicketService(ticketRepo)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
 
-	// Регистрация REST endpoint для создания талона
-	r.POST("/api/tickets", ticketHandler.CreateTicketHandler)
+	// Группа эндпоинтов для работы с талонами
+	tickets := r.Group("/api/tickets")
+	{
+		tickets.GET("/services", ticketHandler.GetAvailableServices)
+		tickets.POST("/next-step", ticketHandler.GetNextStep)
+		tickets.POST("/confirm", ticketHandler.ConfirmAction)
+		tickets.POST("/", ticketHandler.CreateTicketHandler) // legacy, если нужно
+	}
 
 	// Обработка сигналов завершения
 	sigChan := make(chan os.Signal, 1)

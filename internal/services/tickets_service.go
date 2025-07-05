@@ -60,3 +60,19 @@ func serviceToLetter(service string) string {
 		return "Z"
 	}
 }
+
+// MapServiceIDToName возвращает русское название услуги по id
+func (s *TicketService) MapServiceIDToName(id string) string {
+	switch id {
+	case "make_appointment":
+		return "Записаться к врачу"
+	case "confirm_appointment":
+		return "Прием по записи"
+	case "lab_tests":
+		return "Сдать анализы"
+	case "documents":
+		return "Другой вопрос"
+	default:
+		return "Неизвестно"
+	}
+}
