@@ -1,12 +1,7 @@
 package main
 
 import (
-
 	"encoding/json"
-
-	"ElectronicQueue/internal/logger"
-
-
 	"fmt"
 	"io"
 	"os"
@@ -16,23 +11,17 @@ import (
 
 	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/database"
-
-	"ElectronicQueue/internal/models/ticket_model"
-
-	"github.com/lib/pq"
-
 	"ElectronicQueue/internal/handlers"
+	"ElectronicQueue/internal/logger"
+	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
 
-	_ "ElectronicQueue/docs"
-
 	"github.com/gin-gonic/gin"
-
+	"github.com/lib/pq"
 )
 
 func main() {
-
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -49,14 +38,6 @@ func main() {
 	}()
 
 	log := logger.Default()
-
-	log.Info("Application starting...")
-	log.WithField("version", "1.0.0").Info("Configuration loaded")
-	log.Info("Тестовый запуск логгера")
-	log.WithField("example", true).Warn("Предупреждение с дополнительным полем")
-	log.WithField("config", cfg).Error("Пример ошибки")
-	log.Info("Проверка лог-файла в папке logs/")
-
 
 	// Подключение к базе данных
 	db, err := database.ConnectDB(cfg)
@@ -94,6 +75,24 @@ func main() {
 	r.SetTrustedProxies(nil)
 	r.Use(logger.GinLogger())
 
+	// CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
+
+	// GIN middleware для логирования всех запросов
+	r.Use(func(c *gin.Context) {
+		fmt.Printf("[GIN] %s %s\n", c.Request.Method, c.Request.URL.Path)
+		c.Next()
+	})
+
 	// SSE endpoint
 	r.GET("/tickets", func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
@@ -110,13 +109,13 @@ func main() {
 				}
 				log.WithField("payload", n.Extra).Info("Received notification")
 
-				var ticket ticket_model.Ticket
+				var ticket models.Ticket
 				if err := json.Unmarshal([]byte(n.Extra), &ticket); err != nil {
 					log.WithError(err).Error("Failed to unmarshal notification")
 					return true
 				}
 
-				c.SSEvent("message", ticket_model.TicketResponse{
+				c.SSEvent("message", models.TicketResponse{
 					ID:           ticket.ID,
 					TicketNumber: ticket.TicketNumber,
 					Status:       ticket.Status,
@@ -130,6 +129,14 @@ func main() {
 			}
 		})
 	})
+
+	// Инициализация репозитория, сервиса и хендлера для талонов
+	ticketRepo := repository.NewTicketRepository(db)
+	ticketService := services.NewTicketService(ticketRepo)
+	ticketHandler := handlers.NewTicketHandler(ticketService)
+
+	// Регистрация REST endpoint для создания талона
+	r.POST("/api/tickets", ticketHandler.CreateTicketHandler)
 
 	// Обработка сигналов завершения
 	sigChan := make(chan os.Signal, 1)
@@ -155,32 +162,8 @@ func main() {
 		os.Exit(0)
 	}()
 
-
-	fmt.Printf("Сервер запущен на порту: %s\n", cfg.ServerPort)
-	if err := r.Run(":" + cfg.ServerPort); err != nil {
+	fmt.Printf("Сервер запущен на порту: %s\n", cfg.BackendPort)
+	if err := r.Run(":" + cfg.BackendPort); err != nil {
 		log.WithError(err).Fatal("Failed to start server")
 	}
-
-	r := gin.Default()
-
-	r.LoadHTMLFiles("frontend/print_ticket.html", "frontend/display_ticket.html")
-
-	repo := repository.NewRepository(db)
-
-	ticketService := services.NewTicketService(repo.Ticket)
-	ticketHandler := handlers.NewTicketHandler(ticketService)
-
-	// Регистрация роутов терминала
-	r.GET("/terminal/service", ticketHandler.GetServicePage)
-	r.GET("/terminal/service/select", ticketHandler.GetSelectServicePage)
-	r.POST("/terminal/service/make_appointment", ticketHandler.HandleService("make_appointment"))
-	r.POST("/terminal/service/confirm_appointment", ticketHandler.HandleService("confirm_appointment"))
-	r.POST("/terminal/service/lab_tests", ticketHandler.HandleService("lab_tests"))
-	r.POST("/terminal/service/documents", ticketHandler.HandleService("documents"))
-	r.GET("/terminal/service/print_ticket", ticketHandler.HandlePrintTicketPage)
-	r.GET("/terminal/service/display_ticket", ticketHandler.HandleDisplayTicketPage)
-	r.POST("/terminal/service/display_ticket", ticketHandler.HandleDisplayTicketPost)
-
-	r.Run(":" + cfg.BackendPort)
-
 }
