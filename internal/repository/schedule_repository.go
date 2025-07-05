@@ -1,9 +1,8 @@
 package repository
 
 import (
-	"time"
-
 	"ElectronicQueue/internal/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -35,7 +34,6 @@ func (r *scheduleRepo) GetByID(id uint) (*models.Schedule, error) {
 
 func (r *scheduleRepo) FindByDoctorAndDate(doctorID uint, date time.Time) ([]models.Schedule, error) {
 	var schedules []models.Schedule
-	// Ищем по началу дня, чтобы игнорировать время :)
 	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 

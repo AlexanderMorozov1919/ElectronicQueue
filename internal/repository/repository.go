@@ -1,9 +1,8 @@
 package repository
 
 import (
-	"time"
-
 	"ElectronicQueue/internal/models"
+	"time"
 
 	"gorm.io/gorm"
 )
