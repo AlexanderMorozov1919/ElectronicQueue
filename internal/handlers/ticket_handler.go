@@ -45,7 +45,7 @@ type ConfirmationResponse struct {
 // StartPage возвращает стартовую информацию для начальной страницы
 func (h *TicketHandler) StartPage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"button_text": "встать в очередь",
+		"button_text": "Встать в очередь",
 	})
 }
 
