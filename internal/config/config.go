@@ -16,10 +16,9 @@ type Config struct {
 	DBName        string
 	DBSSLMode     string
 	BackendPort   string
-	FrontendPort  string
 	JWTSecret     string
 	JWTExpiration string
-	LogFile       string `mapstructure:"LOG_FILE"`
+	LogFile       string
 }
 
 // LoadConfig загружает переменные среды из .env и возвращает структуру Config
@@ -39,10 +38,9 @@ func LoadConfig() (*Config, error) {
 		DBName:        getEnv("DB_NAME"),
 		DBSSLMode:     getEnv("DB_SSLMODE", "disable"),
 		BackendPort:   getEnv("BACKEND_PORT", "8080"),
-		FrontendPort:  getEnv("FRONTEND_PORT", "3000"),
 		JWTSecret:     getEnv("JWT_SECRET"),
 		JWTExpiration: getEnv("JWT_EXPIRATION", "24h"),
-		LogFile:       getEnv("LOG_FILE"),
+		LogFile:       getEnv("LOG_FILE", "logs/app.log"),
 	}
 
 	return cfg, nil

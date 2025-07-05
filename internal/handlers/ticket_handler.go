@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// TicketHandler содержит реализует обработчики HTTP-запросов, связанных с талонами.
+// TicketHandler содержит реализует обработчики HTTP-запросов, связанных с талонами
 type TicketHandler struct {
 	service *services.TicketService
 }
@@ -38,9 +38,7 @@ type ConfirmationRequest struct {
 type ConfirmationResponse struct {
 	ServiceName  string `json:"service_name"`
 	TicketNumber string `json:"ticket_number"`
-	Print        bool   `json:"print"`
 	Message      string `json:"message"`
-	RedirectURL  string `json:"redirect_url"`
 	Timeout      int    `json:"timeout"`
 }
 
@@ -88,20 +86,16 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 	if req.Action == "print_ticket" {
 		resp := ConfirmationResponse{
 			ServiceName: serviceName,
-			Print:       req.Action == "print_ticket",
 			Message:     "Возьмите талон",
-			RedirectURL: "/api/tickets/start",
-			Timeout:     10,
+			Timeout:     5,
 		}
 		c.JSON(http.StatusOK, resp)
 	} else {
 		resp := ConfirmationResponse{
 			ServiceName:  serviceName,
 			TicketNumber: ticket.TicketNumber,
-			Print:        req.Action == "print_ticket",
-			Message:      "Ваш жлектронный талон",
-			RedirectURL:  "/api/tickets/start",
-			Timeout:      15,
+			Message:      "Ваш электронный талон",
+			Timeout:      10,
 		}
 		c.JSON(http.StatusOK, resp)
 	}

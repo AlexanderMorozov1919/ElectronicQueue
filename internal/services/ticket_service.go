@@ -9,32 +9,41 @@ import (
 
 const maxTicketNumber = 1000
 
-var (
-	serviceLetterMap = map[string]string{
-		"make_appointment":    "A",
-		"confirm_appointment": "B",
-		"lab_tests":           "C",
-		"documents":           "D",
-	}
-	serviceNameMap = map[string]string{
-		"make_appointment":    "Записаться к врачу",
-		"confirm_appointment": "Прием по записи",
-		"lab_tests":           "Сдать анализы",
-		"documents":           "Другой вопрос",
-	}
-)
+// Service описывает услугу
+// ID — уникальный идентификатор, Name — русское название
+// Letter — буква для талона
+type Service struct {
+	ID     string
+	Name   string
+	Letter string
+}
 
-// TicketService предоставляет методы для работы с талонами.
+// TicketService предоставляет методы для работы с талонами
 type TicketService struct {
-	repo repository.TicketRepository
+	repo     repository.TicketRepository
+	services []Service
 }
 
-// NewTicketService создает новый экземпляр TicketService.
+// NewTicketService создает новый экземпляр TicketService
 func NewTicketService(repo repository.TicketRepository) *TicketService {
-	return &TicketService{repo: repo}
+	serviceList := []Service{
+		{ID: "make_appointment", Name: "Записаться к врачу"},
+		{ID: "confirm_appointment", Name: "Прием по записи"},
+		{ID: "lab_tests", Name: "Сдать анализы"},
+		{ID: "documents", Name: "Другой вопрос"},
+	}
+	alphabet := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	for i := range serviceList {
+		if i < len(alphabet) {
+			serviceList[i].Letter = string(alphabet[i])
+		} else {
+			serviceList[i].Letter = "Z"
+		}
+	}
+	return &TicketService{repo: repo, services: serviceList}
 }
 
-// CreateTicket создает новый талон для выбранной услуги.
+// CreateTicket создает новый талон для выбранной услуги
 func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 	if serviceID == "" {
 		return nil, fmt.Errorf("serviceID is required")
@@ -54,7 +63,7 @@ func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 	return ticket, nil
 }
 
-// generateTicketNumber генерирует уникальный номер талона для услуги.
+// generateTicketNumber генерирует уникальный номер талона для услуги
 func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
 	letter := s.getServiceLetter(serviceID)
 	maxNum, err := s.repo.GetMaxTicketNumber()
@@ -68,27 +77,27 @@ func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
 	return fmt.Sprintf("%s%03d", letter, num), nil
 }
 
-// getServiceLetter возвращает букву для услуги по её идентификатору.
+// getServiceLetter возвращает букву для услуги по её идентификатору
 func (s *TicketService) getServiceLetter(serviceID string) string {
-	if letter, ok := serviceLetterMap[serviceID]; ok {
-		return letter
+	for _, svc := range s.services {
+		if svc.ID == serviceID {
+			return svc.Letter
+		}
 	}
 	return "Z"
 }
 
-// MapServiceIDToName возвращает название услуги по её идентификатору.
+// MapServiceIDToName возвращает название услуги по её идентификатору
 func (s *TicketService) MapServiceIDToName(serviceID string) string {
-	if name, ok := serviceNameMap[serviceID]; ok {
-		return name
+	for _, svc := range s.services {
+		if svc.ID == serviceID {
+			return svc.Name
+		}
 	}
 	return "Неизвестно"
 }
 
-// GetAllServices возвращает все доступные услуги (id и name)
-func (s *TicketService) GetAllServices() []struct{ ID, Name string } {
-	services := make([]struct{ ID, Name string }, 0, len(serviceNameMap))
-	for id, name := range serviceNameMap {
-		services = append(services, struct{ ID, Name string }{ID: id, Name: name})
-	}
-	return services
+// GetAllServices возвращает все доступные услуги (id, name, letter)
+func (s *TicketService) GetAllServices() []Service {
+	return s.services
 }

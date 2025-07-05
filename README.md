@@ -28,7 +28,6 @@ DB_NAME=el_queue            # Имя базы данных
 DB_SSLMODE=disable          # Режим SSL для подключения к БД
 
 BACKEND_PORT=8080           # Порт, на котором запускается backend-сервер
-FRONTEND_PORT=3000          # Порт, на котором запускается frontend-сервер
 
 JWT_SECRET=your-secret-key  # Секретный ключ для подписи JWT
 JWT_EXPIRATION=24h          # Время жизни токена (например, 24h)
@@ -44,20 +43,16 @@ LOG_FILE=logs/app.log       # Путь к файлу логов приложен
 
 #### 4. Запуск программы
 
-##### Backend
+##### Backend (Запуск из директории ElectronicQueue)
 ```sh
 go run cmd/main.go
 ```
 
-##### Frontend
+##### Frontend (Запуск из директории electronicqueue-frontend)
 ```sh
-go run frontend/server.go
+flutter run -d chrome --web-port=XXXX
 ```
 
-##### UI
-```
-http://localhost:8080/terminal/service
-```
 #### 5. Удаление (базы данных)
 
 ```sh
