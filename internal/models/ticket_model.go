@@ -35,8 +35,3 @@ type TicketResponse struct {
 	StartedAt    *time.Time   `json:"started_at,omitempty"`
 	CompletedAt  *time.Time   `json:"completed_at,omitempty"`
 }
-
-// UpdateTicketStatusRequest определяет структуру для изменения статуса талона.
-type UpdateTicketStatusRequest struct {
-	Status TicketStatus `json:"status" binding:"required"`
-}

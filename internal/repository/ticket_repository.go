@@ -42,8 +42,6 @@ func (r *ticketRepo) FindByStatuses(statuses []models.TicketStatus) ([]models.Ti
 // GetMaxTicketNumber возвращает максимальный числовой номер билета (от 1 до 1000)
 func (r *ticketRepo) GetMaxTicketNumber() (int, error) {
 	var maxNum int
-	// Предполагаем, что ticket_number всегда вида <буква><число>
-	// Используем SUBSTRING для извлечения числа
 	err := r.db.Raw(`SELECT COALESCE(MAX(CAST(SUBSTRING(ticket_number, 2) AS INTEGER)), 0) FROM tickets`).Scan(&maxNum).Error
 	if err != nil {
 		return 0, err

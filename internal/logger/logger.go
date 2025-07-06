@@ -25,7 +25,7 @@ type logMessage struct {
 	msg   string
 }
 
-// Init создает логгер (вызывать в main.go)
+// Init создает логгер
 func Init(logFile string) {
 	once.Do(func() {
 		instance = logrus.New()
@@ -46,7 +46,7 @@ func Init(logFile string) {
 
 			instance.AddHook(&fileHook{
 				Writer:    file,
-				Formatter: &logrus.JSONFormatter{}, // или TextFormatter без цветов
+				Formatter: &logrus.JSONFormatter{},
 			})
 
 			runtime.SetFinalizer(instance, func(_ interface{}) {
@@ -62,31 +62,31 @@ func Init(logFile string) {
 	})
 }
 
-// asyncLogger — асинхронная обёртка над logrus.Entry
-type asyncLogger struct {
+// AsyncLogger — асинхронная обёртка над logrus.Entry
+type AsyncLogger struct {
 	entry *logrus.Entry
 }
 
-func (l *asyncLogger) Info(msg string) {
+func (l *AsyncLogger) Info(msg string) {
 	sendLog(logrus.InfoLevel, l.entry, msg)
 }
-func (l *asyncLogger) Warn(msg string) {
+func (l *AsyncLogger) Warn(msg string) {
 	sendLog(logrus.WarnLevel, l.entry, msg)
 }
-func (l *asyncLogger) Error(msg string) {
+func (l *AsyncLogger) Error(msg string) {
 	sendLog(logrus.ErrorLevel, l.entry, msg)
 }
-func (l *asyncLogger) WithError(err error) *asyncLogger {
-	return &asyncLogger{entry: l.entry.WithError(err)}
+func (l *AsyncLogger) WithError(err error) *AsyncLogger {
+	return &AsyncLogger{entry: l.entry.WithError(err)}
 }
-func (l *asyncLogger) Fatal(msg string) {
+func (l *AsyncLogger) Fatal(msg string) {
 	sendLog(logrus.FatalLevel, l.entry, msg)
 }
-func (l *asyncLogger) WithField(k string, v interface{}) *asyncLogger {
-	return &asyncLogger{entry: l.entry.WithField(k, v)}
+func (l *AsyncLogger) WithField(k string, v interface{}) *AsyncLogger {
+	return &AsyncLogger{entry: l.entry.WithField(k, v)}
 }
-func (l *asyncLogger) WithFields(fields logrus.Fields) *asyncLogger {
-	return &asyncLogger{entry: l.entry.WithFields(fields)}
+func (l *AsyncLogger) WithFields(fields logrus.Fields) *AsyncLogger {
+	return &AsyncLogger{entry: l.entry.WithFields(fields)}
 }
 
 func sendLog(level logrus.Level, entry *logrus.Entry, msg string) {
@@ -134,9 +134,9 @@ func (h *fileHook) Levels() []logrus.Level {
 	return logrus.AllLevels
 }
 
-// Default возвращает логгер по умолчанию (асинхронный)
-func Default() *asyncLogger {
-	return &asyncLogger{entry: instance.WithField("module", "default")}
+// Default возвращает логгер по умолчанию
+func Default() *AsyncLogger {
+	return &AsyncLogger{entry: instance.WithField("module", "default")}
 }
 
 // Sync дожидается окончания логирования и закрывает канал
