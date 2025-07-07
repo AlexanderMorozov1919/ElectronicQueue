@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"ElectronicQueue/internal/services"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 )
@@ -129,19 +132,36 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 	}
 	serviceName := h.service.MapServiceIDToName(req.ServiceID)
 	if req.Action == "print_ticket" {
-		resp := ConfirmationResponse{
-			ServiceName: serviceName,
-			Message:     "Возьмите талон",
-			Timeout:     5,
+		pdfBytes, err := h.service.GenerateTicketPDF(ticket, serviceName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("PDF generation failed: %v", err)})
+			return
 		}
-		c.JSON(http.StatusOK, resp)
-	} else {
+		// Сохраняем PDF на диск
+		dir := "tickets"
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create tickets directory"})
+			return
+		}
+		filePath := filepath.Join(dir, ticket.TicketNumber+".pdf")
+		if err := os.WriteFile(filePath, pdfBytes, 0644); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save PDF"})
+			return
+		}
 		resp := ConfirmationResponse{
 			ServiceName:  serviceName,
 			TicketNumber: ticket.TicketNumber,
-			Message:      "Ваш электронный талон",
-			Timeout:      10,
+			Message:      "Ваш талон напечатан и сохранён как PDF",
+			Timeout:      5,
 		}
 		c.JSON(http.StatusOK, resp)
+		return
 	}
+	resp := ConfirmationResponse{
+		ServiceName:  serviceName,
+		TicketNumber: ticket.TicketNumber,
+		Message:      "Ваш электронный талон",
+		Timeout:      10,
+	}
+	c.JSON(http.StatusOK, resp)
 }

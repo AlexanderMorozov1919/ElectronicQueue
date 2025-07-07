@@ -12,6 +12,7 @@ temp/
 *.txt
 *.docx
 *.pdf
+tickets/
 
 # Системные файлы
 .DS_Store
