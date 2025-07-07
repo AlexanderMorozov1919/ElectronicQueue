@@ -48,3 +48,7 @@ func (r *ticketRepo) GetMaxTicketNumber() (int, error) {
 	}
 	return maxNum, nil
 }
+
+func (r *ticketRepo) Delete(id uint) error {
+	return r.db.Delete(&models.Ticket{}, id).Error
+}
