@@ -3,11 +3,9 @@ package services
 import (
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
-	"bytes"
+	"ElectronicQueue/internal/utils"
 	"fmt"
 	"time"
-
-	"github.com/jung-kurt/gofpdf"
 )
 
 const maxTicketNumber = 1000
@@ -27,23 +25,19 @@ type TicketService struct {
 	services []Service
 }
 
-// NewTicketService создает новый экземпляр TicketService
-func NewTicketService(repo repository.TicketRepository) *TicketService {
-	serviceList := []Service{
-		{ID: "make_appointment", Name: "Записаться к врачу"},
-		{ID: "confirm_appointment", Name: "Прием по записи"},
-		{ID: "lab_tests", Name: "Сдать анализы"},
-		{ID: "documents", Name: "Другой вопрос"},
+// GetAllServices возвращает все доступные услуги (id, name, letter)
+func (s *TicketService) GetAllServices() []Service {
+	return s.services
+}
+
+// GetByID возвращает тикет по строковому id
+func (s *TicketService) GetByID(idStr string) (*models.Ticket, error) {
+	var id uint
+	_, err := fmt.Sscanf(idStr, "%d", &id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid id")
 	}
-	alphabet := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	for i := range serviceList {
-		if i < len(alphabet) {
-			serviceList[i].Letter = string(alphabet[i])
-		} else {
-			serviceList[i].Letter = "Z"
-		}
-	}
-	return &TicketService{repo: repo, services: serviceList}
+	return s.repo.GetByID(id)
 }
 
 // CreateTicket создает новый талон для выбранной услуги
@@ -64,6 +58,40 @@ func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 		return nil, err
 	}
 	return ticket, nil
+}
+
+// UpdateTicket обновляет тикет
+func (s *TicketService) UpdateTicket(ticket *models.Ticket) error {
+	return s.repo.Update(ticket)
+}
+
+// DeleteTicket удаляет тикет по строковому id
+func (s *TicketService) DeleteTicket(idStr string) error {
+	var id uint
+	_, err := fmt.Sscanf(idStr, "%d", &id)
+	if err != nil {
+		return fmt.Errorf("invalid id")
+	}
+	return s.repo.Delete(id)
+}
+
+// NewTicketService создает новый экземпляр TicketService
+func NewTicketService(repo repository.TicketRepository) *TicketService {
+	serviceList := []Service{
+		{ID: "make_appointment", Name: "Записаться к врачу"},
+		{ID: "confirm_appointment", Name: "Прием по записи"},
+		{ID: "lab_tests", Name: "Сдать анализы"},
+		{ID: "documents", Name: "Другой вопрос"},
+	}
+	alphabet := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	for i := range serviceList {
+		if i < len(alphabet) {
+			serviceList[i].Letter = string(alphabet[i])
+		} else {
+			serviceList[i].Letter = "Z"
+		}
+	}
+	return &TicketService{repo: repo, services: serviceList}
 }
 
 // generateTicketNumber генерирует уникальный номер талона для услуги
@@ -100,55 +128,21 @@ func (s *TicketService) MapServiceIDToName(serviceID string) string {
 	return "Неизвестно"
 }
 
-// GetAllServices возвращает все доступные услуги (id, name, letter)
-func (s *TicketService) GetAllServices() []Service {
-	return s.services
-}
-
-// GenerateTicketPDF генерирует PDF-файл талона с поддержкой кириллицы
-func (s *TicketService) GenerateTicketPDF(ticket *models.Ticket, serviceName string) ([]byte, error) {
-	pdf := gofpdf.New("P", "mm", "A4", "")
-	fontDir := "fonts"
-	pdf.AddUTF8Font("Golos", "", fontDir+"/Golos-Text_Medium.ttf")
-	pdf.SetFont("Golos", "", 16)
-	pdf.AddPage()
-	pdf.Cell(40, 10, "Талон электронной очереди")
-	pdf.Ln(12)
-	pdf.SetFont("Golos", "", 14)
-	pdf.Cell(40, 10, "Услуга: "+serviceName)
-	pdf.Ln(10)
-	pdf.Cell(40, 10, "Номер талона: "+ticket.TicketNumber)
-	pdf.Ln(10)
-	pdf.Cell(40, 10, "Время: "+ticket.CreatedAt.Format("02.01.2006 15:04:05"))
-	var buf bytes.Buffer
-	err := pdf.Output(&buf)
-	if err != nil {
-		return nil, err
+// Модификация существующего метода для использования нового генератора
+func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string) ([]byte, error) {
+	// Подготавливаем данные для талона
+	data := utils.TicketData{
+		ServiceName:  serviceName,
+		TicketNumber: ticket.TicketNumber,
+		DateTime:     ticket.CreatedAt,
 	}
-	return buf.Bytes(), nil
-}
 
-// GetByID возвращает тикет по строковому id
-func (s *TicketService) GetByID(idStr string) (*models.Ticket, error) {
-	var id uint
-	_, err := fmt.Sscanf(idStr, "%d", &id)
-	if err != nil {
-		return nil, fmt.Errorf("invalid id")
-	}
-	return s.repo.GetByID(id)
-}
+	// Данные для QR-кода
+	qrData := []byte(fmt.Sprintf("Талон: %s\nВремя: %s\nУслуга: %s",
+		ticket.TicketNumber,
+		ticket.CreatedAt.Format("02.01.2006 15:04:05"),
+		serviceName))
 
-// UpdateTicket обновляет тикет
-func (s *TicketService) UpdateTicket(ticket *models.Ticket) error {
-	return s.repo.Update(ticket)
-}
-
-// DeleteTicket удаляет тикет по строковому id
-func (s *TicketService) DeleteTicket(idStr string) error {
-	var id uint
-	_, err := fmt.Sscanf(idStr, "%d", &id)
-	if err != nil {
-		return fmt.Errorf("invalid id")
-	}
-	return s.repo.Delete(id)
+	// Генерируем изображение талона с заданным размером
+	return utils.GenerateTicketImageWithSizes(baseSize, qrData, data)
 }

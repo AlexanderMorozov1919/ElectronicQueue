@@ -133,38 +133,46 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "service_id and action are required"})
 		return
 	}
+
 	ticket, err := h.service.CreateTicket(req.ServiceID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
 	serviceName := h.service.MapServiceIDToName(req.ServiceID)
+
 	if req.Action == "print_ticket" {
-		pdfBytes, err := h.service.GenerateTicketPDF(ticket, serviceName)
+		// Генерируем изображение талона вместо PDF
+		imageBytes, err := h.service.GenerateTicketImage(800, ticket, serviceName)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("PDF generation failed: %v", err)})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Image generation failed: %v", err)})
 			return
 		}
-		// Сохраняем PDF на диск
+
+		// Сохраняем изображение на диск
 		dir := "tickets"
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create tickets directory"})
 			return
 		}
-		filePath := filepath.Join(dir, ticket.TicketNumber+".pdf")
-		if err := os.WriteFile(filePath, pdfBytes, 0644); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save PDF"})
+
+		filePath := filepath.Join(dir, ticket.TicketNumber+".png")
+		if err := os.WriteFile(filePath, imageBytes, 0644); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
 			return
 		}
+
 		resp := ConfirmationResponse{
 			ServiceName:  serviceName,
 			TicketNumber: ticket.TicketNumber,
-			Message:      "Ваш талон напечатан и сохранён как PDF",
+			Message:      "Ваш талон напечатан и сохранён как изображение",
 			Timeout:      5,
 		}
 		c.JSON(http.StatusOK, resp)
 		return
 	}
+
 	resp := ConfirmationResponse{
 		ServiceName:  serviceName,
 		TicketNumber: ticket.TicketNumber,
@@ -172,6 +180,47 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 		Timeout:      10,
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+// Эндпоинт для скачивания изображения талона
+func (h *TicketHandler) DownloadTicket(c *gin.Context) {
+	ticketNumber := c.Param("ticket_number")
+	if ticketNumber == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ticket_number is required"})
+		return
+	}
+
+	filePath := filepath.Join("tickets", ticketNumber+".png")
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.png", ticketNumber))
+	c.Header("Content-Type", "image/png")
+
+	c.File(filePath)
+}
+
+// Эндпоинт для просмотра талона в браузере
+func (h *TicketHandler) ViewTicket(c *gin.Context) {
+	ticketNumber := c.Param("ticket_number")
+	if ticketNumber == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ticket_number is required"})
+		return
+	}
+
+	filePath := filepath.Join("tickets", ticketNumber+".png")
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
+		return
+	}
+
+	c.Header("Content-Type", "image/png")
+
+	c.File(filePath)
 }
 
 // UpdateStatus Сменить статус тикета (регистратор)

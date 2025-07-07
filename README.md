@@ -11,6 +11,10 @@
   <a href="https://swagger.io/"><img src="https://img.shields.io/badge/Swagger-85EA2D?logo=swagger&logoColor=black&style=for-the-badge" alt="Swagger"></a>
 </p>
 
+<p align="center">
+  <img src="assets/img/ticket_example.png" alt="Пример талона" width="350"/>
+</p>
+
 ## Установка
 
 > **Для Backend**: требуется установленный [Golang (1.24.2)](https://go.dev/dl/) и [PostgreSQL](https://www.postgresql.org/download/)
