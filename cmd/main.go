@@ -13,9 +13,11 @@ import (
 	"ElectronicQueue/internal/database"
 	"ElectronicQueue/internal/handlers"
 	"ElectronicQueue/internal/logger"
+	"ElectronicQueue/internal/middleware"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
+	"ElectronicQueue/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
@@ -109,6 +111,10 @@ func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
 	ticketService := services.NewTicketService(ticketRepo)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
 
+	// JWTManager для middleware
+	cfg, _ := config.LoadConfig()
+	jwtManager, _ := utils.NewJWTManager(cfg.JWTSecret, cfg.JWTExpiration)
+
 	// Группа эндпоинтов для работы с талонами
 	tickets := r.Group("/api/tickets")
 	{
@@ -116,6 +122,13 @@ func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
 		tickets.GET("/services", ticketHandler.Services)
 		tickets.POST("/print/selection", ticketHandler.Selection)
 		tickets.POST("/print/confirmation", ticketHandler.Confirmation)
+	}
+
+	// Группа эндпоинтов для роли "регистратор"
+	registrar := r.Group("/api/tickets", middleware.RequireRole(jwtManager, "регистратор"))
+	{
+		registrar.POST(":id/status", ticketHandler.UpdateStatus)
+		registrar.DELETE(":id", ticketHandler.DeleteTicket)
 	}
 	return r
 }

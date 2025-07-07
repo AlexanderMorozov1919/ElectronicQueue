@@ -8,9 +8,11 @@ import (
 )
 
 // Claims содержит информацию о пользователе и стандартные JWT claims для токена
+// Встраиваем jwt.RegisteredClaims для совместимости с jwt.Claims
 type Claims struct {
 	UserID uint   `json:"user_id"`
 	Role   string `json:"role"`
+	jwt.RegisteredClaims
 }
 
 // JWTManager управляет созданием и проверкой JWT токенов
