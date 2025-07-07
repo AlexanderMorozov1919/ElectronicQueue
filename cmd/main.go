@@ -17,8 +17,14 @@ import (
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
 
+	_ "ElectronicQueue/docs"
+
+	ginSwaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
+
 	"gorm.io/gorm"
 )
 
@@ -117,6 +123,10 @@ func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
 		tickets.POST("/print/selection", ticketHandler.Selection)
 		tickets.POST("/print/confirmation", ticketHandler.Confirmation)
 	}
+
+	// Swagger endpoint
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(ginSwaggerFiles.Handler))
+
 	return r
 }
 
