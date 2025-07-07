@@ -1,9 +1,161 @@
-basePath: /api/v1
-host: localhost:8080
+definitions:
+  handlers.ConfirmationRequest:
+    description: Запрос подтверждения действия (печать талона или получение электронного)
+    properties:
+      action:
+        example: print_ticket
+        type: string
+      service_id:
+        example: make_appointment
+        type: string
+    required:
+    - action
+    - service_id
+    type: object
+  handlers.ConfirmationResponse:
+    description: Ответ после подтверждения действия
+    properties:
+      message:
+        example: Ваш электронный талон
+        type: string
+      service_name:
+        example: Записаться к врачу
+        type: string
+      ticket_number:
+        example: A001
+        type: string
+      timeout:
+        example: 10
+        type: integer
+    type: object
+  handlers.ServiceSelectionRequest:
+    description: Запрос для выбора услуги
+    properties:
+      service_id:
+        example: make_appointment
+        type: string
+    required:
+    - service_id
+    type: object
+  handlers.ServiceSelectionResponse:
+    description: Ответ после выбора услуги
+    properties:
+      action:
+        example: confirm_print
+        type: string
+      service_name:
+        example: Записаться к врачу
+        type: string
+    type: object
+  services.Service:
+    properties:
+      id:
+        type: string
+      letter:
+        type: string
+      name:
+        type: string
+    type: object
 info:
   contact: {}
-  description: Это сервер для электронной очереди
-  title: ElectronicQueue API
-  version: "1.0"
-paths: {}
+paths:
+  /api/tickets/confirmation:
+    post:
+      consumes:
+      - application/json
+      description: Обрабатывает подтверждение действия (печать талона или получение
+        электронного)
+      parameters:
+      - description: Данные для подтверждения действия
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ConfirmationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ответ после подтверждения действия
+          schema:
+            $ref: '#/definitions/handlers.ConfirmationResponse'
+        "400":
+          description: 'Ошибка: не передан service_id или action'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Подтверждение действия
+      tags:
+      - tickets
+  /api/tickets/selection:
+    post:
+      consumes:
+      - application/json
+      description: Определяет следующий шаг после выбора услуги
+      parameters:
+      - description: Данные для выбора услуги
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ServiceSelectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Следующий шаг после выбора услуги
+          schema:
+            $ref: '#/definitions/handlers.ServiceSelectionResponse'
+        "400":
+          description: 'Ошибка: не передан service_id'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Выбор услуги
+      tags:
+      - tickets
+  /api/tickets/services:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список доступных услуг
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список услуг
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/services.Service'
+              type: array
+            type: object
+      summary: Получить список услуг
+      tags:
+      - tickets
+  /api/tickets/start:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает стартовую информацию для клиента (например, текст кнопки)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Успешный ответ: текст кнопки'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить стартовую информацию
+      tags:
+      - tickets
 swagger: "2.0"

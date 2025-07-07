@@ -11,9 +11,20 @@ import (
 	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/database"
 
+	_ "ElectronicQueue/docs"
+
+	ginSwaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"github.com/gin-gonic/gin"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/sirupsen/logrus"
+
+	"github.com/lib/pq"
+
+	"gorm.io/gorm"
+
 )
 
 func main() {
@@ -75,7 +86,40 @@ func setupRouter(listener *Listener, db *pgxpool.Pool) *gin.Engine {
 		})
 	})
 
-	// Здесь можно добавить другие маршруты и группы маршрутов
+
+// setupRouter настраивает маршруты и middleware
+func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.SetTrustedProxies(nil)
+	r.Use(logger.GinLogger())
+
+	// CORS middleware
+	r.Use(corsMiddleware())
+
+	// GIN middleware для логирования всех запросов
+	r.Use(requestLogger())
+
+	// SSE endpoint
+	r.GET("/tickets", sseHandler(listener))
+
+	// Инициализация репозитория, сервиса и хендлера для талонов
+	ticketRepo := repository.NewTicketRepository(db)
+	ticketService := services.NewTicketService(ticketRepo)
+	ticketHandler := handlers.NewTicketHandler(ticketService)
+
+	// Группа эндпоинтов для работы с талонами
+	tickets := r.Group("/api/tickets")
+	{
+		tickets.GET("/start", ticketHandler.StartPage)
+		tickets.GET("/services", ticketHandler.Services)
+		tickets.POST("/print/selection", ticketHandler.Selection)
+		tickets.POST("/print/confirmation", ticketHandler.Confirmation)
+	}
+
+	// Swagger endpoint
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(ginSwaggerFiles.Handler))
+
 
 	return r
 }
