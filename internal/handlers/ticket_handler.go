@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/services"
 	"fmt"
@@ -105,6 +106,7 @@ func (h *TicketHandler) Services(c *gin.Context) {
 func (h *TicketHandler) Selection(c *gin.Context) {
 	var req ServiceSelectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Default().Error(fmt.Sprintf("Selection: failed to bind JSON: %v", err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "service_id is required"})
 		return
 	}
@@ -130,12 +132,14 @@ func (h *TicketHandler) Selection(c *gin.Context) {
 func (h *TicketHandler) Confirmation(c *gin.Context) {
 	var req ConfirmationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Default().Error(fmt.Sprintf("Confirmation: failed to bind JSON: %v", err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "service_id and action are required"})
 		return
 	}
 
 	ticket, err := h.service.CreateTicket(req.ServiceID)
 	if err != nil {
+		logger.Default().Error(fmt.Sprintf("Confirmation: failed to create ticket: %v", err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -146,6 +150,7 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 		// Генерируем изображение талона вместо PDF
 		imageBytes, err := h.service.GenerateTicketImage(800, ticket, serviceName)
 		if err != nil {
+			logger.Default().Error(fmt.Sprintf("Confirmation: image generation failed: %v", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Image generation failed: %v", err)})
 			return
 		}
@@ -153,12 +158,14 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 		// Сохраняем изображение на диск
 		dir := "tickets"
 		if err := os.MkdirAll(dir, 0755); err != nil {
+			logger.Default().Error(fmt.Sprintf("Confirmation: failed to create tickets directory: %v", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create tickets directory"})
 			return
 		}
 
 		filePath := filepath.Join(dir, ticket.TicketNumber+".png")
 		if err := os.WriteFile(filePath, imageBytes, 0644); err != nil {
+			logger.Default().Error(fmt.Sprintf("Confirmation: failed to save image: %v", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
 			return
 		}
@@ -186,6 +193,7 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 func (h *TicketHandler) DownloadTicket(c *gin.Context) {
 	ticketNumber := c.Param("ticket_number")
 	if ticketNumber == "" {
+		logger.Default().Error("DownloadTicket: ticket_number is required")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ticket_number is required"})
 		return
 	}
@@ -193,6 +201,7 @@ func (h *TicketHandler) DownloadTicket(c *gin.Context) {
 	filePath := filepath.Join("tickets", ticketNumber+".png")
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		logger.Default().Error(fmt.Sprintf("DownloadTicket: ticket not found: %s", filePath))
 		c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
 		return
 	}
@@ -207,6 +216,7 @@ func (h *TicketHandler) DownloadTicket(c *gin.Context) {
 func (h *TicketHandler) ViewTicket(c *gin.Context) {
 	ticketNumber := c.Param("ticket_number")
 	if ticketNumber == "" {
+		logger.Default().Error("ViewTicket: ticket_number is required")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ticket_number is required"})
 		return
 	}
@@ -214,6 +224,7 @@ func (h *TicketHandler) ViewTicket(c *gin.Context) {
 	filePath := filepath.Join("tickets", ticketNumber+".png")
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		logger.Default().Error(fmt.Sprintf("ViewTicket: ticket not found: %s", filePath))
 		c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
 		return
 	}
@@ -228,11 +239,13 @@ func (h *TicketHandler) UpdateStatus(c *gin.Context) {
 	id := c.Param("id")
 	var req TicketStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Default().Error(fmt.Sprintf("UpdateStatus: failed to bind JSON: %v", err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "status is required"})
 		return
 	}
 	ticket, err := h.service.GetByID(id)
 	if err != nil {
+		logger.Default().Error(fmt.Sprintf("UpdateStatus: ticket not found: %v", err))
 		c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
 		return
 	}
@@ -245,10 +258,12 @@ func (h *TicketHandler) UpdateStatus(c *gin.Context) {
 		ticket.Status = models.StatusRegistered
 		newStatus = "зарегистрирован"
 	default:
+		logger.Default().Error(fmt.Sprintf("UpdateStatus: invalid status: %s", req.Status))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status"})
 		return
 	}
 	if err := h.service.UpdateTicket(ticket); err != nil {
+		logger.Default().Error(fmt.Sprintf("UpdateStatus: failed to update ticket: %v", err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -259,6 +274,7 @@ func (h *TicketHandler) UpdateStatus(c *gin.Context) {
 func (h *TicketHandler) DeleteTicket(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.service.DeleteTicket(id); err != nil {
+		logger.Default().Error(fmt.Sprintf("DeleteTicket: failed to delete ticket: %v", err))
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/utils"
@@ -35,18 +36,26 @@ func (s *TicketService) GetByID(idStr string) (*models.Ticket, error) {
 	var id uint
 	_, err := fmt.Sscanf(idStr, "%d", &id)
 	if err != nil {
+		logger.Default().Error(fmt.Sprintf("GetByID: invalid id: %v", err))
 		return nil, fmt.Errorf("invalid id")
 	}
-	return s.repo.GetByID(id)
+	ticket, err := s.repo.GetByID(id)
+	if err != nil {
+		logger.Default().Error(fmt.Sprintf("GetByID: repo error: %v", err))
+		return nil, err
+	}
+	return ticket, nil
 }
 
 // CreateTicket создает новый талон для выбранной услуги
 func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 	if serviceID == "" {
+		logger.Default().Error("CreateTicket: serviceID is required")
 		return nil, fmt.Errorf("serviceID is required")
 	}
 	ticketNumber, err := s.generateTicketNumber(serviceID)
 	if err != nil {
+		logger.Default().Error(fmt.Sprintf("CreateTicket: failed to generate ticket number: %v", err))
 		return nil, err
 	}
 	ticket := &models.Ticket{
@@ -55,6 +64,7 @@ func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 		CreatedAt:    time.Now(),
 	}
 	if err := s.repo.Create(ticket); err != nil {
+		logger.Default().Error(fmt.Sprintf("CreateTicket: repo create error: %v", err))
 		return nil, err
 	}
 	return ticket, nil
@@ -62,7 +72,11 @@ func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 
 // UpdateTicket обновляет тикет
 func (s *TicketService) UpdateTicket(ticket *models.Ticket) error {
-	return s.repo.Update(ticket)
+	err := s.repo.Update(ticket)
+	if err != nil {
+		logger.Default().Error(fmt.Sprintf("UpdateTicket: repo update error: %v", err))
+	}
+	return err
 }
 
 // DeleteTicket удаляет тикет по строковому id
@@ -70,9 +84,14 @@ func (s *TicketService) DeleteTicket(idStr string) error {
 	var id uint
 	_, err := fmt.Sscanf(idStr, "%d", &id)
 	if err != nil {
+		logger.Default().Error(fmt.Sprintf("DeleteTicket: invalid id: %v", err))
 		return fmt.Errorf("invalid id")
 	}
-	return s.repo.Delete(id)
+	err = s.repo.Delete(id)
+	if err != nil {
+		logger.Default().Error(fmt.Sprintf("DeleteTicket: repo delete error: %v", err))
+	}
+	return err
 }
 
 // NewTicketService создает новый экземпляр TicketService
@@ -99,6 +118,7 @@ func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
 	letter := s.getServiceLetter(serviceID)
 	maxNum, err := s.repo.GetMaxTicketNumber()
 	if err != nil {
+		logger.Default().Error(fmt.Sprintf("generateTicketNumber: repo error: %v", err))
 		return "", err
 	}
 	num := maxNum + 1
@@ -144,5 +164,10 @@ func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket,
 		serviceName))
 
 	// Генерируем изображение талона с заданным размером
-	return utils.GenerateTicketImageWithSizes(baseSize, qrData, data)
+	img, err := utils.GenerateTicketImageWithSizes(baseSize, qrData, data)
+	if err != nil {
+		logger.Default().Error(fmt.Sprintf("GenerateTicketImage: failed to generate image: %v", err))
+		return nil, err
+	}
+	return img, nil
 }
