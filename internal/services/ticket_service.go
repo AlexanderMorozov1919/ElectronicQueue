@@ -3,8 +3,11 @@ package services
 import (
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
+	"bytes"
 	"fmt"
 	"time"
+
+	"github.com/jung-kurt/gofpdf"
 )
 
 const maxTicketNumber = 1000
@@ -100,6 +103,29 @@ func (s *TicketService) MapServiceIDToName(serviceID string) string {
 // GetAllServices возвращает все доступные услуги (id, name, letter)
 func (s *TicketService) GetAllServices() []Service {
 	return s.services
+}
+
+// GenerateTicketPDF генерирует PDF-файл талона с поддержкой кириллицы
+func (s *TicketService) GenerateTicketPDF(ticket *models.Ticket, serviceName string) ([]byte, error) {
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	fontDir := "fonts"
+	pdf.AddUTF8Font("Golos", "", fontDir+"/Golos-Text_Medium.ttf")
+	pdf.SetFont("Golos", "", 16)
+	pdf.AddPage()
+	pdf.Cell(40, 10, "Талон электронной очереди")
+	pdf.Ln(12)
+	pdf.SetFont("Golos", "", 14)
+	pdf.Cell(40, 10, "Услуга: "+serviceName)
+	pdf.Ln(10)
+	pdf.Cell(40, 10, "Номер талона: "+ticket.TicketNumber)
+	pdf.Ln(10)
+	pdf.Cell(40, 10, "Время: "+ticket.CreatedAt.Format("02.01.2006 15:04:05"))
+	var buf bytes.Buffer
+	err := pdf.Output(&buf)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // GetByID возвращает тикет по строковому id
