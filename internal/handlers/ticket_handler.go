@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/services"
 	"net/http"
 
@@ -54,6 +55,12 @@ type ConfirmationResponse struct {
 	Timeout      int    `json:"timeout" example:"10"`
 }
 
+// TicketStatusRequest описывает запрос для смены статуса тикета
+type TicketStatusRequest struct {
+	Status string `json:"status" binding:"required"`
+}
+
+// StartPage возвращает стартовую информацию для начальной страницы
 // StartPage godoc
 // @Summary      Получить стартовую информацию
 // @Description  Возвращает стартовую информацию для клиента (например, текст кнопки)
@@ -62,6 +69,7 @@ type ConfirmationResponse struct {
 // @Produce      json
 // @Success      200 {object} map[string]string "Успешный ответ: текст кнопки"
 // @Router       /api/tickets/start [get]
+
 func (h *TicketHandler) StartPage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"button_text": "Встать в очередь",
@@ -144,4 +152,46 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, resp)
 	}
+}
+
+// UpdateStatus Сменить статус тикета (регистратор)
+func (h *TicketHandler) UpdateStatus(c *gin.Context) {
+	id := c.Param("id")
+	var req TicketStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "status is required"})
+		return
+	}
+	ticket, err := h.service.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
+		return
+	}
+	var newStatus string
+	switch req.Status {
+	case "подойти_к_окну":
+		ticket.Status = models.StatusToWindow
+		newStatus = "подойти_к_окну"
+	case "зарегистрирован":
+		ticket.Status = models.StatusRegistered
+		newStatus = "зарегистрирован"
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status"})
+		return
+	}
+	if err := h.service.UpdateTicket(ticket); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "status updated", "status": newStatus})
+}
+
+// DeleteTicket Удалить тикет (регистратор)
+func (h *TicketHandler) DeleteTicket(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.service.DeleteTicket(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "ticket deleted"})
 }

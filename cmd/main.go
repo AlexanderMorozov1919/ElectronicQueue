@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -11,11 +10,6 @@ import (
 
 	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/database"
-	"ElectronicQueue/internal/handlers"
-	"ElectronicQueue/internal/logger"
-	"ElectronicQueue/internal/models"
-	"ElectronicQueue/internal/repository"
-	"ElectronicQueue/internal/services"
 
 	_ "ElectronicQueue/docs"
 
@@ -23,9 +17,14 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/sirupsen/logrus"
+
 	"github.com/lib/pq"
 
 	"gorm.io/gorm"
+
 )
 
 func main() {
@@ -37,13 +36,17 @@ func main() {
 	}
 
 	// Инициализация логгера
-	logger.Init(cfg.LogFile)
-	defer func() {
-		if err := logger.Sync(); err != nil {
-			fmt.Printf("Ошибка синхронизации логов: %v\n", err)
-		}
-	}()
-	log := logger.Default()
+	log := logrus.New()
+	log.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp: true,
+	})
+	logFile, err := os.OpenFile(cfg.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		multi := io.MultiWriter(os.Stdout, logFile)
+		log.SetOutput(multi)
+	} else {
+		log.Info("Ошибка открытия файла логов, будет использоваться только вывод в консоль")
+	}
 
 	// Подключение к базе данных
 	db, err := database.ConnectDB(cfg)
@@ -69,30 +72,20 @@ func main() {
 	if err := r.Run(":" + cfg.BackendPort); err != nil {
 		log.WithError(err).Fatal("Failed to start server")
 	}
+
+	fmt.Printf("Successful connect to database: \"%s\"\n", db.Name())
 }
 
-// initListener инициализирует LISTEN/NOTIFY для PostgreSQL
-func initListener(cfg *config.Config, log *logger.AsyncLogger) (*pq.Listener, error) {
-	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-		cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort, cfg.DBSSLMode,
-	)
-	listener := pq.NewListener(dsn, 10*time.Second, time.Minute, func(ev pq.ListenerEventType, err error) {
-		if err != nil {
-			log.WithError(err).WithField("event", ev).Error("Listener error")
-		} else {
-			log.WithField("event", ev).Info("Listener event")
-		}
+func setupRouter(listener *Listener, db *pgxpool.Pool) *gin.Engine {
+	r := gin.Default()
+
+	// Пример маршрута
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "ok",
+		})
 	})
-	if err := listener.Ping(); err != nil {
-		return nil, err
-	}
-	if err := listener.Listen("ticket_update"); err != nil {
-		return nil, err
-	}
-	log.Info("Listening to ticket_update channel")
-	return listener, nil
-}
+
 
 // setupRouter настраивает маршруты и middleware
 func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
@@ -127,84 +120,47 @@ func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
 	// Swagger endpoint
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(ginSwaggerFiles.Handler))
 
+
 	return r
 }
 
-// corsMiddleware возвращает middleware для CORS
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	}
-}
-
-// requestLogger логирует все HTTP-запросы
-func requestLogger() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		fmt.Printf("[GIN] %s %s\n", c.Request.Method, c.Request.URL.Path)
-		c.Next()
-	}
-}
-
-// sseHandler возвращает SSE endpoint для обновлений талонов
-func sseHandler(listener *pq.Listener) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Content-Type", "text/event-stream")
-		c.Header("Cache-Control", "no-cache")
-		c.Header("Connection", "keep-alive")
-		log := logger.Default()
-		c.Stream(func(w io.Writer) bool {
-			select {
-			case n := <-listener.Notify:
-				if n == nil {
-					log.Info("Received nil notification")
-					return true
-				}
-				log.WithField("payload", n.Extra).Info("Received notification")
-				var ticket models.Ticket
-				if err := json.Unmarshal([]byte(n.Extra), &ticket); err != nil {
-					log.WithError(err).Error("Failed to unmarshal notification")
-					return true
-				}
-				c.SSEvent("message", models.TicketResponse{
-					ID:           ticket.ID,
-					TicketNumber: ticket.TicketNumber,
-					Status:       ticket.Status,
-					CreatedAt:    ticket.CreatedAt,
-				})
-				return true
-			case <-c.Request.Context().Done():
-				log.Info("Client disconnected (SSE)")
-				return false
-			}
-		})
-	}
-}
-
-// handleGracefulShutdown обрабатывает завершение работы приложения
-func handleGracefulShutdown(db *gorm.DB, listener *pq.Listener, log *logger.AsyncLogger) {
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+func handleGracefulShutdown(db *pgxpool.Pool, listener *Listener, log *logrus.Logger) {
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		<-sigChan
-		log.Info("Received shutdown signal, closing...")
-		if err := logger.Sync(); err != nil {
-			fmt.Printf("Ошибка синхронизации логов: %v\n", err)
-		}
-		if sqlDB, err := db.DB(); err == nil {
-			if err := sqlDB.Close(); err != nil {
-				fmt.Printf("Ошибка закрытия базы данных: %v\n", err)
-			}
-		}
-		if err := listener.Close(); err != nil {
-			log.WithError(err).Error("Ошибка при закрытии pq.Listener")
-		}
-		os.Exit(0)
+		<-quit
+		log.Info("Shutdown signal received")
+
+		// Остановка слушателя
+		listener.Close()
+
+		// Отключение от базы данных
+		db.Close()
+
+		log.Info("Services stopped")
 	}()
+}
+
+func initListener(cfg *config.Config, log *logrus.Logger) (*Listener, error) {
+	// Инициализация listener для LISTEN/NOTIFY
+	listener := &Listener{
+		// Настройки
+	}
+
+	go func() {
+		for {
+			// Логика обработки сообщений
+			time.Sleep(10 * time.Second) // Пример задержки
+		}
+	}()
+
+	return listener, nil
+}
+
+type Listener struct {
+	// Настройки listener
+}
+
+func (l *Listener) Close() {
+	// Логика остановки listener
 }
