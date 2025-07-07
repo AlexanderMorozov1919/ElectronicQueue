@@ -16,6 +16,8 @@ const (
 	StatusInvited    TicketStatus = "приглашен"
 	StatusInProgress TicketStatus = "на_приеме"
 	StatusCompleted  TicketStatus = "завершен"
+	StatusToWindow   TicketStatus = "подойти_к_окну"
+	StatusRegistered TicketStatus = "зарегистрирован"
 )
 
 // Ticket представляет собой модель талона электронной очереди.

@@ -127,3 +127,28 @@ func (s *TicketService) GenerateTicketPDF(ticket *models.Ticket, serviceName str
 	}
 	return buf.Bytes(), nil
 }
+
+// GetByID возвращает тикет по строковому id
+func (s *TicketService) GetByID(idStr string) (*models.Ticket, error) {
+	var id uint
+	_, err := fmt.Sscanf(idStr, "%d", &id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid id")
+	}
+	return s.repo.GetByID(id)
+}
+
+// UpdateTicket обновляет тикет
+func (s *TicketService) UpdateTicket(ticket *models.Ticket) error {
+	return s.repo.Update(ticket)
+}
+
+// DeleteTicket удаляет тикет по строковому id
+func (s *TicketService) DeleteTicket(idStr string) error {
+	var id uint
+	_, err := fmt.Sscanf(idStr, "%d", &id)
+	if err != nil {
+		return fmt.Errorf("invalid id")
+	}
+	return s.repo.Delete(id)
+}
