@@ -14,17 +14,251 @@ const docTemplate = `{
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
-    "paths": {}
+    "paths": {
+        "/api/tickets/confirmation": {
+            "post": {
+                "description": "Обрабатывает подтверждение действия (печать талона или получение электронного)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Подтверждение действия",
+                "parameters": [
+                    {
+                        "description": "Данные для подтверждения действия",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ConfirmationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ответ после подтверждения действия",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ConfirmationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: не передан service_id или action",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/selection": {
+            "post": {
+                "description": "Определяет следующий шаг после выбора услуги",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Выбор услуги",
+                "parameters": [
+                    {
+                        "description": "Данные для выбора услуги",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ServiceSelectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Следующий шаг после выбора услуги",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ServiceSelectionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: не передан service_id",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/services": {
+            "get": {
+                "description": "Возвращает список доступных услуг",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Получить список услуг",
+                "responses": {
+                    "200": {
+                        "description": "Список услуг",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/services.Service"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/start": {
+            "get": {
+                "description": "Возвращает стартовую информацию для клиента (например, текст кнопки)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Получить стартовую информацию",
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ: текст кнопки",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.ConfirmationRequest": {
+            "description": "Запрос подтверждения действия (печать талона или получение электронного)",
+            "type": "object",
+            "required": [
+                "action",
+                "service_id"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "example": "print_ticket"
+                },
+                "service_id": {
+                    "type": "string",
+                    "example": "make_appointment"
+                }
+            }
+        },
+        "handlers.ConfirmationResponse": {
+            "description": "Ответ после подтверждения действия",
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Ваш электронный талон"
+                },
+                "service_name": {
+                    "type": "string",
+                    "example": "Записаться к врачу"
+                },
+                "ticket_number": {
+                    "type": "string",
+                    "example": "A001"
+                },
+                "timeout": {
+                    "type": "integer",
+                    "example": 10
+                }
+            }
+        },
+        "handlers.ServiceSelectionRequest": {
+            "description": "Запрос для выбора услуги",
+            "type": "object",
+            "required": [
+                "service_id"
+            ],
+            "properties": {
+                "service_id": {
+                    "type": "string",
+                    "example": "make_appointment"
+                }
+            }
+        },
+        "handlers.ServiceSelectionResponse": {
+            "description": "Ответ после выбора услуги",
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "example": "confirm_print"
+                },
+                "service_name": {
+                    "type": "string",
+                    "example": "Записаться к врачу"
+                }
+            }
+        },
+        "services.Service": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "letter": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        }
+    }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
-	Host:             "localhost:8080",
-	BasePath:         "/api/v1",
+	Version:          "",
+	Host:             "",
+	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "ElectronicQueue API",
-	Description:      "Это сервер для электронной очереди",
+	Title:            "",
+	Description:      "",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

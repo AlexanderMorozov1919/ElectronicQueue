@@ -4,9 +4,13 @@ import (
 	"time"
 )
 
-// TicketStatus определяет перечисление для статусов талонов.
 type TicketStatus string
 
+// TicketStatus определяет перечисление для статусов талонов.
+// @Description Перечисление статусов талонов электронной очереди
+// @Enum string
+// @swagger:model
+// @Schema
 const (
 	StatusWaiting    TicketStatus = "ожидает"
 	StatusInvited    TicketStatus = "приглашен"
@@ -15,6 +19,10 @@ const (
 )
 
 // Ticket представляет собой модель талона электронной очереди.
+// @Description Модель талона электронной очереди
+// @Name Ticket
+// @swagger:model
+// @Schema
 type Ticket struct {
 	ID           uint         `gorm:"primaryKey;autoIncrement;column:ticket_id" json:"id"`
 	TicketNumber string       `gorm:"type:varchar(20);not null;unique;column:ticket_number" json:"ticket_number"`
@@ -26,6 +34,10 @@ type Ticket struct {
 }
 
 // TicketResponse определяет данные, возвращаемые API.
+// @Description Ответ API с данными талона
+// @Name TicketResponse
+// @swagger:model
+// @Schema
 type TicketResponse struct {
 	ID           uint         `json:"id"`
 	TicketNumber string       `json:"ticket_number"`
