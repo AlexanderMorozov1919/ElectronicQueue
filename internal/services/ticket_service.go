@@ -1,13 +1,12 @@
 package services
 
 import (
+	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
-	"bytes"
+	"ElectronicQueue/internal/utils"
 	"fmt"
 	"time"
-
-	"github.com/jung-kurt/gofpdf"
 )
 
 const maxTicketNumber = 1000
@@ -25,6 +24,74 @@ type Service struct {
 type TicketService struct {
 	repo     repository.TicketRepository
 	services []Service
+}
+
+// GetAllServices возвращает все доступные услуги (id, name, letter)
+func (s *TicketService) GetAllServices() []Service {
+	return s.services
+}
+
+// GetByID возвращает тикет по строковому id
+func (s *TicketService) GetByID(idStr string) (*models.Ticket, error) {
+	var id uint
+	_, err := fmt.Sscanf(idStr, "%d", &id)
+	if err != nil {
+		logger.Default().Error(fmt.Sprintf("GetByID: invalid id: %v", err))
+		return nil, fmt.Errorf("invalid id")
+	}
+	ticket, err := s.repo.GetByID(id)
+	if err != nil {
+		logger.Default().Error(fmt.Sprintf("GetByID: repo error: %v", err))
+		return nil, err
+	}
+	return ticket, nil
+}
+
+// CreateTicket создает новый талон для выбранной услуги
+func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
+	if serviceID == "" {
+		logger.Default().Error("CreateTicket: serviceID is required")
+		return nil, fmt.Errorf("serviceID is required")
+	}
+	ticketNumber, err := s.generateTicketNumber(serviceID)
+	if err != nil {
+		logger.Default().Error(fmt.Sprintf("CreateTicket: failed to generate ticket number: %v", err))
+		return nil, err
+	}
+	ticket := &models.Ticket{
+		TicketNumber: ticketNumber,
+		Status:       models.StatusWaiting,
+		CreatedAt:    time.Now(),
+	}
+	if err := s.repo.Create(ticket); err != nil {
+		logger.Default().Error(fmt.Sprintf("CreateTicket: repo create error: %v", err))
+		return nil, err
+	}
+	return ticket, nil
+}
+
+// UpdateTicket обновляет тикет
+func (s *TicketService) UpdateTicket(ticket *models.Ticket) error {
+	err := s.repo.Update(ticket)
+	if err != nil {
+		logger.Default().Error(fmt.Sprintf("UpdateTicket: repo update error: %v", err))
+	}
+	return err
+}
+
+// DeleteTicket удаляет тикет по строковому id
+func (s *TicketService) DeleteTicket(idStr string) error {
+	var id uint
+	_, err := fmt.Sscanf(idStr, "%d", &id)
+	if err != nil {
+		logger.Default().Error(fmt.Sprintf("DeleteTicket: invalid id: %v", err))
+		return fmt.Errorf("invalid id")
+	}
+	err = s.repo.Delete(id)
+	if err != nil {
+		logger.Default().Error(fmt.Sprintf("DeleteTicket: repo delete error: %v", err))
+	}
+	return err
 }
 
 // NewTicketService создает новый экземпляр TicketService
@@ -46,31 +113,12 @@ func NewTicketService(repo repository.TicketRepository) *TicketService {
 	return &TicketService{repo: repo, services: serviceList}
 }
 
-// CreateTicket создает новый талон для выбранной услуги
-func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
-	if serviceID == "" {
-		return nil, fmt.Errorf("serviceID is required")
-	}
-	ticketNumber, err := s.generateTicketNumber(serviceID)
-	if err != nil {
-		return nil, err
-	}
-	ticket := &models.Ticket{
-		TicketNumber: ticketNumber,
-		Status:       models.StatusWaiting,
-		CreatedAt:    time.Now(),
-	}
-	if err := s.repo.Create(ticket); err != nil {
-		return nil, err
-	}
-	return ticket, nil
-}
-
 // generateTicketNumber генерирует уникальный номер талона для услуги
 func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
 	letter := s.getServiceLetter(serviceID)
 	maxNum, err := s.repo.GetMaxTicketNumber()
 	if err != nil {
+		logger.Default().Error(fmt.Sprintf("generateTicketNumber: repo error: %v", err))
 		return "", err
 	}
 	num := maxNum + 1
@@ -100,55 +148,26 @@ func (s *TicketService) MapServiceIDToName(serviceID string) string {
 	return "Неизвестно"
 }
 
-// GetAllServices возвращает все доступные услуги (id, name, letter)
-func (s *TicketService) GetAllServices() []Service {
-	return s.services
-}
+// Модификация существующего метода для использования нового генератора
+func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string) ([]byte, error) {
+	// Подготавливаем данные для талона
+	data := utils.TicketData{
+		ServiceName:  serviceName,
+		TicketNumber: ticket.TicketNumber,
+		DateTime:     ticket.CreatedAt,
+	}
 
-// GenerateTicketPDF генерирует PDF-файл талона с поддержкой кириллицы
-func (s *TicketService) GenerateTicketPDF(ticket *models.Ticket, serviceName string) ([]byte, error) {
-	pdf := gofpdf.New("P", "mm", "A4", "")
-	fontDir := "fonts"
-	pdf.AddUTF8Font("Golos", "", fontDir+"/Golos-Text_Medium.ttf")
-	pdf.SetFont("Golos", "", 16)
-	pdf.AddPage()
-	pdf.Cell(40, 10, "Талон электронной очереди")
-	pdf.Ln(12)
-	pdf.SetFont("Golos", "", 14)
-	pdf.Cell(40, 10, "Услуга: "+serviceName)
-	pdf.Ln(10)
-	pdf.Cell(40, 10, "Номер талона: "+ticket.TicketNumber)
-	pdf.Ln(10)
-	pdf.Cell(40, 10, "Время: "+ticket.CreatedAt.Format("02.01.2006 15:04:05"))
-	var buf bytes.Buffer
-	err := pdf.Output(&buf)
+	// Данные для QR-кода
+	qrData := []byte(fmt.Sprintf("Талон: %s\nВремя: %s\nУслуга: %s",
+		ticket.TicketNumber,
+		ticket.CreatedAt.Format("02.01.2006 15:04:05"),
+		serviceName))
+
+	// Генерируем изображение талона с заданным размером
+	img, err := utils.GenerateTicketImageWithSizes(baseSize, qrData, data)
 	if err != nil {
+		logger.Default().Error(fmt.Sprintf("GenerateTicketImage: failed to generate image: %v", err))
 		return nil, err
 	}
-	return buf.Bytes(), nil
-}
-
-// GetByID возвращает тикет по строковому id
-func (s *TicketService) GetByID(idStr string) (*models.Ticket, error) {
-	var id uint
-	_, err := fmt.Sscanf(idStr, "%d", &id)
-	if err != nil {
-		return nil, fmt.Errorf("invalid id")
-	}
-	return s.repo.GetByID(id)
-}
-
-// UpdateTicket обновляет тикет
-func (s *TicketService) UpdateTicket(ticket *models.Ticket) error {
-	return s.repo.Update(ticket)
-}
-
-// DeleteTicket удаляет тикет по строковому id
-func (s *TicketService) DeleteTicket(idStr string) error {
-	var id uint
-	_, err := fmt.Sscanf(idStr, "%d", &id)
-	if err != nil {
-		return fmt.Errorf("invalid id")
-	}
-	return s.repo.Delete(id)
+	return img, nil
 }
