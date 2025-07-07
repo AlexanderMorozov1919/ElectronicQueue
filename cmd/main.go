@@ -1,7 +1,6 @@
 package main
 
 import (
-
 	"ElectronicQueue/internal/logger"
 
 	"fmt"
@@ -14,11 +13,6 @@ import (
 	_ "ElectronicQueue/internal/repository"
 
 	_ "ElectronicQueue/docs"
-
-	"github.com/gin-gonic/gin"
-
-
-
 )
 
 // @title ElectronicQueue API
@@ -28,7 +22,6 @@ import (
 // @host localhost:8080
 // @BasePath /api/v1
 func main() {
-
 
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()

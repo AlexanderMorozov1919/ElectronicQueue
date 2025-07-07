@@ -8,11 +8,11 @@ import (
 type TicketStatus string
 
 const (
-	StatusCreated    TicketStatus = "создан"
-	StatusWaiting    TicketStatus = "ожидает"
-	StatusInvited    TicketStatus = "приглашен"
-	StatusInProgress TicketStatus = "на_приеме"
-	StatusCompleted  TicketStatus = "завершен"
+	StatusCreated TicketStatus = "создан"
+	StatusWaiting TicketStatus = "ожидает"
+	StatusInvited TicketStatus = "приглашен"
+	// StatusInProgress TicketStatus = "на_приеме"
+	StatusCompleted TicketStatus = "завершен"
 )
 
 // Ticket представляет собой модель талона электронной очереди.
