@@ -14,6 +14,7 @@ import (
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
 	"github.com/skip2/go-qrcode"
+	"golang.org/x/image/font"
 )
 
 // TicketConfig содержит конфигурацию для генерации талона
@@ -28,9 +29,10 @@ type TicketConfig struct {
 
 // TicketData содержит данные для отображения на талоне
 type TicketData struct {
-	ServiceName  string
-	TicketNumber string
-	DateTime     time.Time
+	ServiceName   string
+	TicketNumber  string
+	DateTime      time.Time
+	WaitingNumber int // Количество ожидающих
 }
 
 // resizeImage масштабирует изображение с сохранением пропорций и заполнением фона
@@ -143,7 +145,7 @@ func createRoundedQRCode(data []byte, size int) (image.Image, error) {
 	rounded := image.NewRGBA(image.Rect(0, 0, size, size))
 
 	// Радиус закругления
-	radius := size / 20
+	radius := size / 10
 
 	for y := 0; y < size; y++ {
 		for x := 0; x < size; x++ {
@@ -248,6 +250,7 @@ func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]
 	serviceSize := float64(config.Width) * 0.071 // Размер названия услуги
 	numberSize := float64(config.Width) * 0.17   // Размер номера талона
 	timeSize := float64(config.Width) * 0.062    // Размер времени
+	WaitingSize := float64(config.Width) * 0.04  // Размер очереди
 
 	// Рисуем заголовок "УСЛУГА" (обычный шрифт)
 	c.SetFont(ttfFont)
@@ -283,7 +286,7 @@ func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]
 	// Рисуем "НОМЕР ТАЛОНА" (обычный шрифт)
 	c.SetFont(ttfFont)
 	c.SetFontSize(labelSize)
-	pt = freetype.Pt(config.Width/12, int(float64(config.Height)*0.58))
+	pt = freetype.Pt(config.Width/12, int(float64(config.Height)*0.57))
 	_, err = c.DrawString("НОМЕР ТАЛОНА", pt)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка рисования заголовка номера: %v", err)
@@ -292,7 +295,7 @@ func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]
 	// Рисуем номер талона (жирный шрифт)
 	c.SetFont(boldTtfFont)
 	c.SetFontSize(numberSize)
-	pt = freetype.Pt(config.Width/13, int(float64(config.Height)*0.7))
+	pt = freetype.Pt(config.Width/13, int(float64(config.Height)*0.69))
 	_, err = c.DrawString(data.TicketNumber, pt)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка рисования номера талона: %v", err)
@@ -301,7 +304,7 @@ func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]
 	// Рисуем информацию о времени
 	c.SetFont(ttfFont)
 	c.SetFontSize(labelSize)
-	timeStartY := float64(config.Height) * 0.81
+	timeStartY := float64(config.Height) * 0.78
 
 	// Заголовок "ВРЕМЯ"
 	pt = freetype.Pt(config.Width/12, int(timeStartY))
@@ -315,21 +318,21 @@ func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]
 	c.SetFontSize(timeSize)
 
 	// Дата
-	pt = freetype.Pt(config.Width/12, int(timeStartY+float64(config.Height)*0.07))
+	pt = freetype.Pt(config.Width/12, int(timeStartY+float64(config.Height)*0.06))
 	_, err = c.DrawString(data.DateTime.Format("02.01.2006"), pt)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка рисования даты: %v", err)
 	}
 
 	// Время
-	pt = freetype.Pt(config.Width/12, int(timeStartY+float64(config.Height)*0.12))
+	pt = freetype.Pt(config.Width/12, int(timeStartY+float64(config.Height)*0.11))
 	_, err = c.DrawString(data.DateTime.Format("15:04:05"), pt)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка рисования времени: %v", err)
 	}
 
 	// Генерируем QR-код с закругленными краями (увеличенный размер)
-	qrSize := config.Width / 4 // Увеличенный размер QR-кода
+	qrSize := int(float64(config.Width) / 3) // Увеличенный размер QR-кода
 	qrImg, err := createRoundedQRCode(config.QRData, qrSize)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка создания QR-кода: %v", err)
@@ -337,11 +340,35 @@ func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]
 
 	// Позиция QR-кода (правый нижний угол)
 	qrX := config.Width - qrSize - config.Width/10
-	qrY := config.Height - qrSize - config.Height/15
+	qrY := config.Height - qrSize - int(float64(config.Height)/9.1)
 	qrRect := image.Rect(qrX, qrY, qrX+qrSize, qrY+qrSize)
 
 	// Накладываем QR-код на изображение
 	draw.Draw(img, qrRect, qrImg, image.Point{}, draw.Over)
+
+	// Добавляем надпись о количестве ожидающих (в самом конце, посередине)
+	if data.WaitingNumber > 0 {
+		c.SetFont(ttfFont)
+		c.SetFontSize(WaitingSize)
+		queueText := fmt.Sprintf("Перед вами %d человек в очереди", data.WaitingNumber)
+
+		// Точный расчет центрирования
+		face := truetype.NewFace(ttfFont, &truetype.Options{
+			Size: WaitingSize,
+			DPI:  72,
+		})
+		bounds, _ := font.BoundString(face, queueText)
+		textWidthPixels := int(bounds.Max.X-bounds.Min.X) >> 6
+
+		textY := float64(config.Height) * 0.96
+		textX := (config.Width - textWidthPixels) / 2
+
+		pt = freetype.Pt(textX, int(textY))
+		_, err = c.DrawString(queueText, pt)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка рисования надписи об очереди: %v", err)
+		}
+	}
 
 	// Сохраняем изображение в буфер
 	var buf bytes.Buffer

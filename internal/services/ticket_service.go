@@ -177,10 +177,17 @@ func (s *TicketService) MapServiceIDToName(serviceID string) string {
 
 // Модификация существующего метода для использования нового генератора
 func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string, mode string) ([]byte, error) {
+	// Получаем количество ожидающих
+	waitingTickets, err := s.repo.FindByStatuses([]models.TicketStatus{models.StatusWaiting})
+	waitingNumber := len(waitingTickets) - 1
+	if err != nil {
+		waitingNumber = 0
+	}
 	data := utils.TicketData{
-		ServiceName:  serviceName,
-		TicketNumber: ticket.TicketNumber,
-		DateTime:     ticket.CreatedAt,
+		ServiceName:   serviceName,
+		TicketNumber:  ticket.TicketNumber,
+		DateTime:      ticket.CreatedAt,
+		WaitingNumber: waitingNumber,
 	}
 
 	// Данные для QR-кода
