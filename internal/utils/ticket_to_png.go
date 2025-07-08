@@ -252,6 +252,7 @@ func GenerateTicketImage(config TicketConfig, data TicketData) ([]byte, error) {
 	// Рисуем заголовок "УСЛУГА" (обычный шрифт)
 	c.SetFont(ttfFont)
 	c.SetFontSize(labelSize)
+	c.SetSrc(image.NewUniform(color.RGBA{0, 0, 0, 255})) // Чёрный цвет (если печатается ticket_bw.png)
 	pt := freetype.Pt(config.Width/12, int(float64(config.Height)*0.11))
 	_, err = c.DrawString("УСЛУГА", pt)
 	if err != nil {
@@ -273,6 +274,7 @@ func GenerateTicketImage(config TicketConfig, data TicketData) ([]byte, error) {
 			return nil, fmt.Errorf("ошибка рисования текста услуги: %v", err)
 		}
 	}
+	c.SetSrc(image.NewUniform(color.RGBA{255, 255, 255, 255})) // Белый цвет
 
 	// Рисуем "НОМЕР ТАЛОНА" (обычный шрифт)
 	c.SetFont(ttfFont)
@@ -362,7 +364,7 @@ func GenerateTicketImageWithSizes(baseSize int, qrData []byte, data TicketData) 
 		QRData:         qrData,
 		FontPath:       "assets/fonts/Arial.ttf",
 		BoldFontPath:   "assets/fonts/Arial_bold.ttf",
-		BackgroundPath: "assets/img/ticket.png",
+		BackgroundPath: "assets/img/ticket_bw.png",
 	}
 
 	return GenerateTicketImage(config, data)

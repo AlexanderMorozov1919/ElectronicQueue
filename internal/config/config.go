@@ -18,7 +18,9 @@ type Config struct {
 	BackendPort   string
 	JWTSecret     string
 	JWTExpiration string
+	TicketMode    string
 	LogFile       string
+	TicketFile    string
 }
 
 // LoadConfig загружает переменные среды из .env и возвращает структуру Config
@@ -40,7 +42,9 @@ func LoadConfig() (*Config, error) {
 		BackendPort:   getEnv("BACKEND_PORT", "8080"),
 		JWTSecret:     getEnv("JWT_SECRET"),
 		JWTExpiration: getEnv("JWT_EXPIRATION", "24h"),
+		TicketMode:    getEnv("TICKET_MODE", "b/w"),
 		LogFile:       getEnv("LOG_FILE", "logs/app.log"),
+		TicketFile:    getEnv("TICKET_FILE", "tickets"),
 	}
 
 	return cfg, nil

@@ -59,7 +59,10 @@ BACKEND_PORT=8080           # Порт, на котором запускаетс
 JWT_SECRET=your-secret-key  # Секретный ключ для подписи JWT
 JWT_EXPIRATION=24h          # Время жизни токена (например, 24h)
 
+TICKET_MODE=color           # Режим генерации талона (color | b/w)
+
 LOG_FILE=logs/app.log       # Путь к файлу логов приложения
+TICKET_FILE=tickets         # Путь к файлу со сгенерированными талонами
 ```
 
 #### 4. Установка (через bash / git bash)
