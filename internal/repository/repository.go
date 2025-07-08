@@ -30,8 +30,9 @@ type TicketRepository interface {
 	Update(ticket *models.Ticket) error
 	GetByID(id uint) (*models.Ticket, error)
 	FindByStatuses(statuses []models.TicketStatus) ([]models.Ticket, error)
-	GetMaxTicketNumber() (int, error) 
-	Delete(id uint) error 
+	GetNextWaitingTicket() (*models.Ticket, error)
+	GetMaxTicketNumber() (int, error)
+	Delete(id uint) error
 }
 
 // ScheduleRepository определяет методы для взаимодействия с расписанием.

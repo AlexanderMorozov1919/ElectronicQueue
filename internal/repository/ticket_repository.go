@@ -39,6 +39,17 @@ func (r *ticketRepo) FindByStatuses(statuses []models.TicketStatus) ([]models.Ti
 	return tickets, nil
 }
 
+func (r *ticketRepo) GetNextWaitingTicket() (*models.Ticket, error) {
+	var ticket models.Ticket
+	// Ищем самый старый талон со статусом "ожидает"
+	// TODO: что-то говорили про "привилегированные" талоны
+	err := r.db.Where("status = ?", models.StatusWaiting).Order("created_at asc").First(&ticket).Error
+	if err != nil {
+		return nil, err
+	}
+	return &ticket, nil
+}
+
 // GetMaxTicketNumber возвращает максимальный числовой номер билета (от 1 до 1000)
 func (r *ticketRepo) GetMaxTicketNumber() (int, error) {
 	var maxNum int
