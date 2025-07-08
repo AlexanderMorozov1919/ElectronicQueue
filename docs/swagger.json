@@ -4,6 +4,67 @@
         "contact": {}
     },
     "paths": {
+        "/api/registrar/call-next": {
+            "post": {
+                "description": "Находит первого пациента в очереди, меняет его статус на \"приглашен\" и присваивает номер окна",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Вызвать следующего пациента",
+                "parameters": [
+                    {
+                        "description": "Номер окна, которое вызывает пациента",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CallNextRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные вызванного талона",
+                        "schema": {
+                            "$ref": "#/definitions/models.TicketResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный номер окна",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ошибка: очередь пуста",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/tickets/confirmation": {
             "post": {
                 "description": "Обрабатывает подтверждение действия (печать талона или получение электронного)",
@@ -127,35 +188,20 @@
                     }
                 }
             }
-        },
-        "/api/tickets/start": {
-            "get": {
-                "description": "Возвращает стартовую информацию для клиента (например, текст кнопки)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "tickets"
-                ],
-                "summary": "Получить стартовую информацию",
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ: текст кнопки",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
+        "handlers.CallNextRequest": {
+            "type": "object",
+            "required": [
+                "window_number"
+            ],
+            "properties": {
+                "window_number": {
+                    "type": "integer"
+                }
+            }
+        },
         "handlers.ConfirmationRequest": {
             "description": "Запрос подтверждения действия (печать талона или получение электронного)",
             "type": "object",
@@ -222,6 +268,59 @@
                     "example": "Записаться к врачу"
                 }
             }
+        },
+        "models.TicketResponse": {
+            "description": "Ответ API с данными талона",
+            "type": "object",
+            "properties": {
+                "called_at": {
+                    "type": "string"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.TicketStatus"
+                },
+                "ticket_number": {
+                    "type": "string"
+                },
+                "window_number": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.TicketStatus": {
+            "type": "string",
+            "enum": [
+                "ожидает",
+                "приглашен",
+                "на_приеме",
+                "завершен",
+                "подойти_к_окну",
+                "зарегистрирован"
+            ],
+            "x-enum-comments": {
+                "StatusInvited": "Пациент вызван к окну",
+                "StatusToWindow": "TODO: Это может быть синонимом 'приглашен', можно будет убрать/изменить"
+            },
+            "x-enum-varnames": [
+                "StatusWaiting",
+                "StatusInvited",
+                "StatusInProgress",
+                "StatusCompleted",
+                "StatusToWindow",
+                "StatusRegistered"
+            ]
         },
         "services.Service": {
             "type": "object",

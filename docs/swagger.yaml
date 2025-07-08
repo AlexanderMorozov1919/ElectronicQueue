@@ -1,4 +1,11 @@
 definitions:
+  handlers.CallNextRequest:
+    properties:
+      window_number:
+        type: integer
+    required:
+    - window_number
+    type: object
   handlers.ConfirmationRequest:
     description: Запрос подтверждения действия (печать талона или получение электронного)
     properties:
@@ -47,6 +54,45 @@ definitions:
         example: Записаться к врачу
         type: string
     type: object
+  models.TicketResponse:
+    description: Ответ API с данными талона
+    properties:
+      called_at:
+        type: string
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      started_at:
+        type: string
+      status:
+        $ref: '#/definitions/models.TicketStatus'
+      ticket_number:
+        type: string
+      window_number:
+        type: integer
+    type: object
+  models.TicketStatus:
+    enum:
+    - ожидает
+    - приглашен
+    - на_приеме
+    - завершен
+    - подойти_к_окну
+    - зарегистрирован
+    type: string
+    x-enum-comments:
+      StatusInvited: Пациент вызван к окну
+      StatusToWindow: 'TODO: Это может быть синонимом ''приглашен'', можно будет убрать/изменить'
+    x-enum-varnames:
+    - StatusWaiting
+    - StatusInvited
+    - StatusInProgress
+    - StatusCompleted
+    - StatusToWindow
+    - StatusRegistered
   services.Service:
     properties:
       id:
@@ -59,6 +105,47 @@ definitions:
 info:
   contact: {}
 paths:
+  /api/registrar/call-next:
+    post:
+      consumes:
+      - application/json
+      description: Находит первого пациента в очереди, меняет его статус на "приглашен"
+        и присваивает номер окна
+      parameters:
+      - description: Номер окна, которое вызывает пациента
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CallNextRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные вызванного талона
+          schema:
+            $ref: '#/definitions/models.TicketResponse'
+        "400":
+          description: 'Ошибка: неверный номер окна'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'Ошибка: очередь пуста'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Вызвать следующего пациента
+      tags:
+      - registrar
   /api/tickets/confirmation:
     post:
       consumes:
@@ -139,23 +226,6 @@ paths:
               type: array
             type: object
       summary: Получить список услуг
-      tags:
-      - tickets
-  /api/tickets/start:
-    get:
-      consumes:
-      - application/json
-      description: Возвращает стартовую информацию для клиента (например, текст кнопки)
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 'Успешный ответ: текст кнопки'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Получить стартовую информацию
       tags:
       - tickets
 swagger: "2.0"

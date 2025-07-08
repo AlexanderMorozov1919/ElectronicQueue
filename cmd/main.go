@@ -115,6 +115,17 @@ func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
 	ticketService := services.NewTicketService(ticketRepo)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
 
+	// Инициализация хендлера для регистратора
+	registrarHandler := handlers.NewRegistrarHandler(ticketService)
+
+	// Группа эндпоинтов для рабочего места регистратора
+	registrar := r.Group("/api/registrar")
+	{
+		registrar.POST("/call-next", registrarHandler.CallNext)
+		// tickets.PATCH("/:id/status", ticketHandler.UpdateStatus)
+		// tickets.DELETE("/:id", ticketHandler.DeleteTicket)
+	}
+
 	// Группа эндпоинтов для работы с талонами
 	tickets := r.Group("/api/tickets")
 	{
@@ -166,18 +177,17 @@ func sseHandler(listener *pq.Listener) gin.HandlerFunc {
 					log.Info("Received nil notification")
 					return true
 				}
-				log.WithField("payload", n.Extra).Info("Received notification")
+				log.WithField("payload", n.Extra).Info("Received notification from DB")
+
 				var ticket models.Ticket
 				if err := json.Unmarshal([]byte(n.Extra), &ticket); err != nil {
-					log.WithError(err).Error("Failed to unmarshal notification")
+					log.WithError(err).Error("Failed to unmarshal notification payload")
 					return true
 				}
-				c.SSEvent("message", models.TicketResponse{
-					ID:           ticket.ID,
-					TicketNumber: ticket.TicketNumber,
-					Status:       ticket.Status,
-					CreatedAt:    ticket.CreatedAt,
-				})
+
+				response := ticket.ToResponse()
+
+				c.SSEvent("message", response)
 				return true
 			case <-c.Request.Context().Done():
 				log.Info("Client disconnected (SSE)")
