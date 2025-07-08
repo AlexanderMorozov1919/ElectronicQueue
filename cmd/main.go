@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -19,16 +18,17 @@ import (
 
 	_ "ElectronicQueue/docs"
 
-	ginSwaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-
 	"github.com/gin-gonic/gin"
-	"github.com/lib/pq"
-
-	"gorm.io/gorm"
 )
 
+// @title ElectronicQueue API
+// @version 1.0
+// @description Это сервер для электронной очереди
+
+// @host localhost:8080
+// @BasePath /api/v1
 func main() {
+
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
 	if err != nil {
