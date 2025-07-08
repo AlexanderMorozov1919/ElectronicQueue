@@ -193,7 +193,7 @@ func createRoundedQRCode(data []byte, size int) (image.Image, error) {
 }
 
 // GenerateTicketImage генерирует изображение талона с фоном, текстом и QR-кодом
-func GenerateTicketImage(config TicketConfig, data TicketData) ([]byte, error) {
+func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]byte, error) {
 	// Загружаем фоновое изображение
 	bgFile, err := os.Open(config.BackgroundPath)
 	if err != nil {
@@ -252,7 +252,11 @@ func GenerateTicketImage(config TicketConfig, data TicketData) ([]byte, error) {
 	// Рисуем заголовок "УСЛУГА" (обычный шрифт)
 	c.SetFont(ttfFont)
 	c.SetFontSize(labelSize)
-	c.SetSrc(image.NewUniform(color.RGBA{0, 0, 0, 255})) // Чёрный цвет (если печатается ticket_bw.png)
+	if isColor {
+		c.SetSrc(image.NewUniform(color.RGBA{255, 255, 255, 255})) // Белый цвет
+	} else {
+		c.SetSrc(image.NewUniform(color.RGBA{0, 0, 0, 255})) // Чёрный цвет
+	}
 	pt := freetype.Pt(config.Width/12, int(float64(config.Height)*0.11))
 	_, err = c.DrawString("УСЛУГА", pt)
 	if err != nil {
@@ -349,12 +353,9 @@ func GenerateTicketImage(config TicketConfig, data TicketData) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// GenerateTicketImageWithSizes генерирует талон с размерами кратными 1/√2
-func GenerateTicketImageWithSizes(baseSize int, qrData []byte, data TicketData) ([]byte, error) {
-	// Коэффициент √2 ≈ 1.414
+// GenerateTicketImageWithConfig генерирует талон с заданным фоном
+func GenerateTicketImageWithConfig(baseSize int, qrData []byte, data TicketData, background string, isColor bool) ([]byte, error) {
 	sqrt2 := 1.414
-
-	// Вычисляем размеры кратные 1/√2
 	width := int(float64(baseSize) / sqrt2)
 	height := baseSize
 
@@ -364,8 +365,8 @@ func GenerateTicketImageWithSizes(baseSize int, qrData []byte, data TicketData) 
 		QRData:         qrData,
 		FontPath:       "assets/fonts/Arial.ttf",
 		BoldFontPath:   "assets/fonts/Arial_bold.ttf",
-		BackgroundPath: "assets/img/ticket_bw.png",
+		BackgroundPath: background,
 	}
 
-	return GenerateTicketImage(config, data)
+	return GenerateTicketImage(config, data, isColor)
 }

@@ -19,8 +19,9 @@ type Config struct {
 	JWTSecret     string
 	JWTExpiration string
 	TicketMode    string
+	TicketHeight  string
 	LogFile       string
-	TicketFile    string
+	TicketDir     string
 }
 
 // LoadConfig загружает переменные среды из .env и возвращает структуру Config
@@ -43,8 +44,9 @@ func LoadConfig() (*Config, error) {
 		JWTSecret:     getEnv("JWT_SECRET"),
 		JWTExpiration: getEnv("JWT_EXPIRATION", "24h"),
 		TicketMode:    getEnv("TICKET_MODE", "b/w"),
+		TicketHeight:  getEnv("TICKET_HEIGHT", "800"),
 		LogFile:       getEnv("LOG_FILE", "logs/app.log"),
-		TicketFile:    getEnv("TICKET_FILE", "tickets"),
+		TicketDir:     getEnv("TICKET_FILE", "tickets"),
 	}
 
 	return cfg, nil

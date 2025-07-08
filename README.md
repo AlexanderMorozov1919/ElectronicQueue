@@ -60,9 +60,10 @@ JWT_SECRET=your-secret-key  # Секретный ключ для подписи 
 JWT_EXPIRATION=24h          # Время жизни токена (например, 24h)
 
 TICKET_MODE=color           # Режим генерации талона (color | b/w)
+TICKET_HEIGHT=800           # Высота талона для печати в пикселях
 
 LOG_FILE=logs/app.log       # Путь к файлу логов приложения
-TICKET_FILE=tickets         # Путь к файлу со сгенерированными талонами
+TICKET_DIR=tickets          # Путь к файлу со сгенерированными талонами
 ```
 
 #### 4. Установка (через bash / git bash)
