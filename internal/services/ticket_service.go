@@ -94,6 +94,32 @@ func (s *TicketService) DeleteTicket(idStr string) error {
 	return err
 }
 
+// CallNextTicket вызывает следующего пациента в очереди к указанному окну
+func (s *TicketService) CallNextTicket(windowNumber int) (*models.Ticket, error) {
+	// Следующий талон для вызова
+	ticket, err := s.repo.GetNextWaitingTicket()
+	if err != nil {
+		// Если талонов нет (gorm.ErrRecordNotFound), возвращаем ошибку, которую обработает хендлер
+		logger.Default().Info(fmt.Sprintf("CallNextTicket: no waiting tickets in queue: %v", err))
+		return nil, fmt.Errorf("очередь пуста")
+	}
+
+	// Обновление данных талона
+	now := time.Now()
+	ticket.Status = models.StatusInvited
+	ticket.WindowNumber = &windowNumber
+	ticket.CalledAt = &now
+
+	// Сохраняем изменения в БД при вызове Update (сработает триггер и отправит NOTIFY)
+	if err := s.repo.Update(ticket); err != nil {
+		logger.Default().Error(fmt.Sprintf("CallNextTicket: repo update error: %v", err))
+		return nil, err
+	}
+
+	logger.Default().Info(fmt.Sprintf("Ticket %s called to window %d", ticket.TicketNumber, windowNumber))
+	return ticket, nil
+}
+
 // NewTicketService создает новый экземпляр TicketService
 func NewTicketService(repo repository.TicketRepository) *TicketService {
 	serviceList := []Service{
@@ -150,7 +176,6 @@ func (s *TicketService) MapServiceIDToName(serviceID string) string {
 
 // Модификация существующего метода для использования нового генератора
 func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string) ([]byte, error) {
-	// Подготавливаем данные для талона
 	data := utils.TicketData{
 		ServiceName:  serviceName,
 		TicketNumber: ticket.TicketNumber,

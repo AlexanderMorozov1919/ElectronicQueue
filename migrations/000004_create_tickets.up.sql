@@ -9,6 +9,7 @@ CREATE TABLE tickets (
         'подойти_к_окну',  -- Подойти к окну (регистратор)
         'зарегистрирован'  -- Зарегистрирован (отправлен к врачу)
     )),
+    window_number INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     called_at TIMESTAMP,
     started_at TIMESTAMP,
