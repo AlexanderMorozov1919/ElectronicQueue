@@ -109,6 +109,10 @@ func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
 	ticketService := services.NewTicketService(ticketRepo)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
 
+	// Инициализация сервиса и хендлера для врача
+	doctorService := services.NewDoctorService(ticketRepo)
+	doctorHandler := handlers.NewDoctorHandler(doctorService)
+
 	// Группа эндпоинтов для работы с талонами
 	tickets := r.Group("/api/tickets")
 	{
@@ -116,6 +120,13 @@ func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
 		tickets.GET("/services", ticketHandler.Services)
 		tickets.POST("/print/selection", ticketHandler.Selection)
 		tickets.POST("/print/confirmation", ticketHandler.Confirmation)
+	}
+
+	// Группа эндпоинтов для работы врача
+	doctor := r.Group("/api/doctor")
+	{
+		doctor.POST("/start-appointment", doctorHandler.StartAppointment)
+		doctor.POST("/complete-appointment", doctorHandler.CompleteAppointment)
 	}
 	return r
 }
