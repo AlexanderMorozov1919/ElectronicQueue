@@ -29,6 +29,11 @@ import (
 	"gorm.io/gorm"
 )
 
+// @title Electronic Queue API
+// @version 1.0
+// @description API для системы электронной очереди
+// @host localhost:8080
+// @BasePath /
 func main() {
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()

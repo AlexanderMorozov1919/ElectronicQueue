@@ -17,22 +17,19 @@ import (
 	"golang.org/x/image/font"
 )
 
-// TicketConfig содержит конфигурацию для генерации талона
+// TicketConfig содержит конфигурацию и данные для генерации талона
+// (объединяет TicketData и TicketConfig)
 type TicketConfig struct {
-	Width          int    // Ширина изображения в пикселях
-	Height         int    // Высота изображения в пикселях
-	QRData         []byte // Данные для QR-кода
-	FontPath       string // Путь к обычному шрифту
-	BoldFontPath   string // Путь к жирному шрифту
-	BackgroundPath string // Путь к фоновому изображению
-}
-
-// TicketData содержит данные для отображения на талоне
-type TicketData struct {
-	ServiceName   string
-	TicketNumber  string
-	DateTime      time.Time
-	WaitingNumber int // Количество ожидающих
+	Width          int
+	Height         int
+	QRData         []byte
+	FontPath       string
+	BoldFontPath   string
+	BackgroundPath string
+	ServiceName    string
+	TicketNumber   string
+	DateTime       time.Time
+	WaitingNumber  int
 }
 
 // resizeImage масштабирует изображение с сохранением пропорций и заполнением фона
@@ -195,7 +192,7 @@ func createRoundedQRCode(data []byte, size int) (image.Image, error) {
 }
 
 // GenerateTicketImage генерирует изображение талона с фоном, текстом и QR-кодом
-func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]byte, error) {
+func GenerateTicketImage(config TicketConfig, isColor bool) ([]byte, error) {
 	// Загружаем фоновое изображение
 	bgFile, err := os.Open(config.BackgroundPath)
 	if err != nil {
@@ -269,7 +266,7 @@ func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]
 	// Рисуем название услуги (жирный шрифт, с переносом по длине)
 	c.SetFont(boldTtfFont)
 	c.SetFontSize(serviceSize)
-	serviceLines := wrapText(strings.ToUpper(data.ServiceName), 10) // Максимум 10 символов на строку, верхний регистр
+	serviceLines := wrapText(strings.ToUpper(config.ServiceName), 10) // Максимум 10 символов на строку, верхний регистр
 
 	startY := float64(config.Height) * 0.18
 	lineHeight := serviceSize * 1.2
@@ -296,7 +293,7 @@ func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]
 	c.SetFont(boldTtfFont)
 	c.SetFontSize(numberSize)
 	pt = freetype.Pt(config.Width/13, int(float64(config.Height)*0.69))
-	_, err = c.DrawString(data.TicketNumber, pt)
+	_, err = c.DrawString(config.TicketNumber, pt)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка рисования номера талона: %v", err)
 	}
@@ -319,14 +316,14 @@ func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]
 
 	// Дата
 	pt = freetype.Pt(config.Width/12, int(timeStartY+float64(config.Height)*0.06))
-	_, err = c.DrawString(data.DateTime.Format("02.01.2006"), pt)
+	_, err = c.DrawString(config.DateTime.Format("02.01.2006"), pt)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка рисования даты: %v", err)
 	}
 
 	// Время
 	pt = freetype.Pt(config.Width/12, int(timeStartY+float64(config.Height)*0.11))
-	_, err = c.DrawString(data.DateTime.Format("15:04:05"), pt)
+	_, err = c.DrawString(config.DateTime.Format("15:04:05"), pt)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка рисования времени: %v", err)
 	}
@@ -347,10 +344,10 @@ func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]
 	draw.Draw(img, qrRect, qrImg, image.Point{}, draw.Over)
 
 	// Добавляем надпись о количестве ожидающих (в самом конце, посередине)
-	if data.WaitingNumber > 0 {
+	if config.WaitingNumber > 0 {
 		c.SetFont(ttfFont)
 		c.SetFontSize(WaitingSize)
-		queueText := fmt.Sprintf("Перед вами %d человек в очереди", data.WaitingNumber)
+		queueText := fmt.Sprintf("Перед вами %d человек в очереди", config.WaitingNumber)
 
 		// Точный расчет центрирования
 		face := truetype.NewFace(ttfFont, &truetype.Options{
@@ -378,22 +375,4 @@ func GenerateTicketImage(config TicketConfig, data TicketData, isColor bool) ([]
 	}
 
 	return buf.Bytes(), nil
-}
-
-// GenerateTicketImageWithConfig генерирует талон с заданным фоном
-func GenerateTicketImageWithConfig(baseSize int, qrData []byte, data TicketData, background string, isColor bool) ([]byte, error) {
-	sqrt2 := 1.414
-	width := int(float64(baseSize) / sqrt2)
-	height := baseSize
-
-	config := TicketConfig{
-		Width:          width,
-		Height:         height,
-		QRData:         qrData,
-		FontPath:       "assets/fonts/Arial.ttf",
-		BoldFontPath:   "assets/fonts/Arial_bold.ttf",
-		BackgroundPath: background,
-	}
-
-	return GenerateTicketImage(config, data, isColor)
 }

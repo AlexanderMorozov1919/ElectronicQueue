@@ -177,26 +177,17 @@ func (s *TicketService) MapServiceIDToName(serviceID string) string {
 
 // Модификация существующего метода для использования нового генератора
 func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string, mode string) ([]byte, error) {
-	// Получаем количество ожидающих
 	waitingTickets, err := s.repo.FindByStatuses([]models.TicketStatus{models.StatusWaiting})
 	waitingNumber := len(waitingTickets) - 1
 	if err != nil {
 		waitingNumber = 0
 	}
-	data := utils.TicketData{
-		ServiceName:   serviceName,
-		TicketNumber:  ticket.TicketNumber,
-		DateTime:      ticket.CreatedAt,
-		WaitingNumber: waitingNumber,
-	}
 
-	// Данные для QR-кода
 	qrData := []byte(fmt.Sprintf("Талон: %s\nВремя: %s\nУслуга: %s",
 		ticket.TicketNumber,
 		ticket.CreatedAt.Format("02.01.2006 15:04:05"),
 		serviceName))
 
-	// Выбор фона по режиму
 	background := "assets/img/ticket_bw.png"
 	isColor := false
 	if strings.ToLower(mode) == "color" {
@@ -204,8 +195,24 @@ func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket,
 		isColor = true
 	}
 
-	// Генерируем изображение талона с заданным размером и режимом
-	img, err := utils.GenerateTicketImageWithConfig(baseSize, qrData, data, background, isColor)
+	sqrt2 := 1.414
+	width := int(float64(baseSize) / sqrt2)
+	height := baseSize
+
+	config := utils.TicketConfig{
+		Width:          width,
+		Height:         height,
+		QRData:         qrData,
+		FontPath:       "assets/fonts/Arial.ttf",
+		BoldFontPath:   "assets/fonts/Arial_bold.ttf",
+		BackgroundPath: background,
+		ServiceName:    serviceName,
+		TicketNumber:   ticket.TicketNumber,
+		DateTime:       ticket.CreatedAt,
+		WaitingNumber:  waitingNumber,
+	}
+
+	img, err := utils.GenerateTicketImage(config, isColor)
 	if err != nil {
 		logger.Default().Error(fmt.Sprintf("GenerateTicketImage: failed to generate image: %v", err))
 		return nil, err

@@ -76,7 +76,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/tickets/confirmation": {
+        "/api/tickets/print/confirmation": {
             "post": {
                 "description": "Обрабатывает подтверждение действия (печать талона или получение электронного)",
                 "consumes": [
@@ -128,7 +128,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/tickets/selection": {
+        "/api/tickets/print/selection": {
             "post": {
                 "description": "Определяет следующий шаг после выбора услуги",
                 "consumes": [
@@ -194,6 +194,32 @@ const docTemplate = `{
                                 "items": {
                                     "$ref": "#/definitions/services.Service"
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/start": {
+            "get": {
+                "description": "Возвращает стартовую информацию для клиента (например, текст кнопки)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Получить стартовую информацию",
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ: текст кнопки",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }
@@ -352,12 +378,12 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
-	BasePath:         "",
+	Version:          "1.0",
+	Host:             "localhost:8080",
+	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "Electronic Queue API",
+	Description:      "API для системы электронной очереди",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
