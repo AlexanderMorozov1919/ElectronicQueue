@@ -33,3 +33,45 @@ tickets/
 # Автогенерируемые файлы
 *.sqlite3
 *.db
+
+# Go специфичные файлы
+*.test
+*.out
+go.work
+go.work.sum
+
+# Бинарные файлы Go
+main.exe
+main
+*.exe
+*.exe~
+
+# Кэш Go
+go.sum.backup
+
+# Временные файлы Go
+*.tmp
+*.temp
+
+# Postman коллекции (опционально - можно убрать если хотите хранить в репозитории)
+*.postman_collection.json
+
+# Файлы IDE
+*.sublime-project
+*.sublime-workspace
+
+# Файлы Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Файлы macOS
+.AppleDouble
+.LSOverride
+
+# Файлы Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*

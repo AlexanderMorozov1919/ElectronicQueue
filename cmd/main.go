@@ -13,27 +13,15 @@ import (
 	"ElectronicQueue/internal/database"
 	"ElectronicQueue/internal/handlers"
 	"ElectronicQueue/internal/logger"
-	"ElectronicQueue/internal/middleware"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
 
-	_ "ElectronicQueue/docs"
-
-	ginSwaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
-
 	"gorm.io/gorm"
 )
 
-// @title Electronic Queue API
-// @version 1.0
-// @description API для системы электронной очереди
-// @host localhost:8080
-// @BasePath /
 func main() {
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
@@ -61,12 +49,12 @@ func main() {
 	// Инициализация listener для LISTEN/NOTIFY
 	listener, err := initListener(cfg, log)
 	if err != nil {
-		log.WithError(err).Error("Failed to initialize database listener")
+		log.WithError(err).Fatal("Failed to initialize database listener")
 	}
 	defer listener.Close()
 
 	// Настройка роутера
-	r := setupRouter(listener, db, cfg)
+	r := setupRouter(listener, db)
 
 	// Обработка сигналов завершения
 	handleGracefulShutdown(db, listener, log)
@@ -101,17 +89,17 @@ func initListener(cfg *config.Config, log *logger.AsyncLogger) (*pq.Listener, er
 }
 
 // setupRouter настраивает маршруты и middleware
-func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.Engine {
+func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.SetTrustedProxies(nil)
 	r.Use(logger.GinLogger())
 
 	// CORS middleware
-	r.Use(middleware.CorsMiddleware())
+	r.Use(corsMiddleware())
 
 	// GIN middleware для логирования всех запросов
-	r.Use(middleware.RequestLogger())
+	r.Use(requestLogger())
 
 	// SSE endpoint
 	r.GET("/tickets", sseHandler(listener))
@@ -119,18 +107,7 @@ func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.En
 	// Инициализация репозитория, сервиса и хендлера для талонов
 	ticketRepo := repository.NewTicketRepository(db)
 	ticketService := services.NewTicketService(ticketRepo)
-	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
-
-	// Инициализация хендлера для регистратора
-	registrarHandler := handlers.NewRegistrarHandler(ticketService)
-
-	// Группа эндпоинтов для рабочего места регистратора
-	registrar := r.Group("/api/registrar")
-	{
-		registrar.POST("/call-next", registrarHandler.CallNext)
-		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
-		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
-	}
+	ticketHandler := handlers.NewTicketHandler(ticketService)
 
 	// Группа эндпоинтов для работы с талонами
 	tickets := r.Group("/api/tickets")
@@ -140,11 +117,29 @@ func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.En
 		tickets.POST("/print/selection", ticketHandler.Selection)
 		tickets.POST("/print/confirmation", ticketHandler.Confirmation)
 	}
-
-	// Swagger endpoint
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(ginSwaggerFiles.Handler))
-
 	return r
+}
+
+// corsMiddleware возвращает middleware для CORS
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	}
+}
+
+// requestLogger логирует все HTTP-запросы
+func requestLogger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		fmt.Printf("[GIN] %s %s\n", c.Request.Method, c.Request.URL.Path)
+		c.Next()
+	}
 }
 
 // sseHandler возвращает SSE endpoint для обновлений талонов
@@ -161,18 +156,18 @@ func sseHandler(listener *pq.Listener) gin.HandlerFunc {
 					log.Info("Received nil notification")
 					return true
 				}
-				log.WithField("payload", n.Extra).Info("Received notification from DB")
-
+				log.WithField("payload", n.Extra).Info("Received notification")
 				var ticket models.Ticket
 				if err := json.Unmarshal([]byte(n.Extra), &ticket); err != nil {
-					log.WithError(err).Error("Failed to unmarshal notification payload")
+					log.WithError(err).Error("Failed to unmarshal notification")
 					return true
 				}
-
-				// Преобразуем Ticket в TicketResponse с помощью нашего нового метода
-				response := ticket.ToResponse()
-
-				c.SSEvent("message", response)
+				c.SSEvent("message", models.TicketResponse{
+					ID:           ticket.ID,
+					TicketNumber: ticket.TicketNumber,
+					Status:       ticket.Status,
+					CreatedAt:    ticket.CreatedAt,
+				})
 				return true
 			case <-c.Request.Context().Done():
 				log.Info("Client disconnected (SSE)")
