@@ -1,3 +1,4 @@
+basePath: /
 definitions:
   handlers.CallNextRequest:
     properties:
@@ -102,8 +103,12 @@ definitions:
       name:
         type: string
     type: object
+host: localhost:8080
 info:
   contact: {}
+  description: API для системы электронной очереди
+  title: Electronic Queue API
+  version: "1.0"
 paths:
   /api/registrar/call-next:
     post:
@@ -146,7 +151,7 @@ paths:
       summary: Вызвать следующего пациента
       tags:
       - registrar
-  /api/tickets/confirmation:
+  /api/tickets/print/confirmation:
     post:
       consumes:
       - application/json
@@ -181,7 +186,7 @@ paths:
       summary: Подтверждение действия
       tags:
       - tickets
-  /api/tickets/selection:
+  /api/tickets/print/selection:
     post:
       consumes:
       - application/json
@@ -226,6 +231,23 @@ paths:
               type: array
             type: object
       summary: Получить список услуг
+      tags:
+      - tickets
+  /api/tickets/start:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает стартовую информацию для клиента (например, текст кнопки)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Успешный ответ: текст кнопки'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить стартовую информацию
       tags:
       - tickets
 swagger: "2.0"

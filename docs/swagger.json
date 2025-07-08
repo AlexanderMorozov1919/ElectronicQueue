@@ -1,8 +1,13 @@
 {
     "swagger": "2.0",
     "info": {
-        "contact": {}
+        "description": "API для системы электронной очереди",
+        "title": "Electronic Queue API",
+        "contact": {},
+        "version": "1.0"
     },
+    "host": "localhost:8080",
+    "basePath": "/",
     "paths": {
         "/api/registrar/call-next": {
             "post": {
@@ -65,7 +70,7 @@
                 }
             }
         },
-        "/api/tickets/confirmation": {
+        "/api/tickets/print/confirmation": {
             "post": {
                 "description": "Обрабатывает подтверждение действия (печать талона или получение электронного)",
                 "consumes": [
@@ -117,7 +122,7 @@
                 }
             }
         },
-        "/api/tickets/selection": {
+        "/api/tickets/print/selection": {
             "post": {
                 "description": "Определяет следующий шаг после выбора услуги",
                 "consumes": [
@@ -183,6 +188,32 @@
                                 "items": {
                                     "$ref": "#/definitions/services.Service"
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/start": {
+            "get": {
+                "description": "Возвращает стартовую информацию для клиента (например, текст кнопки)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Получить стартовую информацию",
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ: текст кнопки",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }

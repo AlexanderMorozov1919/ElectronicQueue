@@ -67,7 +67,6 @@ type TicketStatusRequest struct {
 	Status string `json:"status" binding:"required"`
 }
 
-// StartPage возвращает стартовую информацию для начальной страницы
 // StartPage godoc
 // @Summary      Получить стартовую информацию
 // @Description  Возвращает стартовую информацию для клиента (например, текст кнопки)
@@ -76,7 +75,6 @@ type TicketStatusRequest struct {
 // @Produce      json
 // @Success      200 {object} map[string]string "Успешный ответ: текст кнопки"
 // @Router       /api/tickets/start [get]
-
 func (h *TicketHandler) StartPage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"button_text": "Встать в очередь",
@@ -105,7 +103,7 @@ func (h *TicketHandler) Services(c *gin.Context) {
 // @Param        request body ServiceSelectionRequest true "Данные для выбора услуги"
 // @Success      200 {object} ServiceSelectionResponse "Следующий шаг после выбора услуги"
 // @Failure      400 {object} map[string]string "Ошибка: не передан service_id"
-// @Router       /api/tickets/selection [post]
+// @Router       /api/tickets/print/selection [post]
 func (h *TicketHandler) Selection(c *gin.Context) {
 	var req ServiceSelectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -131,7 +129,7 @@ func (h *TicketHandler) Selection(c *gin.Context) {
 // @Success      200 {object} ConfirmationResponse "Ответ после подтверждения действия"
 // @Failure      400 {object} map[string]string "Ошибка: не передан service_id или action"
 // @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
-// @Router       /api/tickets/confirmation [post]
+// @Router       /api/tickets/print/confirmation [post]
 func (h *TicketHandler) Confirmation(c *gin.Context) {
 	var req ConfirmationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
