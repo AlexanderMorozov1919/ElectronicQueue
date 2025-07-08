@@ -89,3 +89,13 @@ flutter run -d chrome --web-port=XXXX # Порт Frontend сервера
 ```sh
 ./uninstall.sh
 ```
+
+## Документация
+
+#### Обновить документацию (опционально)
+
+```
+swag init --dir ./cmd,./internal --output ./docs
+```
+
+#### Прочитать документацию — [Swagger UI](http://localhost:8080/swagger/index.html)
