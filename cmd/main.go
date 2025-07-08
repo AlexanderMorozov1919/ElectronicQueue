@@ -13,6 +13,7 @@ import (
 	"ElectronicQueue/internal/database"
 	"ElectronicQueue/internal/handlers"
 	"ElectronicQueue/internal/logger"
+	"ElectronicQueue/internal/middleware"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
@@ -55,7 +56,7 @@ func main() {
 	// Инициализация listener для LISTEN/NOTIFY
 	listener, err := initListener(cfg, log)
 	if err != nil {
-		log.WithError(err).Fatal("Failed to initialize database listener")
+		log.WithError(err).Error("Failed to initialize database listener")
 	}
 	defer listener.Close()
 
@@ -102,10 +103,10 @@ func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.En
 	r.Use(logger.GinLogger())
 
 	// CORS middleware
-	r.Use(corsMiddleware())
+	r.Use(middleware.CorsMiddleware())
 
 	// GIN middleware для логирования всех запросов
-	r.Use(requestLogger())
+	r.Use(middleware.RequestLogger())
 
 	// SSE endpoint
 	r.GET("/tickets", sseHandler(listener))
@@ -139,28 +140,6 @@ func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.En
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(ginSwaggerFiles.Handler))
 
 	return r
-}
-
-// corsMiddleware возвращает middleware для CORS
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	}
-}
-
-// requestLogger логирует все HTTP-запросы
-func requestLogger() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		fmt.Printf("[GIN] %s %s\n", c.Request.Method, c.Request.URL.Path)
-		c.Next()
-	}
 }
 
 // sseHandler возвращает SSE endpoint для обновлений талонов

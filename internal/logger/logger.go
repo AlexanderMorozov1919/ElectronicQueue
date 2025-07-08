@@ -67,6 +67,12 @@ type AsyncLogger struct {
 	entry *logrus.Entry
 }
 
+func (l *AsyncLogger) Trace(msg string) {
+	sendLog(logrus.TraceLevel, l.entry, msg)
+}
+func (l *AsyncLogger) Debug(msg string) {
+	sendLog(logrus.DebugLevel, l.entry, msg)
+}
 func (l *AsyncLogger) Info(msg string) {
 	sendLog(logrus.InfoLevel, l.entry, msg)
 }
@@ -76,11 +82,14 @@ func (l *AsyncLogger) Warn(msg string) {
 func (l *AsyncLogger) Error(msg string) {
 	sendLog(logrus.ErrorLevel, l.entry, msg)
 }
-func (l *AsyncLogger) WithError(err error) *AsyncLogger {
-	return &AsyncLogger{entry: l.entry.WithError(err)}
-}
 func (l *AsyncLogger) Fatal(msg string) {
 	sendLog(logrus.FatalLevel, l.entry, msg)
+}
+func (l *AsyncLogger) Panic(msg string) {
+	sendLog(logrus.PanicLevel, l.entry, msg)
+}
+func (l *AsyncLogger) WithError(err error) *AsyncLogger {
+	return &AsyncLogger{entry: l.entry.WithError(err)}
 }
 func (l *AsyncLogger) WithField(k string, v interface{}) *AsyncLogger {
 	return &AsyncLogger{entry: l.entry.WithField(k, v)}
@@ -98,12 +107,20 @@ func sendLog(level logrus.Level, entry *logrus.Entry, msg string) {
 func processLogs() {
 	for msg := range logChan {
 		switch msg.level {
+		case logrus.TraceLevel:
+			msg.entry.Trace(msg.msg)
+		case logrus.DebugLevel:
+			msg.entry.Debug(msg.msg)
 		case logrus.InfoLevel:
 			msg.entry.Info(msg.msg)
 		case logrus.WarnLevel:
 			msg.entry.Warn(msg.msg)
 		case logrus.ErrorLevel:
 			msg.entry.Error(msg.msg)
+		case logrus.FatalLevel:
+			msg.entry.Fatal(msg.msg)
+		case logrus.PanicLevel:
+			msg.entry.Panic(msg.msg)
 		default:
 			msg.entry.Print(msg.msg)
 		}

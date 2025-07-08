@@ -19,7 +19,7 @@ func NewGORMLogger() *GORMLogger {
 	return &GORMLogger{
 		Entry:         instance.WithField("module", "gorm"),
 		SlowThreshold: 200 * time.Millisecond,
-		LogLevel:      logger.Warn,
+		LogLevel:      logger.Info,
 	}
 }
 
