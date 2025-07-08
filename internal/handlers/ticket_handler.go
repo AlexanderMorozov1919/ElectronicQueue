@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/services"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,11 +21,12 @@ import (
 // @Produce json
 type TicketHandler struct {
 	service *services.TicketService
+	config  *config.Config
 }
 
 // NewTicketHandler создает новый TicketHandler
-func NewTicketHandler(service *services.TicketService) *TicketHandler {
-	return &TicketHandler{service: service}
+func NewTicketHandler(service *services.TicketService, cfg *config.Config) *TicketHandler {
+	return &TicketHandler{service: service, config: cfg}
 }
 
 // ServiceSelectionRequest описывает запрос выбора услуги
@@ -147,8 +150,13 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 	serviceName := h.service.MapServiceIDToName(req.ServiceID)
 
 	if req.Action == "print_ticket" {
-		// Генерируем изображение талона вместо PDF
-		imageBytes, err := h.service.GenerateTicketImage(800, ticket, serviceName)
+		height := 800
+		if h.config != nil && h.config.TicketHeight != "" {
+			if parsed, err := strconv.Atoi(h.config.TicketHeight); err == nil {
+				height = parsed
+			}
+		}
+		imageBytes, err := h.service.GenerateTicketImage(height, ticket, serviceName, h.config.TicketMode)
 		if err != nil {
 			logger.Default().Error(fmt.Sprintf("Confirmation: image generation failed: %v", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Image generation failed: %v", err)})
@@ -156,7 +164,7 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 		}
 
 		// Сохраняем изображение на диск
-		dir := "tickets"
+		dir := h.config.TicketDir
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			logger.Default().Error(fmt.Sprintf("Confirmation: failed to create tickets directory: %v", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create tickets directory"})
@@ -198,7 +206,7 @@ func (h *TicketHandler) DownloadTicket(c *gin.Context) {
 		return
 	}
 
-	filePath := filepath.Join("tickets", ticketNumber+".png")
+	filePath := filepath.Join(h.config.TicketDir, ticketNumber+".png")
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		logger.Default().Error(fmt.Sprintf("DownloadTicket: ticket not found: %s", filePath))
@@ -221,7 +229,7 @@ func (h *TicketHandler) ViewTicket(c *gin.Context) {
 		return
 	}
 
-	filePath := filepath.Join("tickets", ticketNumber+".png")
+	filePath := filepath.Join(h.config.TicketDir, ticketNumber+".png")
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		logger.Default().Error(fmt.Sprintf("ViewTicket: ticket not found: %s", filePath))

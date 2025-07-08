@@ -1,4 +1,4 @@
-CREATE TABLE schedules (
+CREATE TABLE IF NOT EXISTS schedules (
     schedule_id SERIAL PRIMARY KEY,
     doctor_id INTEGER NOT NULL REFERENCES doctors(doctor_id),
     date DATE NOT NULL,

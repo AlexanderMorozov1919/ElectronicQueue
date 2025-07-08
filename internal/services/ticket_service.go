@@ -6,6 +6,7 @@ import (
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/utils"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -175,7 +176,7 @@ func (s *TicketService) MapServiceIDToName(serviceID string) string {
 }
 
 // Модификация существующего метода для использования нового генератора
-func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string) ([]byte, error) {
+func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string, mode string) ([]byte, error) {
 	data := utils.TicketData{
 		ServiceName:  serviceName,
 		TicketNumber: ticket.TicketNumber,
@@ -188,8 +189,16 @@ func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket,
 		ticket.CreatedAt.Format("02.01.2006 15:04:05"),
 		serviceName))
 
-	// Генерируем изображение талона с заданным размером
-	img, err := utils.GenerateTicketImageWithSizes(baseSize, qrData, data)
+	// Выбор фона по режиму
+	background := "assets/img/ticket_bw.png"
+	isColor := false
+	if strings.ToLower(mode) == "color" {
+		background = "assets/img/ticket.png"
+		isColor = true
+	}
+
+	// Генерируем изображение талона с заданным размером и режимом
+	img, err := utils.GenerateTicketImageWithConfig(baseSize, qrData, data, background, isColor)
 	if err != nil {
 		logger.Default().Error(fmt.Sprintf("GenerateTicketImage: failed to generate image: %v", err))
 		return nil, err
