@@ -56,6 +56,10 @@ else
   exit 1
 fi
 
+export PGPASSWORD="$DB_PASSWORD"
+export PGCLIENTENCODING="UTF8"
+psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -p "$DB_PORT" -f migrations/fill_DB.sql
+
 # Устанавливаем модули проекта
 echo "Downloading Go modules..."
 if go mod download; then

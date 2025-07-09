@@ -4,7 +4,6 @@ INSERT INTO services (service_id, name, letter) VALUES
   ('lab_tests', 'Сдать анализы', 'C'),
   ('documents', 'Другой вопрос', 'D');
 
--- Примеры талонов
 INSERT INTO tickets (ticket_number, status, window_number, created_at)
 VALUES
   ('A001', 'ожидает', 1, CURRENT_TIMESTAMP),
