@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     service_category VARCHAR(50) NOT NULL, -- Категория услуги
     service_type VARCHAR(50), -- Тип услуги (новое поле для категории услуги)
     window_number INTEGER,
+    qr_code BYTEA,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     called_at TIMESTAMP,
     started_at TIMESTAMP,

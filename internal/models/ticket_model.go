@@ -30,10 +30,12 @@ type Ticket struct {
 	Status          TicketStatus `gorm:"type:varchar(20);not null" json:"status"`
 	ServiceCategory string       `gorm:"type:varchar(50);not null;column:service_category" json:"service_category"`
 	WindowNumber    *int         `gorm:"column:window_number" json:"window_number,omitempty"`
+  QRCode       []byte       `gorm:"column:qr_code" json:"qr_code,omitempty"`
 	CreatedAt       time.Time    `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
 	CalledAt        *time.Time   `gorm:"column:called_at" json:"called_at,omitempty"`
 	StartedAt       *time.Time   `gorm:"column:started_at" json:"started_at,omitempty"`
 	CompletedAt     *time.Time   `gorm:"column:completed_at" json:"completed_at,omitempty"`
+
 }
 
 // TicketResponse определяет данные, возвращаемые API.
@@ -47,6 +49,7 @@ type TicketResponse struct {
 	Status          TicketStatus `json:"status"`
 	ServiceCategory string       `json:"service_category"`
 	WindowNumber    *int         `json:"window_number,omitempty"`
+  QRCode       []byte       `json:"qr_code,omitempty"`
 	CreatedAt       time.Time    `json:"created_at"`
 	CalledAt        *time.Time   `json:"called_at,omitempty"`
 	StartedAt       *time.Time   `json:"started_at,omitempty"`
@@ -61,6 +64,7 @@ func (t *Ticket) ToResponse() TicketResponse {
 		Status:          t.Status,
 		ServiceCategory: t.ServiceCategory,
 		WindowNumber:    t.WindowNumber,
+    QRCode:       t.QRCode,
 		CreatedAt:       t.CreatedAt,
 		CalledAt:        t.CalledAt,
 		StartedAt:       t.StartedAt,
