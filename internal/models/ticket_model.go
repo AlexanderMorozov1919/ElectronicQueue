@@ -30,6 +30,7 @@ type Ticket struct {
 	TicketNumber string       `gorm:"type:varchar(20);not null;unique;column:ticket_number" json:"ticket_number"`
 	Status       TicketStatus `gorm:"type:varchar(20);not null" json:"status"`
 	WindowNumber *int         `gorm:"column:window_number" json:"window_number,omitempty"`
+	QRCode       []byte       `gorm:"column:qr_code" json:"qr_code,omitempty"`
 	CreatedAt    time.Time    `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
 	CalledAt     *time.Time   `gorm:"column:called_at" json:"called_at,omitempty"`
 	StartedAt    *time.Time   `gorm:"column:started_at" json:"started_at,omitempty"`
@@ -46,6 +47,7 @@ type TicketResponse struct {
 	TicketNumber string       `json:"ticket_number"`
 	Status       TicketStatus `json:"status"`
 	WindowNumber *int         `json:"window_number,omitempty"`
+	QRCode       []byte       `json:"qr_code,omitempty"`
 	CreatedAt    time.Time    `json:"created_at"`
 	CalledAt     *time.Time   `json:"called_at,omitempty"`
 	StartedAt    *time.Time   `json:"started_at,omitempty"`
@@ -59,6 +61,7 @@ func (t *Ticket) ToResponse() TicketResponse {
 		TicketNumber: t.TicketNumber,
 		Status:       t.Status,
 		WindowNumber: t.WindowNumber,
+		QRCode:       t.QRCode,
 		CreatedAt:    t.CreatedAt,
 		CalledAt:     t.CalledAt,
 		StartedAt:    t.StartedAt,

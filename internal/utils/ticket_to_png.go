@@ -247,7 +247,7 @@ func GenerateTicketImage(config TicketConfig, isColor bool) ([]byte, error) {
 	serviceSize := float64(config.Width) * 0.071 // Размер названия услуги
 	numberSize := float64(config.Width) * 0.17   // Размер номера талона
 	timeSize := float64(config.Width) * 0.062    // Размер времени
-	WaitingSize := float64(config.Width) * 0.04  // Размер очереди
+	WaitingSize := float64(config.Width) * 0.03  // Размер очереди
 
 	// Рисуем заголовок "УСЛУГА" (обычный шрифт)
 	c.SetFont(ttfFont)
@@ -347,7 +347,7 @@ func GenerateTicketImage(config TicketConfig, isColor bool) ([]byte, error) {
 	if config.WaitingNumber > 0 {
 		c.SetFont(ttfFont)
 		c.SetFontSize(WaitingSize)
-		queueText := fmt.Sprintf("Перед вами %d человек в очереди", config.WaitingNumber)
+		queueText := strings.ToUpper(fmt.Sprintf("Перед вами %d человек в очереди", config.WaitingNumber))
 
 		// Точный расчет центрирования
 		face := truetype.NewFace(ttfFont, &truetype.Options{

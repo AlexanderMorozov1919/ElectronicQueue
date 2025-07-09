@@ -66,10 +66,16 @@ LOG_FILE=logs/app.log       # Путь к файлу логов приложен
 TICKET_DIR=tickets          # Путь к файлу со сгенерированными талонами
 ```
 
-#### 4. Установка (через bash / git bash)
+#### 4. Установка через bash / git bash
 
 ```sh
 ./install.sh
+```
+
+#### 4.1 (Опционально) заполнение базы данных
+
+```sh
+./fill_DB.sh
 ```
 
 #### 5. Запуск программы
@@ -80,11 +86,18 @@ go run cmd/main.go
 ```
 
 ##### Frontend (Запуск из директории electronicqueue-frontend)
+
+##### Терминал
 ```sh
-flutter run -d chrome --web-port=XXXX # Порт Frontend сервера
+flutter run -t lib/terminal/main_terminal.dart -d chrome --web-port=3000
 ```
 
-#### 6. Удаление (базы данных)
+##### Регистратор
+```sh
+flutter run -t lib/registry_window/main_registry.dart -d chrome --web-port=3001
+```
+
+#### 6. Удаление базы данных
 
 ```sh
 ./uninstall.sh
