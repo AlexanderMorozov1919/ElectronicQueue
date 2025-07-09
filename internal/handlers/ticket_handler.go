@@ -3,7 +3,6 @@ package handlers
 import (
 	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/logger"
-	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/services"
 	"fmt"
 	"net/http"
@@ -238,51 +237,4 @@ func (h *TicketHandler) ViewTicket(c *gin.Context) {
 	c.Header("Content-Type", "image/png")
 
 	c.File(filePath)
-}
-
-// UpdateStatus Сменить статус тикета (регистратор)
-func (h *TicketHandler) UpdateStatus(c *gin.Context) {
-	id := c.Param("id")
-	var req TicketStatusRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.Default().Error(fmt.Sprintf("UpdateStatus: failed to bind JSON: %v", err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "status is required"})
-		return
-	}
-	ticket, err := h.service.GetByID(id)
-	if err != nil {
-		logger.Default().Error(fmt.Sprintf("UpdateStatus: ticket not found: %v", err))
-		c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
-		return
-	}
-	var newStatus string
-	switch req.Status {
-	case "подойти_к_окну":
-		ticket.Status = models.StatusToWindow
-		newStatus = "подойти_к_окну"
-	case "зарегистрирован":
-		ticket.Status = models.StatusRegistered
-		newStatus = "зарегистрирован"
-	default:
-		logger.Default().Error(fmt.Sprintf("UpdateStatus: invalid status: %s", req.Status))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status"})
-		return
-	}
-	if err := h.service.UpdateTicket(ticket); err != nil {
-		logger.Default().Error(fmt.Sprintf("UpdateStatus: failed to update ticket: %v", err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "status updated", "status": newStatus})
-}
-
-// DeleteTicket Удалить тикет (регистратор)
-func (h *TicketHandler) DeleteTicket(c *gin.Context) {
-	id := c.Param("id")
-	if err := h.service.DeleteTicket(id); err != nil {
-		logger.Default().Error(fmt.Sprintf("DeleteTicket: failed to delete ticket: %v", err))
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "ticket deleted"})
 }
