@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"ElectronicQueue/internal/logger"
+	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/services"
 	"fmt"
 	"net/http"
@@ -64,4 +65,65 @@ func (h *RegistrarHandler) CallNext(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, ticket)
+}
+
+// UpdateStatusRequest описывает запрос для смены статуса тикета
+// @Description Запрос для смены статуса тикета
+// @Example {"status": "подойти_к_окну"}
+type UpdateStatusRequest struct {
+	Status string `json:"status" binding:"required"`
+}
+
+// UpdateStatus меняет статус тикета
+// @Summary      Сменить статус тикета
+// @Description  Изменяет статус тикета по ID
+// @Tags         registrar
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "ID тикета"
+// @Param        request body UpdateStatusRequest true "Новый статус"
+// @Success      200 {object} map[string]string "Статус обновлен"
+// @Failure      400 {object} map[string]string "Ошибка запроса"
+// @Failure      404 {object} map[string]string "Тикет не найден"
+// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Router       /api/registrar/tickets/{id}/status [patch]
+func (h *RegistrarHandler) UpdateStatus(c *gin.Context) {
+	id := c.Param("id")
+	var req UpdateStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "status is required"})
+		return
+	}
+	ticket, err := h.ticketService.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
+		return
+	}
+	ticket.Status = models.TicketStatus(req.Status)
+	if err := h.ticketService.UpdateTicket(ticket); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "status updated"})
+}
+
+// DeleteTicket удаляет тикет
+// @Summary      Удалить тикет
+// @Description  Удаляет тикет по ID
+// @Tags         registrar
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "ID тикета"
+// @Success      200 {object} map[string]string "Тикет удален"
+// @Failure      400 {object} map[string]string "Ошибка запроса"
+// @Failure      404 {object} map[string]string "Тикет не найден"
+// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Router       /api/registrar/tickets/{id} [delete]
+func (h *RegistrarHandler) DeleteTicket(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.ticketService.DeleteTicket(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "ticket deleted"})
 }

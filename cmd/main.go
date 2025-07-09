@@ -128,8 +128,8 @@ func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.En
 	registrar := r.Group("/api/registrar")
 	{
 		registrar.POST("/call-next", registrarHandler.CallNext)
-		// tickets.PATCH("/:id/status", ticketHandler.UpdateStatus)
-		// tickets.DELETE("/:id", ticketHandler.DeleteTicket)
+		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
+		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 	}
 
 	// Группа эндпоинтов для работы с талонами
