@@ -62,9 +62,7 @@ type ConfirmationResponse struct {
 }
 
 // TicketStatusRequest описывает запрос для смены статуса тикета
-type TicketStatusRequest struct {
-	Status string `json:"status" binding:"required"`
-}
+// Удалено: структура и методы смены статуса, удаления тикета, вызова следующего (перенесены в registrar_handler.go)
 
 // StartPage godoc
 // @Summary      Получить стартовую информацию
