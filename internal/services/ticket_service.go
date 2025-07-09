@@ -176,17 +176,12 @@ func (s *TicketService) MapServiceIDToName(serviceID string) string {
 }
 
 // Модификация существующего метода для использования нового генератора
-func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string, mode string) ([]byte, error) {
+func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string, mode string, qrData []byte) ([]byte, error) {
 	waitingTickets, err := s.repo.FindByStatuses([]models.TicketStatus{models.StatusWaiting})
 	waitingNumber := len(waitingTickets) - 1
 	if err != nil {
 		waitingNumber = 0
 	}
-
-	qrData := []byte(fmt.Sprintf("Талон: %s\nВремя: %s\nУслуга: %s",
-		ticket.TicketNumber,
-		ticket.CreatedAt.Format("02.01.2006 15:04:05"),
-		serviceName))
 
 	background := "assets/img/ticket_bw.png"
 	isColor := false

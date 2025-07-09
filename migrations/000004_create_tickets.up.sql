@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS tickets (
         'зарегистрирован'  -- Зарегистрирован (отправлен к врачу)
     )),
     window_number INTEGER,
+    qr_code BYTEA,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     called_at TIMESTAMP,
     started_at TIMESTAMP,

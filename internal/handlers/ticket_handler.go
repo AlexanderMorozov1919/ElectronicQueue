@@ -154,10 +154,23 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 				height = parsed
 			}
 		}
-		imageBytes, err := h.service.GenerateTicketImage(height, ticket, serviceName, h.config.TicketMode)
+		// Генерируем QR-код один раз
+		qrData := []byte(fmt.Sprintf("Талон: %s\nВремя: %s\nУслуга: %s",
+			ticket.TicketNumber,
+			ticket.CreatedAt.Format("02.01.2006 15:04:05"),
+			serviceName))
+		imageBytes, err := h.service.GenerateTicketImage(height, ticket, serviceName, h.config.TicketMode, qrData)
 		if err != nil {
 			logger.Default().Error(fmt.Sprintf("Confirmation: image generation failed: %v", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Image generation failed: %v", err)})
+			return
+		}
+
+		// Сохраняем изображение и QR-код в модель и обновляем запись
+		ticket.QRCode = qrData
+		if err := h.service.UpdateTicket(ticket); err != nil {
+			logger.Default().Error(fmt.Sprintf("Confirmation: failed to update ticket with image: %v", err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update ticket with image"})
 			return
 		}
 
