@@ -2,7 +2,7 @@
 
 # Загружаем переменные из .env
 set -o allexport
-source ./.env
+source .env
 set +o allexport
 
 # Проверяем наличие обязательных переменных
@@ -27,4 +27,5 @@ find . -type f -name "*.exe" -delete
 echo "Removed all .exe files."
 
 echo "Uninstall complete."
+read -p "Нажмите Enter для выхода..."
 exit

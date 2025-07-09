@@ -49,12 +49,12 @@ func main() {
 	// Инициализация listener для LISTEN/NOTIFY
 	listener, err := initListener(cfg, log)
 	if err != nil {
-		log.WithError(err).Fatal("Failed to initialize database listener")
+		log.WithError(err).Error("Failed to initialize database listener")
 	}
 	defer listener.Close()
 
 	// Настройка роутера
-	r := setupRouter(listener, db)
+	r := setupRouter(listener, db, cfg)
 
 	// Обработка сигналов завершения
 	handleGracefulShutdown(db, listener, log)
@@ -89,7 +89,7 @@ func initListener(cfg *config.Config, log *logger.AsyncLogger) (*pq.Listener, er
 }
 
 // setupRouter настраивает маршруты и middleware
-func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
+func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.SetTrustedProxies(nil)
@@ -107,7 +107,7 @@ func setupRouter(listener *pq.Listener, db *gorm.DB) *gin.Engine {
 	// Инициализация репозитория, сервиса и хендлера для талонов
 	ticketRepo := repository.NewTicketRepository(db)
 	ticketService := services.NewTicketService(ticketRepo)
-	ticketHandler := handlers.NewTicketHandler(ticketService)
+	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
 
 	// Группа эндпоинтов для работы с талонами
 	tickets := r.Group("/api/tickets")

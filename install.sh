@@ -2,7 +2,7 @@
 
 # Загружаем переменные из .env
 set -o allexport
-source ./.env
+source .env
 set +o allexport
 
 # Проверяем наличие обязательных переменных
@@ -75,4 +75,5 @@ else
 fi
 
 echo "Setup complete."
+read -p "Нажмите Enter для выхода..."
 exit 0
