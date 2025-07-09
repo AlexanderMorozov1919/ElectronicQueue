@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS tickets (
         'подойти_к_окну',  -- Подойти к окну (регистратор)
         'зарегистрирован'  -- Зарегистрирован (отправлен к врачу)
     )),
+    service_category VARCHAR(50) NOT NULL, -- Категория услуги
+    service_type VARCHAR(50), -- Тип услуги (новое поле для категории услуги)
     window_number INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     called_at TIMESTAMP,
