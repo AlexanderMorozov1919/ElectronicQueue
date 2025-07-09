@@ -16,20 +16,31 @@ const maxTicketNumber = 1000
 // ID — уникальный идентификатор, Name — русское название
 // Letter — буква для талона
 type Service struct {
-	ID     string
-	Name   string
-	Letter string
+	ID       string
+	Name     string
+	Letter   string
+	Category string // Категория услуги
 }
 
 // TicketService предоставляет методы для работы с талонами
 type TicketService struct {
-	repo     repository.TicketRepository
-	services []Service
+	repo        repository.TicketRepository
+	serviceRepo repository.ServiceRepository
 }
 
 // GetAllServices возвращает все доступные услуги (id, name, letter)
-func (s *TicketService) GetAllServices() []Service {
-	return s.services
+func (s *TicketService) GetAllServices() ([]models.Service, error) {
+	return s.serviceRepo.GetAll()
+}
+
+// GetServiceByID возвращает услугу по ID
+func (s *TicketService) GetServiceByID(id uint) (*models.Service, error) {
+	return s.serviceRepo.GetByID(id)
+}
+
+// GetServiceByServiceID возвращает услугу по serviceID
+func (s *TicketService) GetServiceByServiceID(serviceID string) (*models.Service, error) {
+	return s.serviceRepo.GetByServiceID(serviceID)
 }
 
 // GetByID возвращает тикет по строковому id
@@ -59,10 +70,22 @@ func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 		logger.Default().Error(fmt.Sprintf("CreateTicket: failed to generate ticket number: %v", err))
 		return nil, err
 	}
+	// Найти категорию услуги по serviceID
+	var category string
+	for _, svc := range s.services {
+		if svc.ID == serviceID {
+			category = svc.Category
+			break
+		}
+	}
+	if category == "" {
+		category = "general"
+	}
 	ticket := &models.Ticket{
-		TicketNumber: ticketNumber,
-		Status:       models.StatusWaiting,
-		CreatedAt:    time.Now(),
+		TicketNumber:    ticketNumber,
+		Status:          models.StatusWaiting,
+		ServiceCategory: category,
+		CreatedAt:       time.Now(),
 	}
 	if err := s.repo.Create(ticket); err != nil {
 		logger.Default().Error(fmt.Sprintf("CreateTicket: repo create error: %v", err))
@@ -122,27 +145,18 @@ func (s *TicketService) CallNextTicket(windowNumber int) (*models.Ticket, error)
 }
 
 // NewTicketService создает новый экземпляр TicketService
-func NewTicketService(repo repository.TicketRepository) *TicketService {
-	serviceList := []Service{
-		{ID: "make_appointment", Name: "Записаться к врачу"},
-		{ID: "confirm_appointment", Name: "Прием по записи"},
-		{ID: "lab_tests", Name: "Сдать анализы"},
-		{ID: "documents", Name: "Другой вопрос"},
-	}
-	alphabet := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	for i := range serviceList {
-		if i < len(alphabet) {
-			serviceList[i].Letter = string(alphabet[i])
-		} else {
-			serviceList[i].Letter = "Z"
-		}
-	}
-	return &TicketService{repo: repo, services: serviceList}
+func NewTicketService(repo repository.TicketRepository, serviceRepo repository.ServiceRepository) *TicketService {
+	return &TicketService{repo: repo, serviceRepo: serviceRepo}
 }
 
 // generateTicketNumber генерирует уникальный номер талона для услуги
 func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
-	letter := s.getServiceLetter(serviceID)
+	service, err := s.serviceRepo.GetByServiceID(serviceID)
+	if err != nil {
+		logger.Default().Error(fmt.Sprintf("generateTicketNumber: service not found: %v", err))
+		return "", err
+	}
+	letter := service.Letter
 	maxNum, err := s.repo.GetMaxTicketNumber()
 	if err != nil {
 		logger.Default().Error(fmt.Sprintf("generateTicketNumber: repo error: %v", err))
@@ -155,38 +169,22 @@ func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
 	return fmt.Sprintf("%s%03d", letter, num), nil
 }
 
-// getServiceLetter возвращает букву для услуги по её идентификатору
-func (s *TicketService) getServiceLetter(serviceID string) string {
-	for _, svc := range s.services {
-		if svc.ID == serviceID {
-			return svc.Letter
-		}
-	}
-	return "Z"
-}
-
 // MapServiceIDToName возвращает название услуги по её идентификатору
 func (s *TicketService) MapServiceIDToName(serviceID string) string {
-	for _, svc := range s.services {
-		if svc.ID == serviceID {
-			return svc.Name
-		}
+	service, err := s.serviceRepo.GetByServiceID(serviceID)
+	if err != nil {
+		return "Неизвестно"
 	}
-	return "Неизвестно"
+	return service.Name
 }
 
 // Модификация существующего метода для использования нового генератора
-func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string, mode string) ([]byte, error) {
+func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string, mode string, qrData []byte) ([]byte, error) {
 	waitingTickets, err := s.repo.FindByStatuses([]models.TicketStatus{models.StatusWaiting})
 	waitingNumber := len(waitingTickets) - 1
 	if err != nil {
 		waitingNumber = 0
 	}
-
-	qrData := []byte(fmt.Sprintf("Талон: %s\nВремя: %s\nУслуга: %s",
-		ticket.TicketNumber,
-		ticket.CreatedAt.Format("02.01.2006 15:04:05"),
-		serviceName))
 
 	background := "assets/img/ticket_bw.png"
 	isColor := false

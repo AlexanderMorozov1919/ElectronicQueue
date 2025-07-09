@@ -104,9 +104,10 @@ func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.En
 	// SSE endpoint
 	r.GET("/tickets", sseHandler(listener))
 
-	// Инициализация репозитория, сервиса и хендлера для талонов
+	// Инициализация репозиториев, сервиса и хендлера для талонов
 	ticketRepo := repository.NewTicketRepository(db)
-	ticketService := services.NewTicketService(ticketRepo)
+	serviceRepo := repository.NewServiceRepository(db)
+	ticketService := services.NewTicketService(ticketRepo, serviceRepo)
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
 
 	// Инициализация сервиса и хендлера для врача
