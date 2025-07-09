@@ -87,8 +87,23 @@ func (h *TicketHandler) StartPage(c *gin.Context) {
 // @Success      200 {object} map[string][]services.Service "Список услуг"
 // @Router       /api/tickets/services [get]
 func (h *TicketHandler) Services(c *gin.Context) {
-	services := h.service.GetAllServices()
-	c.JSON(http.StatusOK, gin.H{"services": services})
+	services, err := h.service.GetAllServices()
+	if err != nil {
+		logger.Default().Error("Services: failed to get services: " + err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get services"})
+		return
+	}
+
+	// Преобразуем к нужному виду: id, title, letter (id = service_id, title = name)
+	result := make([]map[string]string, 0, len(services))
+	for _, svc := range services {
+		result = append(result, map[string]string{
+			"ID":     svc.ServiceID,
+			"Name":   svc.Name,
+			"Letter": svc.Letter,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"services": result})
 }
 
 // Selection godoc

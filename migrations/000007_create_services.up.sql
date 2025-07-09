@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS services (
+    id SERIAL PRIMARY KEY,
+    service_id VARCHAR(64) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    letter CHAR(1) NOT NULL
+);
