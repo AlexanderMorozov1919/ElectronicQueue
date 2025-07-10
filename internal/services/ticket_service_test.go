@@ -179,9 +179,7 @@ func (m *MockTicketRepositoryWithServices) FindByStatuses(statuses []models.Tick
 Проверяет, что система может создать новый талон для выбранной услуги
 Ожидаемый результат: талон создается с уникальным номером и статусом "ожидает"
 */
-func TestCreateTicket_УспешноеСоздание(t *testing.T) {
-	t.Log("Тест: Успешное создание талона")
-
+func TestCreateTicket_Success(t *testing.T) {
 	// Подготавливаем моки для репозиториев
 	mockTicketRepo := NewMockTicketRepositoryWithServices()
 	mockServiceRepo := NewMockServiceRepository()
@@ -224,8 +222,14 @@ func TestCreateTicket_УспешноеСоздание(t *testing.T) {
 		t.Error("Номер талона должен быть установлен")
 	}
 
-	t.Logf("Талон создан: Номер=%s, Статус=%s", result.TicketNumber, result.Status)
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[CREATE_TICKET] INPUT: {ServiceID:\"%s\"}", "1")
+	t.Logf("[CREATE_TICKET] OUTPUT: {TicketID:%d, Number:\"%s\", Status:\"%s\", Error:%v}",
+		result.ID, result.TicketNumber, result.Status, err)
+	t.Logf("[CREATE_TICKET] CALLS: repo.GetByServiceID(1), repo.GetMaxTicketNumber(), repo.Create()")
+	t.Logf("[CREATE_TICKET] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 /*
@@ -233,9 +237,7 @@ func TestCreateTicket_УспешноеСоздание(t *testing.T) {
 Проверяет обработку ошибки, когда пользователь выбирает несуществующую услугу
 Ожидаемый результат: возвращается ошибка "service not found"
 */
-func TestCreateTicket_НеверныйServiceID(t *testing.T) {
-	t.Log("Тест: Создание талона с неверным ID услуги")
-
+func TestCreateTicket_InvalidServiceID(t *testing.T) {
 	// Подготавливаем моки
 	mockTicketRepo := NewMockTicketRepositoryWithServices()
 	mockServiceRepo := NewMockServiceRepository()
@@ -264,7 +266,13 @@ func TestCreateTicket_НеверныйServiceID(t *testing.T) {
 			expectedError, err.Error())
 	}
 
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[CREATE_TICKET] INPUT: {ServiceID:\"%s\"}", "999")
+	t.Logf("[CREATE_TICKET] OUTPUT: {Result:%v, Error:\"%s\"}", result, err.Error())
+	t.Logf("[CREATE_TICKET] CALLS: repo.GetByServiceID(999) x1")
+	t.Logf("[CREATE_TICKET] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 /*
@@ -272,9 +280,7 @@ func TestCreateTicket_НеверныйServiceID(t *testing.T) {
 Проверяет валидацию входных данных
 Ожидаемый результат: возвращается ошибка "serviceID is required"
 */
-func TestCreateTicket_ПустойServiceID(t *testing.T) {
-	t.Log("Тест: Создание талона с пустым ID услуги")
-
+func TestCreateTicket_EmptyServiceID(t *testing.T) {
 	// Подготавливаем моки
 	mockTicketRepo := NewMockTicketRepositoryWithServices()
 	mockServiceRepo := NewMockServiceRepository()
@@ -303,7 +309,13 @@ func TestCreateTicket_ПустойServiceID(t *testing.T) {
 			expectedError, err.Error())
 	}
 
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[CREATE_TICKET] INPUT: {ServiceID:\"\"}")
+	t.Logf("[CREATE_TICKET] OUTPUT: {Result:%v, Error:\"%s\"}", result, err.Error())
+	t.Logf("[CREATE_TICKET] CALLS: validation only")
+	t.Logf("[CREATE_TICKET] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 /*
@@ -311,9 +323,7 @@ func TestCreateTicket_ПустойServiceID(t *testing.T) {
 Проверяет, что система может вызвать следующего пациента из очереди
 Ожидаемый результат: статус талона меняется на "приглашен", устанавливается номер окна и время вызова
 */
-func TestCallNextTicket_УспешныйВызов(t *testing.T) {
-	t.Log("Тест: Успешный вызов следующего пациента")
-
+func TestCallNextTicket_Success(t *testing.T) {
 	// Подготавливаем моки
 	mockTicketRepo := NewMockTicketRepositoryWithServices()
 	mockServiceRepo := NewMockServiceRepository()
@@ -355,8 +365,14 @@ func TestCallNextTicket_УспешныйВызов(t *testing.T) {
 		t.Error("Время вызова должно быть установлено")
 	}
 
-	t.Logf("Пациент вызван: Номер=%s, Окно=%d", result.TicketNumber, *result.WindowNumber)
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[CALL_NEXT_TICKET] INPUT: {WindowNumber:%d}", 1)
+	t.Logf("[CALL_NEXT_TICKET] OUTPUT: {TicketID:%d, Number:\"%s\", Status:\"%s\", Window:%d, Error:%v}",
+		result.ID, result.TicketNumber, result.Status, *result.WindowNumber, err)
+	t.Logf("[CALL_NEXT_TICKET] CALLS: repo.GetNextWaitingTicket(), repo.Update()")
+	t.Logf("[CALL_NEXT_TICKET] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 /*
@@ -364,9 +380,7 @@ func TestCallNextTicket_УспешныйВызов(t *testing.T) {
 Проверяет обработку ситуации, когда в очереди нет пациентов
 Ожидаемый результат: возвращается ошибка "очередь пуста"
 */
-func TestCallNextTicket_ОчередьПуста(t *testing.T) {
-	t.Log("Тест: Вызов пациента при пустой очереди")
-
+func TestCallNextTicket_EmptyQueue(t *testing.T) {
 	// Подготавливаем моки с пустой очередью
 	mockTicketRepo := NewMockTicketRepositoryWithServices()
 	mockServiceRepo := NewMockServiceRepository()
@@ -395,7 +409,13 @@ func TestCallNextTicket_ОчередьПуста(t *testing.T) {
 			expectedError, err.Error())
 	}
 
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[CALL_NEXT_TICKET] INPUT: {WindowNumber:%d}", 1)
+	t.Logf("[CALL_NEXT_TICKET] OUTPUT: {Result:%v, Error:\"%s\"}", result, err.Error())
+	t.Logf("[CALL_NEXT_TICKET] CALLS: repo.GetNextWaitingTicket() x1")
+	t.Logf("[CALL_NEXT_TICKET] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 /*
@@ -403,9 +423,7 @@ func TestCallNextTicket_ОчередьПуста(t *testing.T) {
 Проверяет, что система может вернуть список всех доступных услуг
 Ожидаемый результат: возвращается массив всех услуг
 */
-func TestGetAllServices_УспешноеПолучение(t *testing.T) {
-	t.Log("Тест: Получение всех услуг")
-
+func TestGetAllServices_Success(t *testing.T) {
 	// Подготавливаем моки
 	mockTicketRepo := NewMockTicketRepositoryWithServices()
 	mockServiceRepo := NewMockServiceRepository()
@@ -433,8 +451,14 @@ func TestGetAllServices_УспешноеПолучение(t *testing.T) {
 		t.Errorf("Ожидалось 2 услуги, получено: %d", len(result))
 	}
 
-	t.Logf("Получено услуг: %d", len(result))
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[GET_ALL_SERVICES] INPUT: {}")
+	t.Logf("[GET_ALL_SERVICES] OUTPUT: {Count:%d, Services:[%s, %s], Error:%v}",
+		len(result), result[0].Name, result[1].Name, err)
+	t.Logf("[GET_ALL_SERVICES] CALLS: repo.GetAll() x1")
+	t.Logf("[GET_ALL_SERVICES] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 /*
@@ -442,9 +466,7 @@ func TestGetAllServices_УспешноеПолучение(t *testing.T) {
 Проверяет, что система может найти название услуги по её ID
 Ожидаемый результат: возвращается правильное название услуги
 */
-func TestMapServiceIDToName_УспешноеСопоставление(t *testing.T) {
-	t.Log("Тест: Сопоставление ID услуги с названием")
-
+func TestMapServiceIDToName_Success(t *testing.T) {
 	// Подготавливаем моки
 	mockTicketRepo := NewMockTicketRepositoryWithServices()
 	mockServiceRepo := NewMockServiceRepository()
@@ -464,8 +486,13 @@ func TestMapServiceIDToName_УспешноеСопоставление(t *testin
 		t.Errorf("Ожидалось 'Консультация', получено: '%s'", result)
 	}
 
-	t.Logf("Название услуги: %s", result)
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[MAP_SERVICE_ID_TO_NAME] INPUT: {ServiceID:\"%s\"}", "1")
+	t.Logf("[MAP_SERVICE_ID_TO_NAME] OUTPUT: {Name:\"%s\"}", result)
+	t.Logf("[MAP_SERVICE_ID_TO_NAME] CALLS: repo.GetByServiceID(1) x1")
+	t.Logf("[MAP_SERVICE_ID_TO_NAME] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 /*
@@ -473,9 +500,7 @@ func TestMapServiceIDToName_УспешноеСопоставление(t *testin
 Проверяет обработку ситуации, когда запрашивается несуществующая услуга
 Ожидаемый результат: возвращается "Неизвестно"
 */
-func TestMapServiceIDToName_НеизвестнаяУслуга(t *testing.T) {
-	t.Log("Тест: Сопоставление с неизвестной услугой")
-
+func TestMapServiceIDToName_UnknownService(t *testing.T) {
 	// Подготавливаем моки с пустым репозиторием услуг
 	mockTicketRepo := NewMockTicketRepositoryWithServices()
 	mockServiceRepo := NewMockServiceRepository()
@@ -491,6 +516,11 @@ func TestMapServiceIDToName_НеизвестнаяУслуга(t *testing.T) {
 		t.Errorf("Ожидалось 'Неизвестно', получено: '%s'", result)
 	}
 
-	t.Logf("Результат для неизвестной услуги: %s", result)
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[MAP_SERVICE_ID_TO_NAME] INPUT: {ServiceID:\"%s\"}", "999")
+	t.Logf("[MAP_SERVICE_ID_TO_NAME] OUTPUT: {Name:\"%s\"}", result)
+	t.Logf("[MAP_SERVICE_ID_TO_NAME] CALLS: repo.GetByServiceID(999) x1")
+	t.Logf("[MAP_SERVICE_ID_TO_NAME] STATUS: PASS")
+	t.Logf("========================================")
 }

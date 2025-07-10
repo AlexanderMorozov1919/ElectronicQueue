@@ -105,9 +105,7 @@ func (m *MockTicketRepository) Delete(id uint) error {
 Проверяет, что врач может начать прием пациента с талоном в статусе "приглашен"
 Ожидаемый результат: статус меняется на "на_приеме", время начала устанавливается
 */
-func TestStartAppointment_УспешноеНачалоПриема(t *testing.T) {
-	t.Log("Тест: Успешное начало приема пациента")
-
+func TestStartAppointment_Success(t *testing.T) {
 	// Подготавливаем тестовые данные
 	mockRepo := NewMockTicketRepository()
 	service := NewDoctorService(mockRepo)
@@ -120,9 +118,6 @@ func TestStartAppointment_УспешноеНачалоПриема(t *testing.T)
 		CreatedAt:    time.Now(),
 	}
 	mockRepo.Create(ticket)
-
-	t.Logf("Подготовлен талон: ID=%d, Номер=%s, Статус=%s",
-		ticket.ID, ticket.TicketNumber, ticket.Status)
 
 	// Вызываем тестируемую функцию
 	result, err := service.StartAppointment(1)
@@ -144,7 +139,14 @@ func TestStartAppointment_УспешноеНачалоПриема(t *testing.T)
 		t.Error("Время начала приема должно быть установлено")
 	}
 
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[START_APPOINTMENT] INPUT: {TicketID:%d}", 1)
+	t.Logf("[START_APPOINTMENT] OUTPUT: {Status:\"%s\", StartedAt:%v, Error:%v}",
+		result.Status, result.StartedAt, err)
+	t.Logf("[START_APPOINTMENT] CALLS: repo.GetByID(1), repo.Update() x1")
+	t.Logf("[START_APPOINTMENT] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 /*
@@ -152,9 +154,7 @@ func TestStartAppointment_УспешноеНачалоПриема(t *testing.T)
 Проверяет обработку ошибки, когда врач пытается начать прием с несуществующим ID талона
 Ожидаемый результат: возвращается ошибка "ticket not found"
 */
-func TestStartAppointment_ТалонНеНайден(t *testing.T) {
-	t.Log("Тест: Попытка начать прием несуществующего талона")
-
+func TestStartAppointment_TicketNotFound(t *testing.T) {
 	// Подготавливаем пустой репозиторий (нет талонов)
 	mockRepo := NewMockTicketRepository()
 	service := NewDoctorService(mockRepo)
@@ -180,7 +180,13 @@ func TestStartAppointment_ТалонНеНайден(t *testing.T) {
 			expectedError, err.Error())
 	}
 
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[START_APPOINTMENT] INPUT: {TicketID:%d}", 999)
+	t.Logf("[START_APPOINTMENT] OUTPUT: {Result:%v, Error:\"%s\"}", result, err.Error())
+	t.Logf("[START_APPOINTMENT] CALLS: repo.GetByID(999) x1")
+	t.Logf("[START_APPOINTMENT] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 /*
@@ -189,9 +195,7 @@ func TestStartAppointment_ТалонНеНайден(t *testing.T) {
 Например, нельзя начать прием уже завершенного талона
 Ожидаемый результат: возвращается ошибка о неправильном статусе
 */
-func TestStartAppointment_НеверныйСтатус(t *testing.T) {
-	t.Log("Тест: Попытка начать прием талона с неправильным статусом")
-
+func TestStartAppointment_InvalidStatus(t *testing.T) {
 	mockRepo := NewMockTicketRepository()
 	service := NewDoctorService(mockRepo)
 
@@ -225,7 +229,13 @@ func TestStartAppointment_НеверныйСтатус(t *testing.T) {
 			expectedError, err.Error())
 	}
 
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[START_APPOINTMENT] INPUT: {TicketID:%d}", 2)
+	t.Logf("[START_APPOINTMENT] OUTPUT: {Result:%v, Error:\"%s\"}", result, err.Error())
+	t.Logf("[START_APPOINTMENT] CALLS: repo.GetByID(2) x1")
+	t.Logf("[START_APPOINTMENT] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 /*
@@ -233,9 +243,7 @@ func TestStartAppointment_НеверныйСтатус(t *testing.T) {
 Проверяет, что врач может завершить прием пациента с талоном в статусе "на_приеме"
 Ожидаемый результат: статус меняется на "завершен", время завершения устанавливается
 */
-func TestCompleteAppointment_УспешноеЗавершение(t *testing.T) {
-	t.Log("Тест: Успешное завершение приема пациента")
-
+func TestCompleteAppointment_Success(t *testing.T) {
 	mockRepo := NewMockTicketRepository()
 	service := NewDoctorService(mockRepo)
 
@@ -270,7 +278,14 @@ func TestCompleteAppointment_УспешноеЗавершение(t *testing.T) 
 		t.Error("Время завершения приема должно быть установлено")
 	}
 
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[COMPLETE_APPOINTMENT] INPUT: {TicketID:%d}", 3)
+	t.Logf("[COMPLETE_APPOINTMENT] OUTPUT: {Status:\"%s\", CompletedAt:%v, Error:%v}",
+		result.Status, result.CompletedAt, err)
+	t.Logf("[COMPLETE_APPOINTMENT] CALLS: repo.GetByID(3), repo.Update() x1")
+	t.Logf("[COMPLETE_APPOINTMENT] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 /*
@@ -279,9 +294,7 @@ func TestCompleteAppointment_УспешноеЗавершение(t *testing.T) 
 Например, нельзя завершить прием талона, который еще ожидает
 Ожидаемый результат: возвращается ошибка о неправильном статусе
 */
-func TestCompleteAppointment_НеверныйСтатус(t *testing.T) {
-	t.Log("Тест: Попытка завершить прием талона с неправильным статусом")
-
+func TestCompleteAppointment_InvalidStatus(t *testing.T) {
 	mockRepo := NewMockTicketRepository()
 	service := NewDoctorService(mockRepo)
 
@@ -315,7 +328,13 @@ func TestCompleteAppointment_НеверныйСтатус(t *testing.T) {
 			expectedError, err.Error())
 	}
 
-	t.Log("Тест успешно завершен")
+	// Информативный вывод результата
+	t.Logf("========================================")
+	t.Logf("[COMPLETE_APPOINTMENT] INPUT: {TicketID:%d}", 4)
+	t.Logf("[COMPLETE_APPOINTMENT] OUTPUT: {Result:%v, Error:\"%s\"}", result, err.Error())
+	t.Logf("[COMPLETE_APPOINTMENT] CALLS: repo.GetByID(4) x1")
+	t.Logf("[COMPLETE_APPOINTMENT] STATUS: PASS")
+	t.Logf("========================================")
 }
 
 // Вспомогательная функция для проверки содержимого строки

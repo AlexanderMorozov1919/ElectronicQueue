@@ -11,7 +11,7 @@ temp/
 *.txt
 *.docx
 *.pdf
-
+*.png
 # Системные файлы
 .DS_Store
 .idea/
