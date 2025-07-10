@@ -251,12 +251,11 @@ EOF
     SERVICE_NAME=$(basename "$MAIN_FILE" .dart | tr '[:upper:]' '[:lower:]')
     PORT=$((FRONTEND_PORT + INDEX))
     CONTAINER_NAME="electronicqueue_${SERVICE_NAME}"
-    TARGET_MAIN_NO_LIB=${MAIN_FILE#lib/}
     echo "  $SERVICE_NAME:" >> $COMPOSE_FILE
     echo "    build:" >> $COMPOSE_FILE
     echo "      context: ." >> $COMPOSE_FILE
     echo "      args:" >> $COMPOSE_FILE
-    echo "        TARGET_MAIN: $TARGET_MAIN_NO_LIB" >> $COMPOSE_FILE
+    echo "        TARGET_MAIN: $MAIN_FILE" >> $COMPOSE_FILE
     echo "    ports:" >> $COMPOSE_FILE
     echo "      - \"${PORT}:80\"" >> $COMPOSE_FILE
     echo "    env_file:" >> $COMPOSE_FILE

@@ -1,9 +1,9 @@
 # Файлы окружения
 .env
-*.code-workspace
 
 # Логи и временные файлы
 logs/
+tickets/
 *.log
 tmp/
 temp/
@@ -12,7 +12,6 @@ temp/
 *.txt
 *.docx
 *.pdf
-tickets/
 
 # Системные файлы
 .DS_Store
@@ -33,3 +32,36 @@ tickets/
 # Автогенерируемые файлы
 *.sqlite3
 *.db
+# Go специфичные файлы
+*.test
+*.out
+go.work
+go.work.sum
+# Бинарные файлы Go
+main.exe
+main
+*.exe
+*.exe~
+
+# Кэш Go
+go.sum.backup
+# Временные файлы Go
+*.tmp
+*.temp
+# Файлы IDE
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+# Файлы Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+# Файлы macOS
+.AppleDouble
+.LSOverride
+# Файлы Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
