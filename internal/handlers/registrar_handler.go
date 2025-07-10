@@ -64,7 +64,7 @@ func (h *RegistrarHandler) CallNext(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ticket)
+	c.JSON(http.StatusOK, ticket.ToResponse())
 }
 
 // UpdateStatusRequest описывает запрос для смены статуса тикета
