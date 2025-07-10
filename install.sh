@@ -13,16 +13,22 @@ set +o allexport
 : "${DB_NAME?Need to set DB_NAME}"
 : "${DB_SSLMODE:=disable}"
 
-# На случай если оно там случайно осталось
+# Пути до main файлов Flutter frontend
+IFS=',' read -ra FLUTTER_MAIN_FILES <<< "$FRONTEND_MAINS"
+
 rm -f migrations/fill_db.sql
+cd "$(dirname "$0")" && docker compose down > /dev/null 2>&1
+cd "$(dirname "$0")/../electronicqueue-frontend" && docker compose down > /dev/null 2>&1
+cd - > /dev/null > /dev/null 2>&1
 
 # --- Аргументы ---
 if [[ $# -eq 0 ]]; then
-  echo "Usage: $0 [--go] [--go-docker] [--flutter] [--fill] [--rewrite]"
+  echo "Usage: $0 [--local] [--docker] [--go] [--go-docker] [--flutter] [--flutter-docker] [--fill] [--rewrite]"
   exit 1
 fi
 GO_MODE=""
 FLUTTER_MODE=""
+FLUTTER_DOCKER_MODE=""
 GO_DOCKER_MODE=""
 FILL=""
 REWRITE=""
@@ -37,14 +43,25 @@ for arg in "$@"; do
     --flutter)
       FLUTTER_MODE="true"
       ;;
+    --flutter-docker)
+      FLUTTER_DOCKER_MODE="true"
+      ;;
     --fill)
       FILL="true"
       ;;
     --rewrite)
       REWRITE="true"
       ;;
+    --local)
+      GO_MODE="true"
+      FLUTTER_MODE="true"
+      ;;
+    --docker)
+      GO_DOCKER_MODE="true"
+      FLUTTER_DOCKER_MODE="true"
+      ;;
     *)
-      echo "Usage: $0 [--go] [--go-docker] [--flutter] [--fill] [--rewrite]"
+      echo "Usage: $0 [--local] [--docker] [--go] [--go-docker] [--flutter] [--flutter-docker] [--fill] [--rewrite]"
       exit 1
       ;;
   esac
@@ -122,6 +139,13 @@ if [[ "$GO_MODE" == "true" ]]; then
     echo "Failed to download Go modules."
     exit 1
   fi
+  echo "Tidying Go modules..."
+  if go mod tidy; then
+    echo "Go modules tidied successfully."
+  else
+    echo "Failed to tidy Go modules."
+    exit 1
+  fi
   
   # Обновление документации
   echo "Updating Swagger documentation..."
@@ -142,25 +166,14 @@ if [[ "$GO_MODE" == "true" ]]; then
   echo "Golang setup complete."
 fi
 
-if [[ "$FLUTTER_MODE" == "true" ]]; then
-  cd "$(dirname "$0")/../electronicqueue-frontend"
-  echo "Getting Flutter packages..."
-  if flutter pub get --no-example; then
-    echo "Flutter setup complete."
-  else
-    echo "Failed to fetch packages."
-    exit 1
-  fi
-fi
-
 if [[ "$GO_DOCKER_MODE" == "true" ]]; then
   if ! docker info > /dev/null 2>&1; then
-    echo "Make sure that Docker Engine is running."
+    echo "Make sure that Docker Engine is running. Try restarting Docker Desktop."
     exit 1
   fi
   if [[ "$REWRITE" == "true" ]]; then
-    docker compose down
-    docker volume rm electronicqueue_db-data
+    docker compose down > /dev/null 2>&1
+    docker volume rm electronicqueue_db-data > /dev/null 2>&1
   fi
   if [[ "$FILL" == "true" ]]; then
     echo "Copying fill_db.sql to migrations/ for Docker..."
@@ -185,10 +198,81 @@ if [[ "$GO_DOCKER_MODE" == "true" ]]; then
   docker compose exec db pg_isready -U ${DB_USER} -d ${DB_NAME}
   
   echo "Database is ready. Migrations applied automatically."
-  docker compose down
+  docker compose down > /dev/null 2>&1
 
   rm -f migrations/fill_db.sql
   echo "Docker setup complete."
+fi
+
+if [[ "$FLUTTER_MODE" == "true" ]]; then
+  cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
+  echo "Getting Flutter packages..."
+  if flutter pub get --no-example; then
+    echo "Flutter setup complete."
+  else
+    echo "Failed to fetch packages."
+    exit 1
+  fi
+  cd - > /dev/null
+fi
+
+if [[ "$FLUTTER_DOCKER_MODE" == "true" ]]; then
+  cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
+  rm -f Dockerfile
+  cat > Dockerfile <<EOF
+FROM ghcr.io/cirruslabs/flutter:3.32.5 AS build
+
+WORKDIR /app
+COPY pubspec.yaml ./
+RUN flutter pub get
+COPY . .
+
+ARG TARGET_MAIN
+RUN flutter build web -t lib/\${TARGET_MAIN}
+
+FROM nginx:alpine
+COPY --from=build /app/build/web /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+EOF
+  if ! docker info > /dev/null 2>&1; then
+    echo "Make sure that Docker Engine is running. Try restarting Docker Desktop."
+    exit 1
+  fi
+  if [ -z "$FRONTEND_PORT" ]; then
+    echo "FRONTEND_PORT is not set in .env!"
+    exit 1
+  fi
+  COMPOSE_FILE="compose.yaml"
+  rm -f $COMPOSE_FILE
+  echo "services:" >> $COMPOSE_FILE
+  INDEX=0
+  for MAIN_FILE in "${FLUTTER_MAIN_FILES[@]}"; do
+    SERVICE_NAME=$(basename "$MAIN_FILE" .dart | tr '[:upper:]' '[:lower:]')
+    PORT=$((FRONTEND_PORT + INDEX))
+    CONTAINER_NAME="electronicqueue_${SERVICE_NAME}"
+    TARGET_MAIN_NO_LIB=${MAIN_FILE#lib/}
+    echo "  $SERVICE_NAME:" >> $COMPOSE_FILE
+    echo "    build:" >> $COMPOSE_FILE
+    echo "      context: ." >> $COMPOSE_FILE
+    echo "      args:" >> $COMPOSE_FILE
+    echo "        TARGET_MAIN: $TARGET_MAIN_NO_LIB" >> $COMPOSE_FILE
+    echo "    ports:" >> $COMPOSE_FILE
+    echo "      - \"${PORT}:80\"" >> $COMPOSE_FILE
+    echo "    env_file:" >> $COMPOSE_FILE
+    echo "      - .env" >> $COMPOSE_FILE
+    echo "    container_name: $CONTAINER_NAME" >> $COMPOSE_FILE
+    echo "" >> $COMPOSE_FILE
+    INDEX=$((INDEX + 1))
+  done
+  echo "Docker Compose file $COMPOSE_FILE generated."
+  echo "Building Flutter frontend Docker containers..."
+  if ! docker compose build; then
+    echo "Docker Compose build failed."
+    exit 1
+  fi
+  echo "Flutter frontend Docker setup complete."
+  cd - > /dev/null
 fi
 
 exit 0

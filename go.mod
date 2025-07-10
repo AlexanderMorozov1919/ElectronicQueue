@@ -60,4 +60,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-require golang.org/x/image v0.28.0 // indirect
+require golang.org/x/image v0.28.0
