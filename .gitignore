@@ -3,6 +3,7 @@
 
 # Логи и временные файлы
 logs/
+tickets/
 *.log
 tmp/
 temp/
@@ -50,6 +51,7 @@ go.sum.backup
 # Файлы IDE
 *.sublime-project
 *.sublime-workspace
+*.code-workspace
 # Файлы Windows
 Thumbs.db
 ehthumbs.db

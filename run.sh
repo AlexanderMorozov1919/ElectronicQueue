@@ -6,13 +6,12 @@ source ./.env
 set +o allexport
 
 # Пути до main файлов Flutter frontend
-FLUTTER_MAIN_FILES=(
-  "lib/terminal/main_terminal.dart"
-  "lib/registry_window/main_registry.dart"
-  # Добавьте сюда другие main-файлы по необходимости
-)
+IFS=',' read -ra FLUTTER_MAIN_FILES <<< "$FRONTEND_MAINS"
+cd "$(dirname "$0")" && docker compose down > /dev/null 2>&1
+cd "$(dirname "$0")/../electronicqueue-frontend" && docker compose down > /dev/null 2>&1
+cd - > /dev/null > /dev/null 2>&1
 
-# Kill processes on BACKEND_PORT, FRONTEND_PORT, FRONTEND_PORT+N
+# Kill processes on BACKEND_PORT, FRONTEND_PORT
 kill_by_port() {
   local PORT=$1
   if command -v lsof >/dev/null 2>&1; then
@@ -47,35 +46,47 @@ kill_by_port() {
 }
 
 if [[ $# -eq 0 ]]; then
-  echo "Usage: $0 [--go|--go-docker] [--flutter]"
+  echo "Usage: $0 [--go|--go-docker] [--flutter|--flutter-docker] [--local|--docker]"
   exit 1
 fi
 RUN_GO=""
 RUN_GO_DOCKER=""
 RUN_FLUTTER=""
+RUN_FLUTTER_DOCKER=""
 for arg in "$@"; do
   case $arg in
     --go)
-      RUN_GO="yes"
+      RUN_GO="true"
       ;;
     --go-docker)
-      RUN_GO_DOCKER="yes"
+      RUN_GO_DOCKER="true"
       ;;
     --flutter)
-      RUN_FLUTTER="yes"
+      RUN_FLUTTER="true"
+      ;;
+    --flutter-docker)
+      RUN_FLUTTER_DOCKER="true"
+      ;;
+    --local)
+      RUN_GO="true"
+      RUN_FLUTTER="true"
+      ;;
+    --docker)
+      RUN_GO_DOCKER="true"
+      RUN_FLUTTER_DOCKER="true"
       ;;
     *)
-      echo "Usage: $0 [--go|--go-docker] [--flutter]"
+      echo "Usage: $0 [--go|--go-docker] [--flutter|--flutter-docker] [--local|--docker]"
       exit 1
       ;;
   esac
 done
 
-# Kill processes on BACKEND_PORT, FRONTEND_PORT, FRONTEND_PORT+N only if needed
-if { [[ "$RUN_GO" == "yes" && -n "$BACKEND_PORT" ]] || [[ "$RUN_GO_DOCKER" == "yes" && -n "$BACKEND_PORT" ]]; }; then
+# Kill processes on BACKEND_PORT, FRONTEND_PORT
+if { [[ "$RUN_GO" == "true" && -n "$BACKEND_PORT" ]] || [[ "$RUN_GO_DOCKER" == "true" && -n "$BACKEND_PORT" ]]; }; then
   kill_by_port $BACKEND_PORT
 fi
-if [[ "$RUN_FLUTTER" == "yes" && -n "$FRONTEND_PORT" ]]; then
+if { [[ "$RUN_FLUTTER" == "true" && -n "$FRONTEND_PORT" ]] || [[ "$RUN_FLUTTER_DOCKER" == "true" && -n "$FRONTEND_PORT" ]]; }; then
   N=${#FLUTTER_MAIN_FILES[@]}
   for ((i=0; i<N; i++)); do
     PORT=$((FRONTEND_PORT+i))
@@ -84,7 +95,7 @@ if [[ "$RUN_FLUTTER" == "yes" && -n "$FRONTEND_PORT" ]]; then
 fi
 
 # Run Go backend
-if [[ "$RUN_GO" == "yes" ]]; then
+if [[ "$RUN_GO" == "true" ]]; then
   echo "Starting Go backend (main.exe)..."
   if (cd "$(dirname "$0")" && go run cmd/main.go &); then
     echo "Go backend started."
@@ -92,10 +103,13 @@ if [[ "$RUN_GO" == "yes" ]]; then
     echo "Failed to start Go backend."
     exit 1
   fi
-elif [[ "$RUN_GO_DOCKER" == "yes" ]]; then
+
+
+
+elif [[ "$RUN_GO_DOCKER" == "true" ]]; then
   echo "Starting Go backend via Docker Compose..."
   if ! docker info > /dev/null 2>&1; then
-    echo "Make sure that Docker Engine is running."
+    echo "Make sure that Docker Engine is running. Try restarting Docker Desktop."
     exit 1
   fi
   if (cd "$(dirname "$0")" && docker compose up &); then
@@ -106,9 +120,12 @@ elif [[ "$RUN_GO_DOCKER" == "yes" ]]; then
   fi
 fi
 
+
+
 # Run Flutter frontend
-if [[ "$RUN_FLUTTER" == "yes" ]]; then
-  if cd "$(dirname "$0")/../electronicqueue-frontend" && flutter pub get --no-example; then
+if [[ "$RUN_FLUTTER" == "true" ]]; then
+  cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
+  if flutter pub get --no-example; then
     echo "Flutter setup complete."
   else
     echo "Failed to fetch packages."
@@ -121,8 +138,34 @@ if [[ "$RUN_FLUTTER" == "yes" ]]; then
   PORT=$FRONTEND_PORT
   for MAIN_FILE in "${FLUTTER_MAIN_FILES[@]}"; do
     echo "Starting Flutter frontend: $MAIN_FILE on port $PORT..."
-    (cd "$(dirname "$0")/../electronicqueue-frontend" && flutter run -t "$MAIN_FILE" -d chrome --web-port=$PORT &)
+    flutter run -t "$MAIN_FILE" -d chrome --web-port=$PORT &
     PORT=$((PORT+1))
   done
   echo "All Flutter frontends started."
+  cd - > /dev/null
+
+
+
+elif [[ "$RUN_FLUTTER_DOCKER" == "true" ]]; then
+  cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
+  echo "Starting Flutter frontend containers from compose.yaml..."
+  if ! docker info > /dev/null 2>&1; then
+    echo "Make sure that Docker Engine is running. Try restarting Docker Desktop."
+    exit 1
+  fi
+  if [ ! -f compose.yaml ]; then
+    echo "compose.yaml not found! Please run install.sh with --flutter-docker first."
+    exit 1
+  fi
+  PORT=$FRONTEND_PORT
+  for MAIN_FILE in "${FLUTTER_MAIN_FILES[@]}"; do
+    echo "Starting Flutter frontend: $MAIN_FILE on port $PORT..."
+    start "" "http://localhost:$PORT/"
+    PORT=$((PORT+1))
+  done
+  docker compose up &
+  cd - > /dev/null
 fi
+
+wait
+exit 0
