@@ -74,6 +74,10 @@ fi
 
 if [[ "$MODE" == "go-docker" ]]; then
   echo "Stopping and removing containers, removing volume..."
+  if ! docker info > /dev/null 2>&1; then
+    echo "Make sure that Docker Engine is running."
+    exit 1
+  fi
   if docker compose down; then
     if docker volume rm electronicqueue_db-data; then
       echo "Docker containers stopped and volume removed."
