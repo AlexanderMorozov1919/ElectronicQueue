@@ -494,19 +494,16 @@ const docTemplate = `{
                 "приглашен",
                 "на_приеме",
                 "завершен",
-                "подойти_к_окну",
                 "зарегистрирован"
             ],
             "x-enum-comments": {
-                "StatusInvited": "Пациент вызван к окну",
-                "StatusToWindow": "TODO: Это может быть синонимом 'приглашен', можно будет убрать/изменить"
+                "StatusInvited": "Пациент вызван к окну"
             },
             "x-enum-varnames": [
                 "StatusWaiting",
                 "StatusInvited",
                 "StatusInProgress",
                 "StatusCompleted",
-                "StatusToWindow",
                 "StatusRegistered"
             ]
         },

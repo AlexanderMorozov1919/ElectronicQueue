@@ -93,18 +93,15 @@ definitions:
     - приглашен
     - на_приеме
     - завершен
-    - подойти_к_окну
     - зарегистрирован
     type: string
     x-enum-comments:
       StatusInvited: Пациент вызван к окну
-      StatusToWindow: 'TODO: Это может быть синонимом ''приглашен'', можно будет убрать/изменить'
     x-enum-varnames:
     - StatusWaiting
     - StatusInvited
     - StatusInProgress
     - StatusCompleted
-    - StatusToWindow
     - StatusRegistered
   services.Service:
     properties:
