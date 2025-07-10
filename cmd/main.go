@@ -121,6 +121,8 @@ func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.En
 		tickets.GET("/services", ticketHandler.Services)
 		tickets.POST("/print/selection", ticketHandler.Selection)
 		tickets.POST("/print/confirmation", ticketHandler.Confirmation)
+		tickets.GET("/download/:ticket_number", ticketHandler.DownloadTicket) // скачивание талона
+		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)         // просмотр талона
 	}
 
 	// Группа эндпоинтов для работы врача

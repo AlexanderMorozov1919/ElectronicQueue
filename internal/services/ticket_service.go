@@ -16,10 +16,9 @@ const maxTicketNumber = 1000
 // ID — уникальный идентификатор, Name — русское название
 // Letter — буква для талона
 type Service struct {
-	ID       string
-	Name     string
-	Letter   string
-	Category string // Категория услуги
+	ID     string
+	Name   string
+	Letter string
 }
 
 // TicketService предоставляет методы для работы с талонами
@@ -71,21 +70,11 @@ func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 		return nil, err
 	}
 	// Найти категорию услуги по serviceID
-	var category string
-	for _, svc := range s.services {
-		if svc.ID == serviceID {
-			category = svc.Category
-			break
-		}
-	}
-	if category == "" {
-		category = "general"
-	}
+	// В качестве категории используем serviceID
 	ticket := &models.Ticket{
-		TicketNumber:    ticketNumber,
-		Status:          models.StatusWaiting,
-		ServiceCategory: category,
-		CreatedAt:       time.Now(),
+		TicketNumber: ticketNumber,
+		Status:       models.StatusWaiting,
+		CreatedAt:    time.Now(),
 	}
 	if err := s.repo.Create(ticket); err != nil {
 		logger.Default().Error(fmt.Sprintf("CreateTicket: repo create error: %v", err))

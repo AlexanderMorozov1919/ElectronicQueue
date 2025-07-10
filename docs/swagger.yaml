@@ -55,6 +55,14 @@ definitions:
         example: Записаться к врачу
         type: string
     type: object
+  handlers.UpdateStatusRequest:
+    description: Запрос для смены статуса тикета
+    properties:
+      status:
+        type: string
+    required:
+    - status
+    type: object
   models.TicketResponse:
     description: Ответ API с данными талона
     properties:
@@ -66,6 +74,10 @@ definitions:
         type: string
       id:
         type: integer
+      qr_code:
+        items:
+          type: integer
+        type: array
       started_at:
         type: string
       status:
@@ -81,18 +93,15 @@ definitions:
     - приглашен
     - на_приеме
     - завершен
-    - подойти_к_окну
     - зарегистрирован
     type: string
     x-enum-comments:
       StatusInvited: Пациент вызван к окну
-      StatusToWindow: 'TODO: Это может быть синонимом ''приглашен'', можно будет убрать/изменить'
     x-enum-varnames:
     - StatusWaiting
     - StatusInvited
     - StatusInProgress
     - StatusCompleted
-    - StatusToWindow
     - StatusRegistered
   services.Service:
     properties:
@@ -149,6 +158,94 @@ paths:
               type: string
             type: object
       summary: Вызвать следующего пациента
+      tags:
+      - registrar
+  /api/registrar/tickets/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет тикет по ID
+      parameters:
+      - description: ID тикета
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Тикет удален
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Ошибка запроса
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Тикет не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Удалить тикет
+      tags:
+      - registrar
+  /api/registrar/tickets/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Изменяет статус тикета по ID
+      parameters:
+      - description: ID тикета
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новый статус
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Статус обновлен
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Ошибка запроса
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Тикет не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Сменить статус тикета
       tags:
       - registrar
   /api/tickets/print/confirmation:

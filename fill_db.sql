@@ -2,9 +2,9 @@ INSERT INTO services (service_id, name, letter) VALUES
   ('make_appointment', 'Записаться к врачу', 'A'),
   ('confirm_appointment', 'Прием по записи', 'B'),
   ('lab_tests', 'Сдать анализы', 'C'),
-  ('documents', 'Другой вопрос', 'D');
+  ('documents', 'Другой вопрос', 'D')
+ON CONFLICT (service_id) DO NOTHING;
 
--- Примеры талонов
 INSERT INTO tickets (ticket_number, status, window_number, created_at)
 VALUES
   ('A001', 'ожидает', 1, CURRENT_TIMESTAMP),
@@ -12,4 +12,5 @@ VALUES
   ('B003', 'на_приеме', 3, CURRENT_TIMESTAMP),
   ('B004', 'завершен', 1, CURRENT_TIMESTAMP),
   ('C005', 'подойти_к_окну', 2, CURRENT_TIMESTAMP),
-  ('D006', 'зарегистрирован', 3, CURRENT_TIMESTAMP);
+  ('D006', 'зарегистрирован', 3, CURRENT_TIMESTAMP)
+ON CONFLICT (ticket_number) DO NOTHING;
