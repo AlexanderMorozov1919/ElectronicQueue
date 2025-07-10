@@ -154,6 +154,10 @@ if [[ "$FLUTTER_MODE" == "true" ]]; then
 fi
 
 if [[ "$GO_DOCKER_MODE" == "true" ]]; then
+  if ! docker info > /dev/null 2>&1; then
+    echo "Make sure that Docker Engine is running."
+    exit 1
+  fi
   if [[ "$REWRITE" == "true" ]]; then
     docker compose down
     docker volume rm electronicqueue_db-data

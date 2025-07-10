@@ -94,6 +94,10 @@ if [[ "$RUN_GO" == "yes" ]]; then
   fi
 elif [[ "$RUN_GO_DOCKER" == "yes" ]]; then
   echo "Starting Go backend via Docker Compose..."
+  if ! docker info > /dev/null 2>&1; then
+    echo "Make sure that Docker Engine is running."
+    exit 1
+  fi
   if (cd "$(dirname "$0")" && docker compose up &); then
     echo "Go backend (Docker Compose) started."
   else
