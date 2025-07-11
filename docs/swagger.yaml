@@ -7,6 +7,14 @@ definitions:
     required:
     - window_number
     type: object
+  handlers.CompleteAppointmentRequest:
+    properties:
+      ticket_id:
+        example: 1
+        type: integer
+    required:
+    - ticket_id
+    type: object
   handlers.ConfirmationRequest:
     description: Запрос подтверждения действия (печать талона или получение электронного)
     properties:
@@ -54,6 +62,14 @@ definitions:
       service_name:
         example: Записаться к врачу
         type: string
+    type: object
+  handlers.StartAppointmentRequest:
+    properties:
+      ticket_id:
+        example: 1
+        type: integer
+    required:
+    - ticket_id
     type: object
   handlers.UpdateStatusRequest:
     description: Запрос для смены статуса тикета
@@ -248,6 +264,37 @@ paths:
       summary: Сменить статус тикета
       tags:
       - registrar
+  /api/tickets/download/{ticket_number}:
+    get:
+      description: Позволяет скачать изображение талона по номеру
+      parameters:
+      - description: Номер талона
+        in: path
+        name: ticket_number
+        required: true
+        type: string
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: Изображение талона
+          schema:
+            type: file
+        "400":
+          description: 'Ошибка: не передан ticket_number'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Талон не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Скачать изображение талона
+      tags:
+      - tickets
   /api/tickets/print/confirmation:
     post:
       consumes:
@@ -347,6 +394,95 @@ paths:
       summary: Получить стартовую информацию
       tags:
       - tickets
+  /api/tickets/view/{ticket_number}:
+    get:
+      description: Позволяет просмотреть изображение талона в браузере по номеру
+      parameters:
+      - description: Номер талона
+        in: path
+        name: ticket_number
+        required: true
+        type: string
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: Изображение талона
+          schema:
+            type: file
+        "400":
+          description: 'Ошибка: не передан ticket_number'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Талон не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Просмотр изображения талона
+      tags:
+      - tickets
+  /doctor/appointment/complete:
+    post:
+      consumes:
+      - application/json
+      description: Завершает прием пациента по талону
+      parameters:
+      - description: Данные для завершения приема
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CompleteAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Appointment completed successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: ticket_id is required or error message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Завершить прием пациента
+      tags:
+      - doctor
+  /doctor/appointment/start:
+    post:
+      consumes:
+      - application/json
+      description: Начинает прием пациента по талону
+      parameters:
+      - description: Данные для начала приема
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.StartAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Appointment started successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: ticket_id is required or error message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Начать прием пациента
+      tags:
+      - doctor
   /tickets:
     get:
       description: Возвращает обновления по талонам (создание, изменение, удаление)

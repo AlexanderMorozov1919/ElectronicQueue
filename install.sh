@@ -218,6 +218,13 @@ fi
 
 if [[ "$FLUTTER_DOCKER_MODE" == "true" ]]; then
   cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
+  rm -f .env
+  if [ -n "$BACKEND_PORT" ]; then
+    echo "BACKEND_PORT=$BACKEND_PORT" > .env
+    echo ".env file generated with BACKEND_PORT=$BACKEND_PORT"
+  else
+    echo "BACKEND_PORT is not set! .env not generated."
+  fi
   rm -f Dockerfile
   cat > Dockerfile <<EOF
 FROM ghcr.io/cirruslabs/flutter:3.32.5 AS build
