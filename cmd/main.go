@@ -19,9 +19,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
+
+	_ "ElectronicQueue/docs"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"gorm.io/gorm"
 )
 
+// @title Electronic Queue API
+// @version 1.0
+// @description API для системы электронной очереди
+// @host localhost:8080
+// @BasePath /
 func main() {
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
@@ -131,6 +142,10 @@ func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.En
 		doctor.POST("/start-appointment", doctorHandler.StartAppointment)
 		doctor.POST("/complete-appointment", doctorHandler.CompleteAppointment)
 	}
+
+	// Swagger endpoint
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	return r
 }
 
@@ -156,7 +171,13 @@ func requestLogger() gin.HandlerFunc {
 	}
 }
 
-// sseHandler возвращает SSE endpoint для обновлений талонов
+// sseHandler godoc
+// @Summary      SSE обновления талонов
+// @Description  Возвращает обновления по талонам (создание, изменение, удаление) через SSE
+// @Tags         tickets
+// @Produce      text/event-stream
+// @Success      200 {object} models.TicketResponse "Обновление талона"
+// @Router       /tickets [get]
 func sseHandler(listener *pq.Listener) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
@@ -176,12 +197,7 @@ func sseHandler(listener *pq.Listener) gin.HandlerFunc {
 					log.WithError(err).Error("Failed to unmarshal notification")
 					return true
 				}
-				c.SSEvent("message", models.TicketResponse{
-					ID:           ticket.ID,
-					TicketNumber: ticket.TicketNumber,
-					Status:       ticket.Status,
-					CreatedAt:    ticket.CreatedAt,
-				})
+				c.SSEvent("message", ticket.ToResponse())
 				return true
 			case <-c.Request.Context().Done():
 				log.Info("Client disconnected (SSE)")
