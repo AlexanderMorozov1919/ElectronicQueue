@@ -28,6 +28,7 @@ type Ticket struct {
 	ID           uint         `gorm:"primaryKey;autoIncrement;column:ticket_id" json:"id"`
 	TicketNumber string       `gorm:"type:varchar(20);not null;unique;column:ticket_number" json:"ticket_number"`
 	Status       TicketStatus `gorm:"type:varchar(20);not null" json:"status"`
+	ServiceType  *string      `gorm:"column:service_type" json:"service_type,omitempty"`
 	WindowNumber *int         `gorm:"column:window_number" json:"window_number,omitempty"`
 	QRCode       []byte       `gorm:"column:qr_code" json:"qr_code,omitempty"`
 	CreatedAt    time.Time    `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
@@ -40,11 +41,12 @@ type Ticket struct {
 // @Description Ответ API с данными талона
 // @Name TicketResponse
 // @swagger:model
-// @Schema
+// @Schema// TicketResponse определяет данные, возвращаемые API.
 type TicketResponse struct {
 	ID           uint         `json:"id"`
 	TicketNumber string       `json:"ticket_number"`
 	Status       TicketStatus `json:"status"`
+	ServiceType  *string      `json:"service_type,omitempty"`
 	WindowNumber *int         `json:"window_number,omitempty"`
 	QRCode       []byte       `json:"qr_code,omitempty"`
 	CreatedAt    time.Time    `json:"created_at"`
@@ -59,6 +61,7 @@ func (t *Ticket) ToResponse() TicketResponse {
 		ID:           t.ID,
 		TicketNumber: t.TicketNumber,
 		Status:       t.Status,
+		ServiceType:  t.ServiceType,
 		WindowNumber: t.WindowNumber,
 		QRCode:       t.QRCode,
 		CreatedAt:    t.CreatedAt,

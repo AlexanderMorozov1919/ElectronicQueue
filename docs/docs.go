@@ -699,6 +699,9 @@ const docTemplate = `{
                         "type": "integer"
                     }
                 },
+                "service_type": {
+                    "type": "string"
+                },
                 "started_at": {
                     "type": "string"
                 },

@@ -1,6 +1,9 @@
+// Файл: D:\Projects\ElectronicQueue\internal\config\config.go
+
 package config
 
 import (
+	"errors" // Импортируем пакет для создания ошибок
 	"os"
 
 	"github.com/joho/godotenv"
@@ -46,7 +49,24 @@ func LoadConfig() (*Config, error) {
 		TicketMode:    getEnv("TICKET_MODE", "b/w"),
 		TicketHeight:  getEnv("TICKET_HEIGHT", "800"),
 		LogFile:       getEnv("LOG_FILE", "logs/app.log"),
-		TicketDir:     getEnv("TICKET_FILE", "tickets"),
+		TicketDir:     getEnv("TICKET_DIR", "tickets"), // ИЗМЕНЕНИЕ: ключ был TICKET_FILE, а должен быть TICKET_DIR
+	}
+
+	// Валидация обязательных полей
+	if cfg.DBUser == "" {
+		return nil, errors.New("DB_USER is not set in the environment")
+	}
+	if cfg.DBPassword == "" {
+		return nil, errors.New("DB_PASSWORD is not set in the environment")
+	}
+	if cfg.DBHost == "" {
+		return nil, errors.New("DB_HOST is not set in the environment")
+	}
+	if cfg.DBPort == "" {
+		return nil, errors.New("DB_PORT is not set in the environment")
+	}
+	if cfg.DBName == "" {
+		return nil, errors.New("DB_NAME is not set in the environment")
 	}
 
 	return cfg, nil
@@ -60,5 +80,6 @@ func getEnv(key string, defaultValue ...string) string {
 	if len(defaultValue) > 0 {
 		return defaultValue[0]
 	}
-	return " "
+	// ИЗМЕНЕНИЕ: Возвращаем пустую строку вместо пробела
+	return ""
 }
