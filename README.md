@@ -41,7 +41,8 @@
 git clone https://github.com/AlexanderMorozov1919/ElectronicQueue.git
 
 # Frontend
-git clone https://github.com/AlexanderMorozov1919/electronicqueue-frontend.git
+# Актуальный функционал реализован в ветке develop: git checkout develop
+git clone -b develop https://github.com/AlexanderMorozov1919/electronicqueue-frontend.git
 
 # Главный каталог
 cd ElectronicQueue

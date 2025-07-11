@@ -94,16 +94,7 @@ func (h *TicketHandler) Services(c *gin.Context) {
 		return
 	}
 
-	// Преобразуем к нужному виду: id, title, letter (id = service_id, title = name)
-	result := make([]map[string]string, 0, len(services))
-	for _, svc := range services {
-		result = append(result, map[string]string{
-			"ID":     svc.ServiceID,
-			"Name":   svc.Name,
-			"Letter": svc.Letter,
-		})
-	}
-	c.JSON(http.StatusOK, gin.H{"services": result})
+	c.JSON(http.StatusOK, gin.H{"services": services})
 }
 
 // Selection godoc
@@ -220,7 +211,16 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// Эндпоинт для скачивания изображения талона
+// DownloadTicket godoc
+// @Summary      Скачать изображение талона
+// @Description  Позволяет скачать изображение талона по номеру
+// @Tags         tickets
+// @Produce      png
+// @Param        ticket_number path string true "Номер талона"
+// @Success      200 {file} file "Изображение талона"
+// @Failure      400 {object} map[string]string "Ошибка: не передан ticket_number"
+// @Failure      404 {object} map[string]string "Талон не найден"
+// @Router       /api/tickets/download/{ticket_number} [get]
 func (h *TicketHandler) DownloadTicket(c *gin.Context) {
 	ticketNumber := c.Param("ticket_number")
 	if ticketNumber == "" {
@@ -243,7 +243,16 @@ func (h *TicketHandler) DownloadTicket(c *gin.Context) {
 	c.File(filePath)
 }
 
-// Эндпоинт для просмотра талона в браузере
+// ViewTicket godoc
+// @Summary      Просмотр изображения талона
+// @Description  Позволяет просмотреть изображение талона в браузере по номеру
+// @Tags         tickets
+// @Produce      png
+// @Param        ticket_number path string true "Номер талона"
+// @Success      200 {file} file "Изображение талона"
+// @Failure      400 {object} map[string]string "Ошибка: не передан ticket_number"
+// @Failure      404 {object} map[string]string "Талон не найден"
+// @Router       /api/tickets/view/{ticket_number} [get]
 func (h *TicketHandler) ViewTicket(c *gin.Context) {
 	ticketNumber := c.Param("ticket_number")
 	if ticketNumber == "" {

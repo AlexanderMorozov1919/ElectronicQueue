@@ -209,6 +209,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/tickets/download/{ticket_number}": {
+            "get": {
+                "description": "Позволяет скачать изображение талона по номеру",
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Скачать изображение талона",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Номер талона",
+                        "name": "ticket_number",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Изображение талона",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: не передан ticket_number",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Талон не найден",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/tickets/print/confirmation": {
             "post": {
                 "description": "Обрабатывает подтверждение действия (печать талона или получение электронного)",
@@ -358,6 +405,161 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/tickets/view/{ticket_number}": {
+            "get": {
+                "description": "Позволяет просмотреть изображение талона в браузере по номеру",
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Просмотр изображения талона",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Номер талона",
+                        "name": "ticket_number",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Изображение талона",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: не передан ticket_number",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Талон не найден",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/doctor/appointment/complete": {
+            "post": {
+                "description": "Завершает прием пациента по талону",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Завершить прием пациента",
+                "parameters": [
+                    {
+                        "description": "Данные для завершения приема",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CompleteAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointment completed successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "ticket_id is required or error message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/doctor/appointment/start": {
+            "post": {
+                "description": "Начинает прием пациента по талону",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Начать прием пациента",
+                "parameters": [
+                    {
+                        "description": "Данные для начала приема",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.StartAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointment started successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "ticket_id is required or error message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tickets": {
+            "get": {
+                "description": "Возвращает обновления по талонам (создание, изменение, удаление) через SSE",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "SSE обновления талонов",
+                "responses": {
+                    "200": {
+                        "description": "Обновление талона",
+                        "schema": {
+                            "$ref": "#/definitions/models.TicketResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -369,6 +571,18 @@ const docTemplate = `{
             "properties": {
                 "window_number": {
                     "type": "integer"
+                }
+            }
+        },
+        "handlers.CompleteAppointmentRequest": {
+            "type": "object",
+            "required": [
+                "ticket_id"
+            ],
+            "properties": {
+                "ticket_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
@@ -436,6 +650,18 @@ const docTemplate = `{
                 "service_name": {
                     "type": "string",
                     "example": "Записаться к врачу"
+                }
+            }
+        },
+        "handlers.StartAppointmentRequest": {
+            "type": "object",
+            "required": [
+                "ticket_id"
+            ],
+            "properties": {
+                "ticket_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
