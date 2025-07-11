@@ -19,9 +19,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
+
+	_ "ElectronicQueue/docs"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"gorm.io/gorm"
 )
 
+// @title Electronic Queue API
+// @version 1.0
+// @description API для системы электронной очереди
+// @host localhost:8080
+// @BasePath /
 func main() {
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
@@ -131,6 +142,10 @@ func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.En
 		doctor.POST("/start-appointment", doctorHandler.StartAppointment)
 		doctor.POST("/complete-appointment", doctorHandler.CompleteAppointment)
 	}
+
+	// Swagger endpoint
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	return r
 }
 
