@@ -1,5 +1,3 @@
--- Файл: D:\Projects\ElectronicQueue\migrations\000006_create_ticket_notify_trigger.up.sql
-
 CREATE OR REPLACE FUNCTION notify_ticket_change() RETURNS TRIGGER AS $$
 DECLARE
     payload JSON;
@@ -9,15 +7,13 @@ DECLARE
 BEGIN
     action := TG_OP;
 
-    -- Выбираем OLD для DELETE, NEW для остального
     IF (TG_OP = 'DELETE') THEN
         data_row := OLD;
     ELSE
         data_row := NEW;
     END IF;
-    
-    -- Формируем JSON с датами в формате ISO 8601 (RFC3339)
-    -- Это гарантирует совместимость с парсером Go
+
+    -- Собираем JSON
     payload := json_build_object(
         'action', lower(action),
         'data', json_build_object(
@@ -26,7 +22,9 @@ BEGIN
             'status', data_row.status,
             'service_type', data_row.service_type,
             'window_number', data_row.window_number,
-            'qr_code', data_row.qr_code,
+            
+            'qr_code', encode(data_row.qr_code, 'base64'), 
+            
             'created_at', to_char(data_row.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
             'called_at', to_char(data_row.called_at, 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
             'started_at', to_char(data_row.started_at, 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
