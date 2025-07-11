@@ -1,6 +1,9 @@
+// Файл: D:\Projects\ElectronicQueue\cmd\main.go
+
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,7 +21,7 @@ import (
 	"ElectronicQueue/internal/services"
 
 	"github.com/gin-gonic/gin"
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	_ "ElectronicQueue/docs"
 
@@ -50,25 +53,33 @@ func main() {
 	}()
 	log := logger.Default()
 
-	// Подключение к базе данных
+	// Подключение к базе данных через GORM
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
 		log.WithError(err).Fatal("Database connection failed")
 	}
 	log.WithField("dbname", cfg.DBName).Info("Database connected successfully")
 
-	// Инициализация listener для LISTEN/NOTIFY
-	listener, err := initListener(cfg, log)
+	// ИЗМЕНЕНИЕ: Инициализация listener'а через pgx
+	// Канал для передачи уведомлений из листенера в SSE хендлеры
+	notificationChannel := make(chan string)
+	// Контекст для управления жизненным циклом листенера
+	listenerCtx, cancelListener := context.WithCancel(context.Background())
+
+	// Запускаем сам листенер
+	pool, err := initListener(listenerCtx, cfg, log, notificationChannel)
 	if err != nil {
-		log.WithError(err).Error("Failed to initialize database listener")
+		log.WithError(err).Fatal("Failed to initialize database listener with pgx")
 	}
-	defer listener.Close()
 
 	// Настройка роутера
-	r := setupRouter(listener, db, cfg)
+	r := setupRouter(notificationChannel, db, cfg)
+
+	// Swagger endpoint
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Обработка сигналов завершения
-	handleGracefulShutdown(db, listener, log)
+	handleGracefulShutdown(db, pool, cancelListener, log)
 
 	fmt.Printf("Сервер запущен на порту: %s\n", cfg.BackendPort)
 	if err := r.Run(":" + cfg.BackendPort); err != nil {
@@ -76,75 +87,103 @@ func main() {
 	}
 }
 
-// initListener инициализирует LISTEN/NOTIFY для PostgreSQL
-func initListener(cfg *config.Config, log *logger.AsyncLogger) (*pq.Listener, error) {
+// initListener инициализирует LISTEN/NOTIFY через pgx
+func initListener(ctx context.Context, cfg *config.Config, log *logger.AsyncLogger, notifications chan<- string) (*pgxpool.Pool, error) {
 	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-		cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort, cfg.DBSSLMode,
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBSSLMode,
 	)
-	listener := pq.NewListener(dsn, 10*time.Second, time.Minute, func(ev pq.ListenerEventType, err error) {
+
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create connection pool: %w", err)
+	}
+
+	// Проверяем соединение
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("unable to ping database: %w", err)
+	}
+
+	// Запускаем горутину, которая будет слушать уведомления
+	go func() {
+		conn, err := pool.Acquire(ctx)
 		if err != nil {
-			log.WithError(err).WithField("event", ev).Error("Listener error")
-		} else {
-			log.WithField("event", ev).Info("Listener event")
+			log.WithError(err).Error("Failed to acquire connection from pool for listener")
+			return
 		}
-	})
-	if err := listener.Ping(); err != nil {
-		return nil, err
-	}
-	if err := listener.Listen("ticket_update"); err != nil {
-		return nil, err
-	}
-	log.Info("Listening to ticket_update channel")
-	return listener, nil
+		defer conn.Release()
+
+		_, err = conn.Exec(ctx, "LISTEN ticket_update")
+		if err != nil {
+			log.WithError(err).Error("Failed to execute LISTEN command")
+			return
+		}
+		log.Info("Listening to 'ticket_update' channel with pgx")
+
+		for {
+			notification, err := conn.Conn().WaitForNotification(ctx)
+			if err != nil {
+				// Если контекст отменен, это штатное завершение работы
+				if ctx.Err() != nil {
+					log.Info("Listener context cancelled, shutting down.")
+					return
+				}
+				log.WithError(err).Error("Error waiting for notification")
+				// Попытка переподключения или просто выход
+				time.Sleep(5 * time.Second) // Пауза перед повторной попыткой
+				continue
+			}
+			notifications <- notification.Payload
+		}
+	}()
+
+	return pool, nil
 }
 
+// setupRouter настраивает маршруты для приложения
 // setupRouter настраивает маршруты и middleware
-func setupRouter(listener *pq.Listener, db *gorm.DB, cfg *config.Config) *gin.Engine {
+func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.SetTrustedProxies(nil)
 	r.Use(logger.GinLogger())
-
-	// CORS middleware
 	r.Use(corsMiddleware())
-
-	// GIN middleware для логирования всех запросов
 	r.Use(requestLogger())
 
-	// SSE endpoint
-	r.GET("/tickets", sseHandler(listener))
+	r.GET("/tickets", sseHandler(notifications))
 
-	// Инициализация репозиториев, сервиса и хендлера для талонов
 	ticketRepo := repository.NewTicketRepository(db)
 	serviceRepo := repository.NewServiceRepository(db)
 	ticketService := services.NewTicketService(ticketRepo, serviceRepo)
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
-
-	// Инициализация сервиса и хендлера для врача
 	doctorService := services.NewDoctorService(ticketRepo)
 	doctorHandler := handlers.NewDoctorHandler(doctorService)
+	registrarHandler := handlers.NewRegistrarHandler(ticketService)
 
-	// Группа эндпоинтов для работы с талонами
 	tickets := r.Group("/api/tickets")
 	{
 		tickets.GET("/start", ticketHandler.StartPage)
 		tickets.GET("/services", ticketHandler.Services)
 		tickets.POST("/print/selection", ticketHandler.Selection)
 		tickets.POST("/print/confirmation", ticketHandler.Confirmation)
-		tickets.GET("/download/:ticket_number", ticketHandler.DownloadTicket) // скачивание талона
-		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)         // просмотр талона
+		tickets.GET("/download/:ticket_number", ticketHandler.DownloadTicket)
+		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)
 	}
 
-	// Группа эндпоинтов для работы врача
 	doctor := r.Group("/api/doctor")
 	{
 		doctor.POST("/start-appointment", doctorHandler.StartAppointment)
 		doctor.POST("/complete-appointment", doctorHandler.CompleteAppointment)
 	}
 
-	// Swagger endpoint
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// ИЗМЕНЕНИЕ: Подключение роутов для регистратора
+	registrar := r.Group("/api/registrar")
+	{
+		registrar.POST("/call-next", registrarHandler.CallNext)
+		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
+		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
+	}
 
 	return r
 }
@@ -171,33 +210,29 @@ func requestLogger() gin.HandlerFunc {
 	}
 }
 
-// sseHandler godoc
-// @Summary      SSE обновления талонов
-// @Description  Возвращает обновления по талонам (создание, изменение, удаление) через SSE
-// @Tags         tickets
-// @Produce      text/event-stream
-// @Success      200 {object} models.TicketResponse "Обновление талона"
-// @Router       /tickets [get]
-func sseHandler(listener *pq.Listener) gin.HandlerFunc {
+type NotificationPayload struct {
+	Action string        `json:"action"`
+	Data   models.Ticket `json:"data"`
+}
+
+// ИЗМЕНЕНИЕ: sseHandler теперь работает с каналом
+func sseHandler(notifications <-chan string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
 		log := logger.Default()
+
 		c.Stream(func(w io.Writer) bool {
 			select {
-			case n := <-listener.Notify:
-				if n == nil {
-					log.Info("Received nil notification")
+			case payloadStr := <-notifications:
+				log.WithField("payload", payloadStr).Info("Received notification from channel")
+				var payload NotificationPayload
+				if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
+					log.WithError(err).Error("Failed to unmarshal notification payload")
 					return true
 				}
-				log.WithField("payload", n.Extra).Info("Received notification")
-				var ticket models.Ticket
-				if err := json.Unmarshal([]byte(n.Extra), &ticket); err != nil {
-					log.WithError(err).Error("Failed to unmarshal notification")
-					return true
-				}
-				c.SSEvent("message", ticket.ToResponse())
+				c.SSEvent(payload.Action, payload.Data.ToResponse())
 				return true
 			case <-c.Request.Context().Done():
 				log.Info("Client disconnected (SSE)")
@@ -207,24 +242,36 @@ func sseHandler(listener *pq.Listener) gin.HandlerFunc {
 	}
 }
 
-// handleGracefulShutdown обрабатывает завершение работы приложения
-func handleGracefulShutdown(db *gorm.DB, listener *pq.Listener, log *logger.AsyncLogger) {
+// ИЗМЕНЕНИЕ: handleGracefulShutdown теперь принимает pgxpool.Pool и функцию отмены контекста
+func handleGracefulShutdown(db *gorm.DB, pool *pgxpool.Pool, cancel context.CancelFunc, log *logger.AsyncLogger) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
 	go func() {
 		<-sigChan
 		log.Info("Received shutdown signal, closing...")
+
+		// 1. Останавливаем листенер
+		cancel()
+
+		// 2. Закрываем пул pgx
+		if pool != nil {
+			pool.Close()
+			log.Info("pgx listener pool closed.")
+		}
+
+		// 3. Синхронизируем логи
 		if err := logger.Sync(); err != nil {
 			fmt.Printf("Ошибка синхронизации логов: %v\n", err)
 		}
+
+		// 4. Закрываем соединение GORM
 		if sqlDB, err := db.DB(); err == nil {
 			if err := sqlDB.Close(); err != nil {
 				fmt.Printf("Ошибка закрытия базы данных: %v\n", err)
 			}
 		}
-		if err := listener.Close(); err != nil {
-			log.WithError(err).Error("Ошибка при закрытии pq.Listener")
-		}
+
 		os.Exit(0)
 	}()
 }

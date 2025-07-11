@@ -358,26 +358,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/tickets": {
-            "get": {
-                "description": "Возвращает обновления по талонам (создание, изменение, удаление) через SSE",
-                "produces": [
-                    "text/event-stream"
-                ],
-                "tags": [
-                    "tickets"
-                ],
-                "summary": "SSE обновления талонов",
-                "responses": {
-                    "200": {
-                        "description": "Обновление талона",
-                        "schema": {
-                            "$ref": "#/definitions/models.TicketResponse"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -492,6 +472,9 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                },
+                "service_type": {
+                    "type": "string"
                 },
                 "started_at": {
                     "type": "string"

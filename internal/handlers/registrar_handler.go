@@ -4,7 +4,6 @@ import (
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/services"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -40,9 +39,20 @@ type CallNextRequest struct {
 // @Router       /api/registrar/call-next [post]
 func (h *RegistrarHandler) CallNext(c *gin.Context) {
 	var req CallNextRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный запрос: 'window_number' является обязательным положительным числом."})
-		return
+	if err := c.ShouldBind(&req); err != nil {
+		// Добавляем проверку, что если тело пустое, то можно использовать дефолтное значение
+		// Это позволяет вызывать эндпоинт без тела, например, из Swagger UI без заполнения
+		if req.WindowNumber == 0 {
+			req.WindowNumber = 1 // Или любое другое дефолтное окно
+		} else {
+			// Если же тело есть, но оно некорректное, возвращаем ошибку
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный запрос: 'window_number' должен быть числом."})
+			return
+		}
+	}
+
+	if req.WindowNumber <= 0 {
+		req.WindowNumber = 1 // Защита от нулевого или отрицательного значения
 	}
 
 	ticket, err := h.ticketService.CallNextTicket(req.WindowNumber)
@@ -52,14 +62,13 @@ func (h *RegistrarHandler) CallNext(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"message": "Очередь пуста"})
 			return
 		}
-		// Проверка на gorm.ErrRecordNotFound
 		if err == gorm.ErrRecordNotFound {
 			logger.Default().Info("CallNext handler: queue is empty (gorm)")
 			c.JSON(http.StatusNotFound, gin.H{"message": "Очередь пуста"})
 			return
 		}
 
-		logger.Default().Error(fmt.Sprintf("CallNext: failed to call ticket: %v", err))
+		logger.Default().WithError(err).Error("CallNext: failed to call ticket")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось вызвать талон"})
 		return
 	}
