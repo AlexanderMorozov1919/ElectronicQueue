@@ -26,13 +26,13 @@ func NewExportHandler(service *services.ExportService) *ExportHandler {
 // @Accept       json
 // @Produce      json
 // @Param        table path string true "Имя таблицы для экспорта (e.g., tickets, doctors)"
-// @Param        X-API-KEY header string true "Ключ API для доступа"
 // @Param        request body models.ExportRequest true "Фильтры и параметры пагинации"
 // @Success      200 {object} map[string]interface{} "Успешный ответ с данными"
 // @Failure      400 {object} map[string]string "Ошибка в запросе (неверная таблица, поле или оператор)"
 // @Failure      401 {object} map[string]string "Отсутствует ключ API"
 // @Failure      403 {object} map[string]string "Неверный ключ API"
 // @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Security     ApiKeyAuth
 // @Router       /api/export/{table} [post]
 func (h *ExportHandler) GetData(c *gin.Context) {
 	tableName := c.Param("table")
@@ -56,5 +56,119 @@ func (h *ExportHandler) GetData(c *gin.Context) {
 		"limit": req.Limit,
 		"total": total,
 		"data":  data,
+	})
+}
+
+// InsertData обрабатывает запрос на вставку данных в таблицу.
+// @Summary      Вставка данных в таблицу
+// @Description  Позволяет вставить одну или несколько записей в указанную таблицу.
+// @Tags         manage
+// @Accept       json
+// @Produce      json
+// @Param        table path string true "Имя таблицы для вставки (e.g., services, doctors)"
+// @Param        request body models.InsertRequest true "Данные для вставки"
+// @Success      201 {object} map[string]interface{} "Данные успешно вставлены"
+// @Failure      400 {object} map[string]string "Ошибка в запросе"
+// @Failure      401 {object} map[string]string "Отсутствует ключ API"
+// @Failure      403 {object} map[string]string "Неверный ключ API"
+// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Security     ApiKeyAuth
+// @Router       /api/manage/{table} [post]
+func (h *ExportHandler) InsertData(c *gin.Context) {
+	tableName := c.Param("table")
+
+	var req models.InsertRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Default().WithError(err).Warn("Insert handler: failed to bind JSON")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	rowsAffected, err := h.service.InsertData(tableName, req)
+	if err != nil {
+		logger.Default().WithError(err).Error("Insert handler: service returned an error")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":       "Data inserted successfully",
+		"rows_affected": rowsAffected,
+	})
+}
+
+// UpdateData обрабатывает запрос на обновление данных в таблице.
+// @Summary      Обновление данных в таблице
+// @Description  Позволяет обновить записи в указанной таблице по заданным фильтрам.
+// @Tags         manage
+// @Accept       json
+// @Produce      json
+// @Param        table path string true "Имя таблицы для обновления (e.g., tickets, doctors)"
+// @Param        request body models.UpdateRequest true "Данные и фильтры для обновления"
+// @Success      200 {object} map[string]interface{} "Данные успешно обновлены"
+// @Failure      400 {object} map[string]string "Ошибка в запросе (например, обновление без фильтров)"
+// @Failure      401 {object} map[string]string "Отсутствует ключ API"
+// @Failure      403 {object} map[string]string "Неверный ключ API"
+// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Security     ApiKeyAuth
+// @Router       /api/manage/{table} [patch]
+func (h *ExportHandler) UpdateData(c *gin.Context) {
+	tableName := c.Param("table")
+
+	var req models.UpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Default().WithError(err).Warn("Update handler: failed to bind JSON")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	rowsAffected, err := h.service.UpdateData(tableName, req)
+	if err != nil {
+		logger.Default().WithError(err).Error("Update handler: service returned an error")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Data updated successfully",
+		"rows_affected": rowsAffected,
+	})
+}
+
+// DeleteData обрабатывает запрос на удаление данных из таблицы.
+// @Summary      Удаление данных из таблицы
+// @Description  Позволяет удалить записи из указанной таблицы по заданным фильтрам.
+// @Tags         manage
+// @Accept       json
+// @Produce      json
+// @Param        table path string true "Имя таблицы для удаления (e.g., tickets, doctors)"
+// @Param        request body models.DeleteRequest true "Фильтры для удаления"
+// @Success      200 {object} map[string]interface{} "Данные успешно удалены"
+// @Failure      400 {object} map[string]string "Ошибка в запросе (например, удаление без фильтров)"
+// @Failure      401 {object} map[string]string "Отсутствует ключ API"
+// @Failure      403 {object} map[string]string "Неверный ключ API"
+// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Security     ApiKeyAuth
+// @Router       /api/manage/{table} [delete]
+func (h *ExportHandler) DeleteData(c *gin.Context) {
+	tableName := c.Param("table")
+
+	var req models.DeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Default().WithError(err).Warn("Delete handler: failed to bind JSON")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	rowsAffected, err := h.service.DeleteData(tableName, req)
+	if err != nil {
+		logger.Default().WithError(err).Error("Delete handler: service returned an error")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Data deleted successfully",
+		"rows_affected": rowsAffected,
 	})
 }

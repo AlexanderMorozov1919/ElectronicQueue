@@ -194,6 +194,13 @@ func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *
 		export.POST("/:table", exportHandler.GetData)
 	}
 
+	manage := r.Group("/api/manage").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
+	{
+		manage.POST("/:table", exportHandler.InsertData)
+		manage.PATCH("/:table", exportHandler.UpdateData)
+		manage.DELETE("/:table", exportHandler.DeleteData)
+	}
+
 	return r
 }
 
