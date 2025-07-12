@@ -178,7 +178,7 @@ if [[ "$GO_MODE" == "true" ]]; then
     exit 1
   fi
 
-  echo "Golang setup complete."
+  echo "Go setup complete."
 fi
 
 if [[ "$GO_DOCKER_MODE" == "true" ]]; then
@@ -216,7 +216,7 @@ if [[ "$GO_DOCKER_MODE" == "true" ]]; then
   docker compose down > /dev/null 2>&1
 
   rm -f migrations/fill_db.sql
-  echo "Docker setup complete."
+  echo "Go Docker setup complete."
 fi
 
 if [[ "$FLUTTER_MODE" == "true" ]]; then
@@ -292,7 +292,7 @@ EOF
     echo "Docker Compose build failed."
     exit 1
   fi
-  echo "Flutter frontend Docker setup complete."
+  echo "Flutter Docker setup complete."
   cd - > /dev/null
 fi
 
