@@ -201,6 +201,13 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 			}
 		}
 
+		// Удаление файла талона
+		if err := os.Remove(filePath); err != nil {
+			logger.Default().Error(fmt.Sprintf("Confirmation: failed to delete image file: %s | Error: %v", filePath, err))
+		} else {
+			logger.Default().Info(fmt.Sprintf("Confirmation: image file '%s' deleted successfully", filePath))
+		}
+
 		resp := ConfirmationResponse{
 			ServiceName:  serviceName,
 			TicketNumber: ticket.TicketNumber,
