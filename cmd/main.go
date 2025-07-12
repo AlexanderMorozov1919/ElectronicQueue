@@ -1,5 +1,3 @@
-// Файл: D:\Projects\ElectronicQueue\cmd\main.go
-
 package main
 
 import (
@@ -16,6 +14,7 @@ import (
 	"ElectronicQueue/internal/database"
 	"ElectronicQueue/internal/handlers"
 	"ElectronicQueue/internal/logger"
+	"ElectronicQueue/internal/middleware"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
@@ -36,6 +35,9 @@ import (
 // @description API для системы электронной очереди
 // @host localhost:8080
 // @BasePath /
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name X-API-KEY
 func main() {
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
@@ -60,7 +62,6 @@ func main() {
 	}
 	log.WithField("dbname", cfg.DBName).Info("Database connected successfully")
 
-	// ИЗМЕНЕНИЕ: Инициализация listener'а через pgx
 	// Канал для передачи уведомлений из листенера в SSE хендлеры
 	notificationChannel := make(chan string)
 	// Контекст для управления жизненным циклом листенера
@@ -124,14 +125,12 @@ func initListener(ctx context.Context, cfg *config.Config, log *logger.AsyncLogg
 		for {
 			notification, err := conn.Conn().WaitForNotification(ctx)
 			if err != nil {
-				// Если контекст отменен, это штатное завершение работы
 				if ctx.Err() != nil {
 					log.Info("Listener context cancelled, shutting down.")
 					return
 				}
 				log.WithError(err).Error("Error waiting for notification")
-				// Попытка переподключения или просто выход
-				time.Sleep(5 * time.Second) // Пауза перед повторной попыткой
+				time.Sleep(5 * time.Second)
 				continue
 			}
 			notifications <- notification.Payload
@@ -141,14 +140,13 @@ func initListener(ctx context.Context, cfg *config.Config, log *logger.AsyncLogg
 	return pool, nil
 }
 
-// setupRouter настраивает маршруты для приложения
 // setupRouter настраивает маршруты и middleware
 func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.SetTrustedProxies(nil)
 	r.Use(logger.GinLogger())
-	r.Use(corsMiddleware())
+	r.Use(middleware.CorsMiddleware())
 	r.Use(requestLogger())
 
 	r.GET("/tickets", sseHandler(notifications))
@@ -177,7 +175,6 @@ func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *
 		doctor.POST("/complete-appointment", doctorHandler.CompleteAppointment)
 	}
 
-	// ИЗМЕНЕНИЕ: Подключение роутов для регистратора
 	registrar := r.Group("/api/registrar")
 	{
 		registrar.POST("/call-next", registrarHandler.CallNext)
@@ -185,21 +182,19 @@ func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *
 		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 	}
 
-	return r
-}
+	databaseRepo := repository.NewDatabaseRepository(db)
+	databaseService := services.NewDatabaseService(databaseRepo)
+	databaseHandler := handlers.NewDatabaseHandler(databaseService)
 
-// corsMiddleware возвращает middleware для CORS
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
+	dbAPI := r.Group("/api/database").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
+	{
+		dbAPI.POST("/:table/select", databaseHandler.GetData)
+		dbAPI.POST("/:table/insert", databaseHandler.InsertData)
+		dbAPI.PATCH("/:table/update", databaseHandler.UpdateData)
+		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
 	}
+
+	return r
 }
 
 // requestLogger логирует все HTTP-запросы

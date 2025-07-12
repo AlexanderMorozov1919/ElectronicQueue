@@ -109,7 +109,12 @@ fi
 
 # Run Go backend
 if [[ "$RUN_GO" == "true" ]]; then
-  echo "Starting Go backend (main.exe)..."
+  echo "Updating Swagger documentation..."
+  if ! swag init --dir ./cmd,./internal --output ./docs; then
+    echo "Failed to update Swagger documentation."
+    exit 1
+  fi
+  echo "Starting Go backend..."
   if (cd "$(dirname "$0")" && go run cmd/main.go &); then
     echo "Go backend started."
   else

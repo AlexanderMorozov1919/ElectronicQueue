@@ -1,9 +1,7 @@
-// Файл: D:\Projects\ElectronicQueue\internal\config\config.go
-
 package config
 
 import (
-	"errors" // Импортируем пакет для создания ошибок
+	"errors"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -12,24 +10,25 @@ import (
 
 // Config содержит переменные среды
 type Config struct {
-	DBUser        string
-	DBPassword    string
-	DBHost        string
-	DBPort        string
-	DBName        string
-	DBSSLMode     string
-	BackendPort   string
-	JWTSecret     string
-	JWTExpiration string
-	TicketMode    string
-	TicketHeight  string
-	LogFile       string
-	TicketDir     string
+	DBUser         string
+	DBPassword     string
+	DBHost         string
+	DBPort         string
+	DBName         string
+	DBSSLMode      string
+	BackendPort    string
+	JWTSecret      string
+	JWTExpiration  string
+	TicketMode     string
+	TicketHeight   string
+	LogFile        string
+	TicketDir      string
+	InternalAPIKey string
+	ExternalAPIKey string
 }
 
 // LoadConfig загружает переменные среды из .env и возвращает структуру Config
 func LoadConfig() (*Config, error) {
-	// Инициализация логгера
 	log := logrus.New()
 
 	if err := godotenv.Load(); err != nil {
@@ -37,19 +36,21 @@ func LoadConfig() (*Config, error) {
 	}
 
 	cfg := &Config{
-		DBUser:        getEnv("DB_USER"),
-		DBPassword:    getEnv("DB_PASSWORD"),
-		DBHost:        getEnv("DB_HOST"),
-		DBPort:        getEnv("DB_PORT"),
-		DBName:        getEnv("DB_NAME"),
-		DBSSLMode:     getEnv("DB_SSLMODE", "disable"),
-		BackendPort:   getEnv("BACKEND_PORT", "8080"),
-		JWTSecret:     getEnv("JWT_SECRET"),
-		JWTExpiration: getEnv("JWT_EXPIRATION", "24h"),
-		TicketMode:    getEnv("TICKET_MODE", "b/w"),
-		TicketHeight:  getEnv("TICKET_HEIGHT", "800"),
-		LogFile:       getEnv("LOG_FILE", "logs/app.log"),
-		TicketDir:     getEnv("TICKET_DIR", "tickets"), // ИЗМЕНЕНИЕ: ключ был TICKET_FILE, а должен быть TICKET_DIR
+		DBUser:         getEnv("DB_USER"),
+		DBPassword:     getEnv("DB_PASSWORD"),
+		DBHost:         getEnv("DB_HOST"),
+		DBPort:         getEnv("DB_PORT"),
+		DBName:         getEnv("DB_NAME"),
+		DBSSLMode:      getEnv("DB_SSLMODE", "disable"),
+		BackendPort:    getEnv("BACKEND_PORT", "8080"),
+		JWTSecret:      getEnv("JWT_SECRET"),
+		JWTExpiration:  getEnv("JWT_EXPIRATION", "24h"),
+		TicketMode:     getEnv("TICKET_MODE", "b/w"),
+		TicketHeight:   getEnv("TICKET_HEIGHT", "800"),
+		LogFile:        getEnv("LOG_FILE", "logs/app.log"),
+		TicketDir:      getEnv("TICKET_DIR", "tickets"),
+		InternalAPIKey: getEnv("INTERNAL_API_KEY"),
+		ExternalAPIKey: getEnv("EXTERNAL_API_KEY"),
 	}
 
 	// Валидация обязательных полей
@@ -80,6 +81,5 @@ func getEnv(key string, defaultValue ...string) string {
 	if len(defaultValue) > 0 {
 		return defaultValue[0]
 	}
-	// ИЗМЕНЕНИЕ: Возвращаем пустую строку вместо пробела
 	return ""
 }

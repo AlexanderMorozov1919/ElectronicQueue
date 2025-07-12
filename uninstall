@@ -17,7 +17,7 @@ cd "$(dirname "$0")/../electronicqueue-frontend" && docker compose down > /dev/n
 cd - > /dev/null > /dev/null 2>&1
 
 usage() {
-  echo "Usage: $0 [go] [go-docker] [flutter] [flutter-docker] [docker]"
+  echo "Usage: $0 [go] [go-docker] [flutter] [flutter-docker] [local] [docker]"
   echo
   echo "Key descriptions:"
   echo "  go                   - Removes PostgreSQL database and Go build artifacts"
