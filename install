@@ -13,18 +13,34 @@ set +o allexport
 : "${DB_NAME?Need to set DB_NAME}"
 : "${DB_SSLMODE:=disable}"
 
-# Пути до main файлов Flutter frontend
-IFS=',' read -ra FLUTTER_MAIN_FILES <<< "$FRONTEND_MAINS"
-
+# Автоматический поиск main файлов Flutter frontend
 rm -f migrations/fill_db.sql
+cd "$(dirname "$0")/../electronicqueue-frontend/lib" || { echo "lib directory not found!"; exit 1; }
+mapfile -t FLUTTER_MAIN_FILES < <(find . -maxdepth 2 -mindepth 2 -type f -name '*.dart' | sed 's|^./||')
+cd - > /dev/null 2>&1
 cd "$(dirname "$0")" && docker compose down > /dev/null 2>&1
 cd "$(dirname "$0")/../electronicqueue-frontend" && docker compose down > /dev/null 2>&1
 cd - > /dev/null > /dev/null 2>&1
 
 # --- Аргументы ---
-if [[ $# -eq 0 ]]; then
-  echo "Usage: $0 [--local] [--docker] [--go] [--go-docker] [--flutter] [--flutter-docker] [--fill] [--rewrite]"
+
+usage() {
+  echo "Usage: $0 [local] [docker] [go] [go-docker] [flutter] [flutter-docker] [fill] [rewrite]"
+  echo
+  echo "Key descriptions:"
+  echo "  go               - Build and setup Go backend"
+  echo "  go-docker        - Build and setup Go backend in Docker"
+  echo "  flutter          - Build and setup Flutter frontend"
+  echo "  flutter-docker   - Build and setup Flutter frontend in Docker"
+  echo "  local            - Local build of Go and Flutter"
+  echo "  docker           - Build Go and Flutter in Docker"
+  echo "  fill             - Fill the database with test data"
+  echo "  rewrite          - Recreate the database"
   exit 1
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
 fi
 GO_MODE=""
 FLUTTER_MODE=""
@@ -34,35 +50,34 @@ FILL=""
 REWRITE=""
 for arg in "$@"; do
   case $arg in
-    --go)
+    go)
       GO_MODE="true"
       ;;
-    --go-docker)
+    go-docker)
       GO_DOCKER_MODE="true"
       ;;
-    --flutter)
+    flutter)
       FLUTTER_MODE="true"
       ;;
-    --flutter-docker)
+    flutter-docker)
       FLUTTER_DOCKER_MODE="true"
       ;;
-    --fill)
+    fill)
       FILL="true"
       ;;
-    --rewrite)
+    rewrite)
       REWRITE="true"
       ;;
-    --local)
+    local)
       GO_MODE="true"
       FLUTTER_MODE="true"
       ;;
-    --docker)
+    docker)
       GO_DOCKER_MODE="true"
       FLUTTER_DOCKER_MODE="true"
       ;;
     *)
-      echo "Usage: $0 [--local] [--docker] [--go] [--go-docker] [--flutter] [--flutter-docker] [--fill] [--rewrite]"
-      exit 1
+      usage
       ;;
   esac
 done
