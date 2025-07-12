@@ -86,15 +86,6 @@ definitions:
     required:
     - filters
     type: object
-  models.ExportRequest:
-    properties:
-      filters:
-        $ref: '#/definitions/models.Filters'
-      limit:
-        type: integer
-      page:
-        type: integer
-    type: object
   models.FilterCondition:
     properties:
       field:
@@ -111,6 +102,15 @@ definitions:
         type: array
       logical_operator:
         type: string
+    type: object
+  models.GetDataRequest:
+    properties:
+      filters:
+        $ref: '#/definitions/models.Filters'
+      limit:
+        type: integer
+      page:
+        type: integer
     type: object
   models.InsertRequest:
     properties:
@@ -187,62 +187,7 @@ info:
   title: Electronic Queue API
   version: "1.0"
 paths:
-  /api/export/{table}:
-    post:
-      consumes:
-      - application/json
-      description: Позволяет получить данные из указанной таблицы с фильтрацией и
-        пагинацией.
-      parameters:
-      - description: Имя таблицы для экспорта (e.g., tickets, doctors)
-        in: path
-        name: table
-        required: true
-        type: string
-      - description: Фильтры и параметры пагинации
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.ExportRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Успешный ответ с данными
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Ошибка в запросе (неверная таблица, поле или оператор)
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Отсутствует ключ API
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Неверный ключ API
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Экспорт данных из таблицы
-      tags:
-      - export
-  /api/manage/{table}:
+  /api/database/{table}/delete:
     delete:
       consumes:
       - application/json
@@ -295,60 +240,8 @@ paths:
       - ApiKeyAuth: []
       summary: Удаление данных из таблицы
       tags:
-      - manage
-    patch:
-      consumes:
-      - application/json
-      description: Позволяет обновить записи в указанной таблице по заданным фильтрам.
-      parameters:
-      - description: Имя таблицы для обновления (e.g., tickets, doctors)
-        in: path
-        name: table
-        required: true
-        type: string
-      - description: Данные и фильтры для обновления
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.UpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Данные успешно обновлены
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Ошибка в запросе (например, обновление без фильтров)
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Отсутствует ключ API
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Неверный ключ API
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Обновление данных в таблице
-      tags:
-      - manage
+      - database
+  /api/database/{table}/insert:
     post:
       consumes:
       - application/json
@@ -401,7 +294,116 @@ paths:
       - ApiKeyAuth: []
       summary: Вставка данных в таблицу
       tags:
-      - manage
+      - database
+  /api/database/{table}/select:
+    post:
+      consumes:
+      - application/json
+      description: Позволяет получить данные из указанной таблицы с фильтрацией и
+        пагинацией.
+      parameters:
+      - description: Имя таблицы для получения данных (e.g., tickets, doctors)
+        in: path
+        name: table
+        required: true
+        type: string
+      - description: Фильтры и параметры пагинации
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.GetDataRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с данными
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка в запросе (неверная таблица, поле или оператор)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Отсутствует ключ API
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Неверный ключ API
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получение данных из таблицы
+      tags:
+      - database
+  /api/database/{table}/update:
+    patch:
+      consumes:
+      - application/json
+      description: Позволяет обновить записи в указанной таблице по заданным фильтрам.
+      parameters:
+      - description: Имя таблицы для обновления (e.g., tickets, doctors)
+        in: path
+        name: table
+        required: true
+        type: string
+      - description: Данные и фильтры для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные успешно обновлены
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка в запросе (например, обновление без фильтров)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Отсутствует ключ API
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Неверный ключ API
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Обновление данных в таблице
+      tags:
+      - database
   /api/registrar/call-next:
     post:
       consumes:

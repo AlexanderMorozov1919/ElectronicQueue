@@ -1,7 +1,7 @@
 package models
 
-// ExportRequest определяет тело запроса для экспорта данных.
-type ExportRequest struct {
+// GetDataRequest определяет тело запроса для получения данных.
+type GetDataRequest struct {
 	Page    int     `json:"page"`
 	Limit   int     `json:"limit"`
 	Filters Filters `json:"filters"`

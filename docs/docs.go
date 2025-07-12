@@ -15,171 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/export/{table}": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Позволяет получить данные из указанной таблицы с фильтрацией и пагинацией.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "export"
-                ],
-                "summary": "Экспорт данных из таблицы",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Имя таблицы для экспорта (e.g., tickets, doctors)",
-                        "name": "table",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Фильтры и параметры пагинации",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.ExportRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ с данными",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка в запросе (неверная таблица, поле или оператор)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Отсутствует ключ API",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Неверный ключ API",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/manage/{table}": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Позволяет вставить одну или несколько записей в указанную таблицу.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "manage"
-                ],
-                "summary": "Вставка данных в таблицу",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Имя таблицы для вставки (e.g., services, doctors)",
-                        "name": "table",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Данные для вставки",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.InsertRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Данные успешно вставлены",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка в запросе",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Отсутствует ключ API",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Неверный ключ API",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
+        "/api/database/{table}/delete": {
             "delete": {
                 "security": [
                     {
@@ -194,7 +30,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "manage"
+                    "database"
                 ],
                 "summary": "Удаление данных из таблицы",
                 "parameters": [
@@ -260,7 +96,175 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
+            }
+        },
+        "/api/database/{table}/insert": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Позволяет вставить одну или несколько записей в указанную таблицу.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "database"
+                ],
+                "summary": "Вставка данных в таблицу",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Имя таблицы для вставки (e.g., services, doctors)",
+                        "name": "table",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные для вставки",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.InsertRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Данные успешно вставлены",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка в запросе",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Отсутствует ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Неверный ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/database/{table}/select": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Позволяет получить данные из указанной таблицы с фильтрацией и пагинацией.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "database"
+                ],
+                "summary": "Получение данных из таблицы",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Имя таблицы для получения данных (e.g., tickets, doctors)",
+                        "name": "table",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Фильтры и параметры пагинации",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.GetDataRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ с данными",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка в запросе (неверная таблица, поле или оператор)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Отсутствует ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Неверный ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/database/{table}/update": {
             "patch": {
                 "security": [
                     {
@@ -275,7 +279,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "manage"
+                    "database"
                 ],
                 "summary": "Обновление данных в таблице",
                 "parameters": [
@@ -996,20 +1000,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.ExportRequest": {
-            "type": "object",
-            "properties": {
-                "filters": {
-                    "$ref": "#/definitions/models.Filters"
-                },
-                "limit": {
-                    "type": "integer"
-                },
-                "page": {
-                    "type": "integer"
-                }
-            }
-        },
         "models.FilterCondition": {
             "type": "object",
             "properties": {
@@ -1033,6 +1023,20 @@ const docTemplate = `{
                 },
                 "logical_operator": {
                     "type": "string"
+                }
+            }
+        },
+        "models.GetDataRequest": {
+            "type": "object",
+            "properties": {
+                "filters": {
+                    "$ref": "#/definitions/models.Filters"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
                 }
             }
         },

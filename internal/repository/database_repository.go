@@ -9,8 +9,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// ExportRepository определяет методы для экспорта данных.
-type ExportRepository interface {
+// DatabaseRepository определяет методы для работы с данными таблиц.
+type DatabaseRepository interface {
 	GetTableColumns(tableName string) ([]string, error)
 	GetData(tableName string, page, limit int, filters models.Filters) ([]map[string]interface{}, int64, error)
 	InsertData(tableName string, data interface{}) (int64, error)
@@ -18,17 +18,18 @@ type ExportRepository interface {
 	DeleteData(tableName string, filters models.Filters) (int64, error)
 }
 
-type exportRepo struct {
+type databaseRepo struct {
 	db *gorm.DB
 }
 
-// NewExportRepository создает новый экземпляр ExportRepository.
-func NewExportRepository(db *gorm.DB) ExportRepository {
-	return &exportRepo{db: db}
+// NewDatabaseRepository создает новый экземпляр DatabaseRepository.
+func NewDatabaseRepository(db *gorm.DB) DatabaseRepository {
+	return &databaseRepo{db: db}
 }
 
-// applyFilters применяет условия фильтрации к запросу GORM.
-func (r *exportRepo) applyFilters(tx *gorm.DB, filters models.Filters) (*gorm.DB, error) {
+// ИСМРАВЛЕНО: Эта функция была ошибочно названа GetTableColumns.
+// Теперь это правильный метод applyFilters.
+func (r *databaseRepo) applyFilters(tx *gorm.DB, filters models.Filters) (*gorm.DB, error) {
 	if len(filters.Conditions) == 0 {
 		return tx, nil
 	}
@@ -66,7 +67,8 @@ func (r *exportRepo) applyFilters(tx *gorm.DB, filters models.Filters) (*gorm.DB
 }
 
 // GetTableColumns получает список столбцов для указанной таблицы из схемы БД.
-func (r *exportRepo) GetTableColumns(tableName string) ([]string, error) {
+// ИСПРАВЛЕНО: Оставлена единственная, правильная реализация этого метода.
+func (r *databaseRepo) GetTableColumns(tableName string) ([]string, error) {
 	var columns []string
 	err := r.db.Raw(`
 		SELECT column_name
@@ -87,7 +89,7 @@ func (r *exportRepo) GetTableColumns(tableName string) ([]string, error) {
 }
 
 // GetData строит и выполняет динамический запрос к БД.
-func (r *exportRepo) GetData(tableName string, page, limit int, filters models.Filters) ([]map[string]interface{}, int64, error) {
+func (r *databaseRepo) GetData(tableName string, page, limit int, filters models.Filters) ([]map[string]interface{}, int64, error) {
 	tx := r.db.Table(tableName)
 
 	// Построение WHERE-условия
@@ -116,7 +118,7 @@ func (r *exportRepo) GetData(tableName string, page, limit int, filters models.F
 }
 
 // InsertData вставляет одну или несколько записей в таблицу.
-func (r *exportRepo) InsertData(tableName string, data interface{}) (int64, error) {
+func (r *databaseRepo) InsertData(tableName string, data interface{}) (int64, error) {
 	// Начинаем транзакцию
 	tx := r.db.Begin()
 	if tx.Error != nil {
@@ -167,7 +169,7 @@ func (r *exportRepo) InsertData(tableName string, data interface{}) (int64, erro
 }
 
 // UpdateData обновляет записи в таблице по заданным условиям.
-func (r *exportRepo) UpdateData(tableName string, data map[string]interface{}, filters models.Filters) (int64, error) {
+func (r *databaseRepo) UpdateData(tableName string, data map[string]interface{}, filters models.Filters) (int64, error) {
 	tx := r.db.Table(tableName)
 
 	tx, err := r.applyFilters(tx, filters)
@@ -183,7 +185,7 @@ func (r *exportRepo) UpdateData(tableName string, data map[string]interface{}, f
 }
 
 // DeleteData удаляет записи из таблицы по заданным условиям.
-func (r *exportRepo) DeleteData(tableName string, filters models.Filters) (int64, error) {
+func (r *databaseRepo) DeleteData(tableName string, filters models.Filters) (int64, error) {
 	tx := r.db.Table(tableName)
 
 	tx, err := r.applyFilters(tx, filters)

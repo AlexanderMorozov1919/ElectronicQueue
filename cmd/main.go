@@ -1,5 +1,3 @@
-// Файл: D:\Projects\ElectronicQueue\cmd\main.go
-
 package main
 
 import (
@@ -142,14 +140,13 @@ func initListener(ctx context.Context, cfg *config.Config, log *logger.AsyncLogg
 	return pool, nil
 }
 
-// setupRouter настраивает маршруты для приложения
 // setupRouter настраивает маршруты и middleware
 func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.SetTrustedProxies(nil)
 	r.Use(logger.GinLogger())
-	r.Use(corsMiddleware())
+	r.Use(middleware.CorsMiddleware())
 	r.Use(requestLogger())
 
 	r.GET("/tickets", sseHandler(notifications))
@@ -185,37 +182,19 @@ func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *
 		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 	}
 
-	exportRepo := repository.NewExportRepository(db)
-	exportService := services.NewExportService(exportRepo)
-	exportHandler := handlers.NewExportHandler(exportService)
+	databaseRepo := repository.NewDatabaseRepository(db)
+	databaseService := services.NewDatabaseService(databaseRepo)
+	databaseHandler := handlers.NewDatabaseHandler(databaseService)
 
-	export := r.Group("/api/export").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
+	dbAPI := r.Group("/api/database").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
 	{
-		export.POST("/:table", exportHandler.GetData)
-	}
-
-	manage := r.Group("/api/manage").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
-	{
-		manage.POST("/:table", exportHandler.InsertData)
-		manage.PATCH("/:table", exportHandler.UpdateData)
-		manage.DELETE("/:table", exportHandler.DeleteData)
+		dbAPI.POST("/:table/select", databaseHandler.GetData)
+		dbAPI.POST("/:table/insert", databaseHandler.InsertData)
+		dbAPI.PATCH("/:table/update", databaseHandler.UpdateData)
+		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
 	}
 
 	return r
-}
-
-// corsMiddleware возвращает middleware для CORS
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	}
 }
 
 // requestLogger логирует все HTTP-запросы
