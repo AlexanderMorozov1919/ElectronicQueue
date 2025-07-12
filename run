@@ -5,8 +5,10 @@ set -o allexport
 source ./.env
 set +o allexport
 
-# Пути до main файлов Flutter frontend
-IFS=',' read -ra FLUTTER_MAIN_FILES <<< "$FRONTEND_MAINS"
+# Автоматический поиск main файлов Flutter frontend
+cd "$(dirname "$0")/../electronicqueue-frontend/lib" || { echo "lib directory not found!"; exit 1; }
+mapfile -t FLUTTER_MAIN_FILES < <(find . -maxdepth 2 -mindepth 2 -type f -name '*.dart' | sed 's|^./||')
+cd - > /dev/null 2>&1
 cd "$(dirname "$0")" && docker compose down > /dev/null 2>&1
 cd "$(dirname "$0")/../electronicqueue-frontend" && docker compose down > /dev/null 2>&1
 cd - > /dev/null > /dev/null 2>&1
@@ -45,9 +47,21 @@ kill_by_port() {
   fi
 }
 
-if [[ $# -eq 0 ]]; then
-  echo "Usage: $0 [--go|--go-docker] [--flutter|--flutter-docker] [--local|--docker]"
+usage() {
+  echo "Usage: $0 [go|go-docker] [flutter|flutter-docker] [local|docker]"
+  echo
+  echo "Key descriptions:"
+  echo "  go               - Run Go backend"
+  echo "  go-docker        - Run Go backend in Docker"
+  echo "  flutter          - Run Flutter frontend"
+  echo "  flutter-docker   - Run Flutter frontend in Docker"
+  echo "  local            - Run Go and Flutter locally"
+  echo "  docker           - Run Go and Flutter in Docker"
   exit 1
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
 fi
 RUN_GO=""
 RUN_GO_DOCKER=""
@@ -55,29 +69,28 @@ RUN_FLUTTER=""
 RUN_FLUTTER_DOCKER=""
 for arg in "$@"; do
   case $arg in
-    --go)
+    go)
       RUN_GO="true"
       ;;
-    --go-docker)
+    go-docker)
       RUN_GO_DOCKER="true"
       ;;
-    --flutter)
+    flutter)
       RUN_FLUTTER="true"
       ;;
-    --flutter-docker)
+    flutter-docker)
       RUN_FLUTTER_DOCKER="true"
       ;;
-    --local)
+    local)
       RUN_GO="true"
       RUN_FLUTTER="true"
       ;;
-    --docker)
+    docker)
       RUN_GO_DOCKER="true"
       RUN_FLUTTER_DOCKER="true"
       ;;
     *)
-      echo "Usage: $0 [--go|--go-docker] [--flutter|--flutter-docker] [--local|--docker]"
-      exit 1
+      usage
       ;;
   esac
 done

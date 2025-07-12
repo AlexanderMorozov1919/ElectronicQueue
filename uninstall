@@ -16,40 +16,58 @@ cd "$(dirname "$0")" && docker compose down > /dev/null 2>&1
 cd "$(dirname "$0")/../electronicqueue-frontend" && docker compose down > /dev/null 2>&1
 cd - > /dev/null > /dev/null 2>&1
 
+usage() {
+  echo "Usage: $0 [go] [flutter] [go-docker] [go-docker-hard] [flutter-docker-hard] [docker-hard]"
+  echo
+  echo "Key descriptions:"
+  echo "  go                   - Removes PostgreSQL database and Go build artifacts"
+  echo "  flutter              - Cleans the Flutter project"
+  echo "  go-docker            - Stops and removes backend containers, removes database volume"
+  echo "  go-docker-hard       - Full backend cleanup: containers, images, volume, orphans"
+  echo "  flutter-docker-hard  - Full frontend cleanup: containers, images, volume, orphans"
+  echo "  docker-hard          - Full backend and frontend cleanup in Docker"
+  exit 1
+}
+
 # --- Аргументы ---
 if [[ $# -eq 0 ]]; then
-  echo "Usage: $0 [--go] [--flutter] [--go-docker] [--go-docker-hard] [--flutter-docker-hard] [--docker-hard]"
-  exit 1
+  usage
 fi
-MODE=""
+GO=""
+FLUTTER=""
+GO_DOCKER=""
+GO_DOCKER_HARD=""
+FLUTTER_DOCKER_HARD=""
+DOCKER_GARD=""
 for arg in "$@"; do
   case $arg in
-    --go)
-      MODE="go"
+    go)
+      GO="go"
       ;;
-    --flutter)
-      MODE="flutter"
+    flutter)
+      FLUTTER="flutter"
       ;;
-    --go-docker)
-      MODE="go-docker"
+    go-docker)
+      GO_DOCKER="go-docker"
       ;;
-    --go-docker-hard)
-      MODE="go-docker-hard"
+    go-docker-hard)
+      GO_DOCKER_HARD="go-docker-hard"
       ;;
-    --flutter-docker-hard)
-      MODE="flutter-docker-hard"
+    flutter-docker-hard)
+      FLUTTER_DOCKER_HARD="flutter-docker-hard"
       ;;
-    --docker-hard)
-      MODE="docker-hard"
+    docker-hard)
+      GO_DOCKER_HARD="go-docker-hard"
+      FLUTTER_DOCKER_HARD="flutter-docker-hard"
       ;;
     *)
-      echo "Usage: $0 [--go] [--flutter] [--go-docker] [--go-docker-hard] [--flutter-docker-hard] [--docker-hard]"
+      echo "Usage: $0 [go] [flutter] [go-docker] [go-docker-hard] [flutter-docker-hard] [docker-hard]"
       exit 1
       ;;
   esac
 done
 
-if [[ "$MODE" == "go" ]]; then
+if [[ "$GO" == "go" ]]; then
   # Удаляем базу данных
   echo "Dropping database '$DB_NAME'..."
   if PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"; then
@@ -71,7 +89,7 @@ if [[ "$MODE" == "go" ]]; then
   echo "Uninstall complete."
 fi
 
-if [[ "$MODE" == "flutter" ]]; then
+if [[ "$FLUTTER" == "flutter" ]]; then
   cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
   echo "Cleaning Flutter project..."
   if flutter clean; then
@@ -83,7 +101,7 @@ if [[ "$MODE" == "flutter" ]]; then
   cd - > /dev/null
 fi
 
-if [[ "$MODE" == "go-docker" ]]; then
+if [[ "$GO_DOCKER" == "go-docker" ]]; then
   echo "Stopping and removing containers, removing volume..."
   if ! docker info > /dev/null 2>&1; then
     echo "Make sure that Docker Engine is running."
@@ -102,7 +120,7 @@ if [[ "$MODE" == "go-docker" ]]; then
   fi
 fi
 
-if [[ "$MODE" == "go-docker-hard" ]]; then
+if [[ "$GO_DOCKER_HARD" == "go-docker-hard" ]]; then
   echo "Full cleanup: containers, images, volumes, orphans..."
   if ! docker info > /dev/null 2>&1; then
     echo "Make sure that Docker Engine is running. Try restarting Docker Desktop."
@@ -116,7 +134,7 @@ if [[ "$MODE" == "go-docker-hard" ]]; then
   fi
 fi
 
-if [[ "$MODE" == "flutter-docker-hard" ]]; then
+if [[ "$FLUTTER_DOCKER_HARD" == "flutter-docker-hard" ]]; then
   echo "Full cleanup for Flutter: containers, images, volumes, orphans..."
   if ! docker info > /dev/null 2>&1; then
     echo "Make sure that Docker Engine is running. Try restarting Docker Desktop."
@@ -130,12 +148,6 @@ if [[ "$MODE" == "flutter-docker-hard" ]]; then
     exit 1
   fi
   cd - > /dev/null
-fi
-
-if [[ "$MODE" == "docker-hard" ]]; then
-  "$0" --go-docker-hard || exit 1
-  "$0" --flutter-docker-hard || exit 1
-  echo "Full docker cleanup for both backend and frontend complete."
 fi
 
 exit 0

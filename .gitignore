@@ -37,6 +37,7 @@ temp/
 *.out
 go.work
 go.work.sum
+go.sum
 # Бинарные файлы Go
 main.exe
 main
