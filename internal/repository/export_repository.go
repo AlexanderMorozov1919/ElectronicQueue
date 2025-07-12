@@ -11,6 +11,7 @@ import (
 // ExportRepository определяет методы для экспорта данных.
 type ExportRepository interface {
 	GetData(tableName string, page, limit int, filters models.Filters) ([]map[string]interface{}, int64, error)
+	GetTableColumns(tableName string) ([]string, error)
 }
 
 type exportRepo struct {
@@ -20,6 +21,27 @@ type exportRepo struct {
 // NewExportRepository создает новый экземпляр ExportRepository.
 func NewExportRepository(db *gorm.DB) ExportRepository {
 	return &exportRepo{db: db}
+}
+
+// GetTableColumns получает список столбцов для указанной таблицы из схемы БД.
+func (r *exportRepo) GetTableColumns(tableName string) ([]string, error) {
+	var columns []string
+	err := r.db.Raw(`
+		SELECT column_name
+		FROM information_schema.columns
+		WHERE table_schema = 'public' AND table_name = ?`,
+		tableName,
+	).Scan(&columns).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("не удалось получить столбцы для таблицы %s: %w", tableName, err)
+	}
+
+	if len(columns) == 0 {
+		return nil, fmt.Errorf("таблица '%s' не найдена или не имеет столбцов", tableName)
+	}
+
+	return columns, nil
 }
 
 // GetData строит и выполняет динамический запрос к БД.
@@ -33,7 +55,6 @@ func (r *exportRepo) GetData(tableName string, page, limit int, filters models.F
 
 		for _, cond := range filters.Conditions {
 			var queryPart string
-			// GORM автоматически экранирует имена полей.
 			if strings.ToUpper(cond.Operator) == "IN" {
 				queryPart = fmt.Sprintf("%s IN (?)", cond.Field)
 			} else {

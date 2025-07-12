@@ -8,16 +8,6 @@ import (
 	"strings"
 )
 
-// allowedTables определяет, какие таблицы и поля доступны для экспорта.
-var allowedTables = map[string][]string{
-	"tickets":      {"ticket_id", "ticket_number", "status", "service_type", "window_number", "created_at", "called_at", "started_at", "completed_at"},
-	"doctors":      {"doctor_id", "full_name", "specialization", "is_active"},
-	"patients":     {"patient_id", "passport_series", "passport_number", "full_name", "birth_date", "phone", "oms_number"},
-	"schedules":    {"schedule_id", "doctor_id", "date", "start_time", "end_time", "is_available"},
-	"appointments": {"appointment_id", "schedule_id", "patient_id", "created_at"},
-	"services":     {"id", "service_id", "name", "letter"},
-}
-
 // ExportService предоставляет методы для экспорта данных.
 type ExportService struct {
 	repo repository.ExportRepository
@@ -30,9 +20,9 @@ func NewExportService(repo repository.ExportRepository) *ExportService {
 
 // ExportData выполняет валидацию и вызывает репозиторий для получения данных.
 func (s *ExportService) ExportData(tableName string, request models.ExportRequest) ([]map[string]interface{}, int64, error) {
-	allowedColumns, ok := allowedTables[tableName]
-	if !ok {
-		return nil, 0, fmt.Errorf("table '%s' is not allowed for export", tableName)
+	allowedColumns, err := s.repo.GetTableColumns(tableName)
+	if err != nil {
+		return nil, 0, fmt.Errorf("не удалось проверить таблицу '%s': %w", tableName, err)
 	}
 
 	if err := s.validateFilters(request.Filters, allowedColumns); err != nil {
@@ -45,10 +35,7 @@ func (s *ExportService) ExportData(tableName string, request models.ExportReques
 	}
 	limit := request.Limit
 	if limit <= 0 {
-		limit = 20 // Значение по умолчанию
-	}
-	if limit > 100 {
-		limit = 100 // Максимальный лимит
+		limit = 1000
 	}
 
 	return s.repo.GetData(tableName, page, limit, request.Filters)
