@@ -16,6 +16,7 @@ import (
 	"ElectronicQueue/internal/database"
 	"ElectronicQueue/internal/handlers"
 	"ElectronicQueue/internal/logger"
+	"ElectronicQueue/internal/middleware"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
@@ -36,6 +37,9 @@ import (
 // @description API для системы электронной очереди
 // @host localhost:8080
 // @BasePath /
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name X-API-KEY
 func main() {
 	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
@@ -60,7 +64,6 @@ func main() {
 	}
 	log.WithField("dbname", cfg.DBName).Info("Database connected successfully")
 
-	// ИЗМЕНЕНИЕ: Инициализация listener'а через pgx
 	// Канал для передачи уведомлений из листенера в SSE хендлеры
 	notificationChannel := make(chan string)
 	// Контекст для управления жизненным циклом листенера
@@ -124,14 +127,12 @@ func initListener(ctx context.Context, cfg *config.Config, log *logger.AsyncLogg
 		for {
 			notification, err := conn.Conn().WaitForNotification(ctx)
 			if err != nil {
-				// Если контекст отменен, это штатное завершение работы
 				if ctx.Err() != nil {
 					log.Info("Listener context cancelled, shutting down.")
 					return
 				}
 				log.WithError(err).Error("Error waiting for notification")
-				// Попытка переподключения или просто выход
-				time.Sleep(5 * time.Second) // Пауза перед повторной попыткой
+				time.Sleep(5 * time.Second)
 				continue
 			}
 			notifications <- notification.Payload
@@ -177,12 +178,20 @@ func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *
 		doctor.POST("/complete-appointment", doctorHandler.CompleteAppointment)
 	}
 
-	// ИЗМЕНЕНИЕ: Подключение роутов для регистратора
 	registrar := r.Group("/api/registrar")
 	{
 		registrar.POST("/call-next", registrarHandler.CallNext)
 		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
 		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
+	}
+
+	exportRepo := repository.NewExportRepository(db)
+	exportService := services.NewExportService(exportRepo)
+	exportHandler := handlers.NewExportHandler(exportService)
+
+	export := r.Group("/api/export").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
+	{
+		export.POST("/:table", exportHandler.GetData)
 	}
 
 	return r

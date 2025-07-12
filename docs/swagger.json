@@ -9,6 +9,91 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
+        "/api/export/{table}": {
+            "post": {
+                "description": "Позволяет получить данные из указанной таблицы с фильтрацией и пагинацией.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "export"
+                ],
+                "summary": "Экспорт данных из таблицы",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Имя таблицы для экспорта (e.g., tickets, doctors)",
+                        "name": "table",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ключ API для доступа",
+                        "name": "X-API-KEY",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Фильтры и параметры пагинации",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ExportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ с данными",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка в запросе (неверная таблица, поле или оператор)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Отсутствует ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Неверный ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/registrar/call-next": {
             "post": {
                 "description": "Находит первого пациента в очереди, меняет его статус на \"приглашен\" и присваивает номер окна",
@@ -651,6 +736,46 @@
                 }
             }
         },
+        "models.ExportRequest": {
+            "type": "object",
+            "properties": {
+                "filters": {
+                    "$ref": "#/definitions/models.Filters"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.FilterCondition": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "value": {}
+            }
+        },
+        "models.Filters": {
+            "type": "object",
+            "properties": {
+                "conditions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.FilterCondition"
+                    }
+                },
+                "logical_operator": {
+                    "type": "string"
+                }
+            }
+        },
         "models.TicketResponse": {
             "description": "Ответ API с данными талона",
             "type": "object",
@@ -723,6 +848,13 @@
                     "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "X-API-KEY",
+            "in": "header"
         }
     }
 }
