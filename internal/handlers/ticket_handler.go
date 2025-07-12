@@ -4,6 +4,7 @@ import (
 	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/services"
+	"ElectronicQueue/internal/utils"
 	"fmt"
 	"net/http"
 	"os"
@@ -190,6 +191,14 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 			logger.Default().Error(fmt.Sprintf("Confirmation: failed to save image: %v", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
 			return
+		}
+
+		// Печать талона
+		printerName := h.config.PrinterName
+		if printerName != "" {
+			if err := utils.PrintFile(printerName, filePath); err != nil {
+				logger.Default().Error(fmt.Sprintf("Confirmation: failed to print ticket: %v", err))
+			}
 		}
 
 		resp := ConfirmationResponse{
