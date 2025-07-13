@@ -2,66 +2,81 @@ package logger
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
-	"github.com/sirupsen/logrus"
-	"gorm.io/gorm/logger"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 // GORMLogger реализует интерфейс gorm.Logger
 type GORMLogger struct {
-	*logrus.Entry
 	SlowThreshold time.Duration
-	LogLevel      logger.LogLevel
+	LogLevel      gormlogger.LogLevel
 }
 
+// NewGORMLogger создает новый логгер для GORM
 func NewGORMLogger() *GORMLogger {
 	return &GORMLogger{
-		Entry:         instance.WithField("module", "gorm"),
 		SlowThreshold: 200 * time.Millisecond,
-		LogLevel:      logger.Info,
+		LogLevel:      gormlogger.Info,
 	}
 }
 
-func (l *GORMLogger) LogMode(level logger.LogLevel) logger.Interface {
+func (l *GORMLogger) LogMode(level gormlogger.LogLevel) gormlogger.Interface {
 	newLogger := *l
 	newLogger.LogLevel = level
 	return &newLogger
 }
 
 func (l *GORMLogger) Info(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel >= logger.Info {
-		l.Entry.Infof(msg, data...)
+	if l.LogLevel >= gormlogger.Info {
+		Default().WithField("module", "GORM").Info(fmt.Sprintf(msg, data...))
 	}
 }
 
 func (l *GORMLogger) Warn(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel >= logger.Warn {
-		l.Entry.Warnf(msg, data...)
+	if l.LogLevel >= gormlogger.Warn {
+		Default().WithField("module", "GORM").Warn(fmt.Sprintf(msg, data...))
 	}
 }
 
 func (l *GORMLogger) Error(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel >= logger.Error {
-		l.Entry.Errorf(msg, data...)
+	if l.LogLevel >= gormlogger.Error {
+		Default().WithField("module", "GORM").Error(fmt.Sprintf(msg, data...))
 	}
 }
 
 func (l *GORMLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
-	if l.LogLevel == logger.Silent {
+	if l.LogLevel <= gormlogger.Silent {
 		return
 	}
+
 	elapsed := time.Since(begin)
 	sql, rows := fc()
-	fields := logrus.Fields{
-		"elapsed": elapsed.String(),
+
+	log := Default().WithFields(map[string]interface{}{
+		"module":  "GORM",
+		"sql":     sql,
 		"rows":    rows,
+		"elapsed": elapsed,
+	})
+
+	// Ошибки, не связанные с 'record not found', считаются серьезными
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		log.WithError(err).Error("GORM Error")
+		return
 	}
-	if err != nil {
-		l.Entry.WithError(err).WithFields(fields).Errorf("SQL error: %s", sql)
-	} else if elapsed > l.SlowThreshold && l.LogLevel >= logger.Warn {
-		l.Entry.WithFields(fields).Warnf("SLOW SQL: %s", sql)
-	} else if l.LogLevel >= logger.Info {
-		l.Entry.WithFields(fields).Infof("SQL: %s", sql)
+
+	// Медленные запросы
+	if l.SlowThreshold > 0 && elapsed > l.SlowThreshold {
+		log.Warn("Slow SQL")
+		return
+	}
+
+	// Обычные запросы
+	if l.LogLevel >= gormlogger.Info {
+		log.Info("SQL Query")
 	}
 }
