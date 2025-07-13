@@ -22,7 +22,7 @@ type Config struct {
 	JWTExpiration  string
 	TicketMode     string
 	TicketHeight   string
-	LogFile        string
+	LogDir         string
 	TicketDir      string
 	InternalAPIKey string
 	ExternalAPIKey string
@@ -50,7 +50,7 @@ func LoadConfig() (*Config, error) {
 		JWTExpiration:  getEnv("JWT_EXPIRATION", "24h"),
 		TicketMode:     getEnv("TICKET_MODE", "b/w"),
 		TicketHeight:   getEnv("TICKET_HEIGHT", "800"),
-		LogFile:        getEnv("LOG_FILE", "logs/app.log"),
+		LogDir:         getEnv("LOG_DIR", "logs"),
 		TicketDir:      getEnv("TICKET_DIR", "tickets"),
 		InternalAPIKey: getEnv("INTERNAL_API_KEY"),
 		ExternalAPIKey: getEnv("EXTERNAL_API_KEY"),

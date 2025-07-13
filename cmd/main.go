@@ -47,7 +47,7 @@ func main() {
 	}
 
 	// Инициализация логгера
-	logger.Init(cfg.LogFile)
+	logger.Init(cfg.LogDir)
 	defer func() {
 		if err := logger.Sync(); err != nil {
 			fmt.Printf("Ошибка синхронизации логов: %v\n", err)
@@ -145,9 +145,10 @@ func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.SetTrustedProxies(nil)
+	// Используем новый, улучшенный логгер
 	r.Use(logger.GinLogger())
 	r.Use(middleware.CorsMiddleware())
-	r.Use(requestLogger())
+	// Старый requestLogger() больше не нужен
 
 	r.GET("/tickets", sseHandler(notifications))
 
@@ -197,20 +198,14 @@ func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *
 	return r
 }
 
-// requestLogger логирует все HTTP-запросы
-func requestLogger() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		fmt.Printf("[GIN] %s %s\n", c.Request.Method, c.Request.URL.Path)
-		c.Next()
-	}
-}
+// requestLogger УДАЛЕНА. Её функциональность теперь в logger.GinLogger().
 
 type NotificationPayload struct {
 	Action string        `json:"action"`
 	Data   models.Ticket `json:"data"`
 }
 
-// ИЗМЕНЕНИЕ: sseHandler теперь работает с каналом
+// sseHandler теперь работает с каналом
 func sseHandler(notifications <-chan string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
@@ -237,7 +232,7 @@ func sseHandler(notifications <-chan string) gin.HandlerFunc {
 	}
 }
 
-// ИЗМЕНЕНИЕ: handleGracefulShutdown теперь принимает pgxpool.Pool и функцию отмены контекста
+// handleGracefulShutdown теперь принимает pgxpool.Pool и функцию отмены контекста
 func handleGracefulShutdown(db *gorm.DB, pool *pgxpool.Pool, cancel context.CancelFunc, log *logger.AsyncLogger) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
