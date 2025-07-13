@@ -109,7 +109,7 @@ PRINTER=HP DeskJet 5000 series  # Имя принтера для печати
 | `flutter-docker`      | Сборка и настройка frontend на Flutter в Docker (требуется Docker)|
 | `local`               | Локальная сборка Go и Flutter                                     |
 | `docker`              | Сборка Go и Flutter в Docker                                      |
-| `fill`                | Заполнение базы тестовыми данными                                 |
+| `fill`                | Заполнение базы данных тестовыми значениями                       |
 | `rewrite`             | Пересоздать базу данных (удалить и создать заново)                |
 
 ---
