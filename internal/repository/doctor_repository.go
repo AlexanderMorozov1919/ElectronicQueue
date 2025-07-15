@@ -45,3 +45,12 @@ func (r *doctorRepo) GetAll(onlyActive bool) ([]models.Doctor, error) {
 	}
 	return doctors, nil
 }
+
+// GetAnyDoctor возвращает первого активного врача, найденного в базе данных.
+func (r *doctorRepo) GetAnyDoctor() (*models.Doctor, error) {
+	var doctor models.Doctor
+	if err := r.db.Where("is_active = ?", true).Order("doctor_id asc").First(&doctor).Error; err != nil {
+		return nil, err
+	}
+	return &doctor, nil
+}

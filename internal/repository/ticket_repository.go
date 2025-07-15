@@ -60,3 +60,13 @@ func (r *ticketRepo) GetMaxTicketNumber() (int, error) {
 func (r *ticketRepo) Delete(id uint) error {
 	return r.db.Delete(&models.Ticket{}, id).Error
 }
+
+func (r *ticketRepo) FindFirstByStatus(status models.TicketStatus) (*models.Ticket, error) {
+	var ticket models.Ticket
+	// Ищем самый последний талон, который перешел в указанный статус
+	err := r.db.Where("status = ?", status).Order("started_at desc").First(&ticket).Error
+	if err != nil {
+		return nil, err
+	}
+	return &ticket, nil
+}

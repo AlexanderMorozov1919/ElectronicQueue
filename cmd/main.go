@@ -61,24 +61,33 @@ func main() {
 	}
 	log.WithField("dbname", cfg.DBName).Info("Database connected successfully")
 
-	// Канал для передачи уведомлений из листенера в SSE хендлеры
-	notificationChannel := make(chan string)
-	// Контекст для управления жизненным циклом листенера
-	listenerCtx, cancelListener := context.WithCancel(context.Background())
+	// --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
+	// Создаем ДВА независимых канала
+	receptionChannel := make(chan string, 10) // Канал для табло регистратуры
+	doctorChannel := make(chan string, 10)    // Канал для экрана врача
 
-	pool, err := initListener(listenerCtx, cfg, log, notificationChannel)
+	// Контекст для управления жизненным циклом листенеров
+	listenerCtx, cancelListeners := context.WithCancel(context.Background())
+
+	// Пул соединений для листенеров
+	pool, err := initPgxPool(listenerCtx, cfg)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to initialize database listener with pgx")
 	}
 
+	// Запускаем ДВЕ горутины-слушателя, каждая со своим каналом
+	go listenForNotifications(listenerCtx, pool, receptionChannel, log, "reception_listener")
+	go listenForNotifications(listenerCtx, pool, doctorChannel, log, "doctor_listener")
+	// --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
 	// Настройка роутера
-	r := setupRouter(notificationChannel, db, cfg)
+	r := setupRouter(receptionChannel, doctorChannel, db, cfg)
 
 	// Swagger endpoint
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Обработка сигналов завершения
-	handleGracefulShutdown(db, pool, cancelListener, log)
+	handleGracefulShutdown(db, pool, cancelListeners, log)
 
 	fmt.Printf("Сервер запущен на порту: %s\n", cfg.BackendPort)
 	if err := r.Run(":" + cfg.BackendPort); err != nil {
@@ -86,8 +95,8 @@ func main() {
 	}
 }
 
-// initListener инициализирует LISTEN/NOTIFY через pgx
-func initListener(ctx context.Context, cfg *config.Config, log *logger.AsyncLogger, notifications chan<- string) (*pgxpool.Pool, error) {
+// initPgxPool инициализирует пул соединений pgx
+func initPgxPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBSSLMode,
@@ -102,57 +111,62 @@ func initListener(ctx context.Context, cfg *config.Config, log *logger.AsyncLogg
 		pool.Close()
 		return nil, fmt.Errorf("unable to ping database: %w", err)
 	}
-
-	// Запускаем горутину, которая будет слушать уведомления
-	go func() {
-		conn, err := pool.Acquire(ctx)
-		if err != nil {
-			log.WithError(err).Error("Failed to acquire connection from pool for listener")
-			return
-		}
-		defer conn.Release()
-
-		_, err = conn.Exec(ctx, "LISTEN ticket_update")
-		if err != nil {
-			log.WithError(err).Error("Failed to execute LISTEN command")
-			return
-		}
-		log.Info("Listening to 'ticket_update' channel with pgx")
-
-		for {
-			notification, err := conn.Conn().WaitForNotification(ctx)
-			if err != nil {
-				if ctx.Err() != nil {
-					log.Info("Listener context cancelled, shutting down.")
-					return
-				}
-				log.WithError(err).Error("Error waiting for notification")
-				time.Sleep(5 * time.Second)
-				continue
-			}
-			notifications <- notification.Payload
-		}
-	}()
-
 	return pool, nil
 }
 
+// listenForNotifications слушает LISTEN/NOTIFY и отправляет в указанный канал
+func listenForNotifications(ctx context.Context, pool *pgxpool.Pool, notifications chan<- string, log *logger.AsyncLogger, listenerID string) {
+	log = log.WithField("listener_id", listenerID)
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		log.WithError(err).Error("Failed to acquire connection from pool for listener")
+		return
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, "LISTEN ticket_update")
+	if err != nil {
+		log.WithError(err).Error("Failed to execute LISTEN command")
+		return
+	}
+	log.Info("Listening to 'ticket_update' channel")
+
+	for {
+		notification, err := conn.Conn().WaitForNotification(ctx)
+		if err != nil {
+			if ctx.Err() != nil {
+				log.Info("Listener context cancelled, shutting down.")
+				return
+			}
+			log.WithError(err).Error("Error waiting for notification")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		notifications <- notification.Payload
+	}
+}
+
 // setupRouter настраивает маршруты и middleware
-func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *gin.Engine {
+func setupRouter(receptionChannel, doctorChannel chan string, db *gorm.DB, cfg *config.Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.SetTrustedProxies(nil)
 	r.Use(logger.GinLogger())
 	r.Use(middleware.CorsMiddleware())
 
-	r.GET("/tickets", sseHandler(notifications))
+	// Эндпоинт для табло регистратуры использует свой канал
+	r.GET("/tickets", sseHandler(receptionChannel, "reception_sse"))
 
 	ticketRepo := repository.NewTicketRepository(db)
 	serviceRepo := repository.NewServiceRepository(db)
+	doctorRepo := repository.NewDoctorRepository(db)
+
 	ticketService := services.NewTicketService(ticketRepo, serviceRepo)
+	doctorService := services.NewDoctorService(ticketRepo, doctorRepo)
+
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
-	doctorService := services.NewDoctorService(ticketRepo)
-	doctorHandler := handlers.NewDoctorHandler(doctorService)
+	// Эндпоинт для экрана врача будет использовать СВОЙ канал
+	doctorHandler := handlers.NewDoctorHandler(doctorService, doctorChannel)
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
 
 	tickets := r.Group("/api/tickets")
@@ -170,6 +184,8 @@ func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *
 	{
 		doctor.POST("/start-appointment", doctorHandler.StartAppointment)
 		doctor.POST("/complete-appointment", doctorHandler.CompleteAppointment)
+		// Этот эндпоинт теперь будет работать корректно
+		doctor.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
 	}
 
 	registrar := r.Group("/api/registrar")
@@ -199,16 +215,21 @@ type NotificationPayload struct {
 	Data   models.Ticket `json:"data"`
 }
 
-func sseHandler(notifications <-chan string) gin.HandlerFunc {
+// sseHandler стал более универсальным, принимает канал и ID для логгирования
+func sseHandler(notifications <-chan string, handlerID string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
-		log := logger.Default()
+		log := logger.Default().WithField("handler_id", handlerID)
 
 		c.Stream(func(w io.Writer) bool {
 			select {
-			case payloadStr := <-notifications:
+			case payloadStr, ok := <-notifications:
+				if !ok {
+					log.Info("Notification channel closed.")
+					return false
+				}
 				log.WithField("payload", payloadStr).Info("Received notification from channel")
 				var payload NotificationPayload
 				if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
@@ -218,7 +239,7 @@ func sseHandler(notifications <-chan string) gin.HandlerFunc {
 				c.SSEvent(payload.Action, payload.Data.ToResponse())
 				return true
 			case <-c.Request.Context().Done():
-				log.Info("Client disconnected (SSE)")
+				log.Info("Client disconnected")
 				return false
 			}
 		})
