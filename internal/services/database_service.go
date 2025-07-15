@@ -13,7 +13,6 @@ type DatabaseService struct {
 	repo repository.DatabaseRepository
 }
 
-// NewDatabaseService создает новый экземпляр DatabaseService.
 func NewDatabaseService(repo repository.DatabaseRepository) *DatabaseService {
 	return &DatabaseService{repo: repo}
 }
@@ -41,7 +40,6 @@ func (s *DatabaseService) GetData(tableName string, request models.GetDataReques
 	return s.repo.GetData(tableName, page, limit, request.Filters)
 }
 
-// InsertData валидирует и вставляет данные.
 func (s *DatabaseService) InsertData(tableName string, request models.InsertRequest) (int64, error) {
 	_, err := s.repo.GetTableColumns(tableName)
 	if err != nil {
@@ -51,7 +49,6 @@ func (s *DatabaseService) InsertData(tableName string, request models.InsertRequ
 	return s.repo.InsertData(tableName, request.Data)
 }
 
-// UpdateData валидирует и обновляет данные.
 func (s *DatabaseService) UpdateData(tableName string, request models.UpdateRequest) (int64, error) {
 	allowedColumns, err := s.repo.GetTableColumns(tableName)
 	if err != nil {
@@ -79,7 +76,6 @@ func (s *DatabaseService) UpdateData(tableName string, request models.UpdateRequ
 	return s.repo.UpdateData(tableName, request.Data, request.Filters)
 }
 
-// DeleteData валидирует и удаляет данные.
 func (s *DatabaseService) DeleteData(tableName string, request models.DeleteRequest) (int64, error) {
 	allowedColumns, err := s.repo.GetTableColumns(tableName)
 	if err != nil {
@@ -97,7 +93,6 @@ func (s *DatabaseService) DeleteData(tableName string, request models.DeleteRequ
 	return s.repo.DeleteData(tableName, request.Filters)
 }
 
-// validateFilters проверяет корректность всех условий фильтрации.
 func (s *DatabaseService) validateFilters(filters models.Filters, allowedColumns []string) error {
 	op := strings.ToUpper(filters.LogicalOperator)
 	if op != "AND" && op != "OR" && op != "" {

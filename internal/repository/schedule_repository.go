@@ -11,7 +11,6 @@ type scheduleRepo struct {
 	db *gorm.DB
 }
 
-// NewScheduleRepository - конструктор для scheduleRepo.
 func NewScheduleRepository(db *gorm.DB) ScheduleRepository {
 	return &scheduleRepo{db: db}
 }

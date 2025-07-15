@@ -12,7 +12,6 @@ type DoctorService struct {
 	ticketRepo repository.TicketRepository
 }
 
-// NewDoctorService создает новый DoctorService
 func NewDoctorService(ticketRepo repository.TicketRepository) *DoctorService {
 	return &DoctorService{
 		ticketRepo: ticketRepo,
@@ -22,13 +21,11 @@ func NewDoctorService(ticketRepo repository.TicketRepository) *DoctorService {
 // StartAppointment начинает прием пациента
 // Изменяет статус талона на "на_приеме" и фиксирует время начала
 func (s *DoctorService) StartAppointment(ticketID uint) (*models.Ticket, error) {
-	// Получаем талон по ID
 	ticket, err := s.ticketRepo.GetByID(ticketID)
 	if err != nil {
 		return nil, fmt.Errorf("ticket not found: %w", err)
 	}
 
-	// Проверяем, что талон в статусе "приглашен"
 	if ticket.Status != models.StatusInvited {
 		return nil, fmt.Errorf("ticket must be in 'приглашен' status to start appointment")
 	}
@@ -49,7 +46,6 @@ func (s *DoctorService) StartAppointment(ticketID uint) (*models.Ticket, error) 
 // CompleteAppointment завершает прием пациента
 // Изменяет статус талона на "завершен" и фиксирует время завершения
 func (s *DoctorService) CompleteAppointment(ticketID uint) (*models.Ticket, error) {
-	// Получаем талон по ID
 	ticket, err := s.ticketRepo.GetByID(ticketID)
 	if err != nil {
 		return nil, fmt.Errorf("ticket not found: %w", err)
@@ -60,12 +56,10 @@ func (s *DoctorService) CompleteAppointment(ticketID uint) (*models.Ticket, erro
 		return nil, fmt.Errorf("ticket must be in 'на_приеме' status to complete appointment")
 	}
 
-	// Обновляем статус и время завершения приема
 	now := time.Now()
 	ticket.Status = models.StatusCompleted
 	ticket.CompletedAt = &now
 
-	// Сохраняем изменения в базе данных
 	if err := s.ticketRepo.Update(ticket); err != nil {
 		return nil, fmt.Errorf("failed to update ticket: %w", err)
 	}

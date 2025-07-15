@@ -13,7 +13,6 @@ BEGIN
         data_row := NEW;
     END IF;
 
-    -- Собираем JSON
     payload := json_build_object(
         'action', lower(action),
         'data', json_build_object(

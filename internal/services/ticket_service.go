@@ -27,22 +27,18 @@ type TicketService struct {
 	serviceRepo repository.ServiceRepository
 }
 
-// GetAllServices возвращает все доступные услуги (id, name, letter)
 func (s *TicketService) GetAllServices() ([]models.Service, error) {
 	return s.serviceRepo.GetAll()
 }
 
-// GetServiceByID возвращает услугу по ID
 func (s *TicketService) GetServiceByID(id uint) (*models.Service, error) {
 	return s.serviceRepo.GetByID(id)
 }
 
-// GetServiceByServiceID возвращает услугу по serviceID
 func (s *TicketService) GetServiceByServiceID(serviceID string) (*models.Service, error) {
 	return s.serviceRepo.GetByServiceID(serviceID)
 }
 
-// GetByID возвращает тикет по строковому id
 func (s *TicketService) GetByID(idStr string) (*models.Ticket, error) {
 	var id uint
 	_, err := fmt.Sscanf(idStr, "%d", &id)
@@ -58,7 +54,6 @@ func (s *TicketService) GetByID(idStr string) (*models.Ticket, error) {
 	return ticket, nil
 }
 
-// CreateTicket создает новый талон для выбранной услуги
 func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 	if serviceID == "" {
 		logger.Default().Error("CreateTicket: serviceID is required")
@@ -83,7 +78,6 @@ func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 	return ticket, nil
 }
 
-// UpdateTicket обновляет тикет
 func (s *TicketService) UpdateTicket(ticket *models.Ticket) error {
 	err := s.repo.Update(ticket)
 	if err != nil {
@@ -92,7 +86,6 @@ func (s *TicketService) UpdateTicket(ticket *models.Ticket) error {
 	return err
 }
 
-// DeleteTicket удаляет тикет по строковому id
 func (s *TicketService) DeleteTicket(idStr string) error {
 	var id uint
 	_, err := fmt.Sscanf(idStr, "%d", &id)
@@ -107,12 +100,9 @@ func (s *TicketService) DeleteTicket(idStr string) error {
 	return err
 }
 
-// CallNextTicket вызывает следующего пациента в очереди к указанному окну
 func (s *TicketService) CallNextTicket(windowNumber int) (*models.Ticket, error) {
-	// Следующий талон для вызова
 	ticket, err := s.repo.GetNextWaitingTicket()
 	if err != nil {
-		// Если талонов нет (gorm.ErrRecordNotFound), возвращаем ошибку, которую обработает хендлер
 		logger.Default().Info(fmt.Sprintf("CallNextTicket: no waiting tickets in queue: %v", err))
 		return nil, fmt.Errorf("очередь пуста")
 	}

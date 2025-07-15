@@ -39,7 +39,6 @@ import (
 // @in header
 // @name X-API-KEY
 func main() {
-	// Загрузка конфигурации
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		fmt.Printf("Ошибка загрузки конфига: %v\n", err)
@@ -67,7 +66,6 @@ func main() {
 	// Контекст для управления жизненным циклом листенера
 	listenerCtx, cancelListener := context.WithCancel(context.Background())
 
-	// Запускаем сам листенер
 	pool, err := initListener(listenerCtx, cfg, log, notificationChannel)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to initialize database listener with pgx")
@@ -100,7 +98,6 @@ func initListener(ctx context.Context, cfg *config.Config, log *logger.AsyncLogg
 		return nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}
 
-	// Проверяем соединение
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("unable to ping database: %w", err)
@@ -145,10 +142,8 @@ func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.SetTrustedProxies(nil)
-	// Используем новый, улучшенный логгер
 	r.Use(logger.GinLogger())
 	r.Use(middleware.CorsMiddleware())
-	// Старый requestLogger() больше не нужен
 
 	r.GET("/tickets", sseHandler(notifications))
 
@@ -198,14 +193,11 @@ func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *
 	return r
 }
 
-// requestLogger УДАЛЕНА. Её функциональность теперь в logger.GinLogger().
-
 type NotificationPayload struct {
 	Action string        `json:"action"`
 	Data   models.Ticket `json:"data"`
 }
 
-// sseHandler теперь работает с каналом
 func sseHandler(notifications <-chan string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
@@ -232,7 +224,6 @@ func sseHandler(notifications <-chan string) gin.HandlerFunc {
 	}
 }
 
-// handleGracefulShutdown теперь принимает pgxpool.Pool и функцию отмены контекста
 func handleGracefulShutdown(db *gorm.DB, pool *pgxpool.Pool, cancel context.CancelFunc, log *logger.AsyncLogger) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -241,21 +232,17 @@ func handleGracefulShutdown(db *gorm.DB, pool *pgxpool.Pool, cancel context.Canc
 		<-sigChan
 		log.Info("Received shutdown signal, closing...")
 
-		// 1. Останавливаем листенер
 		cancel()
 
-		// 2. Закрываем пул pgx
 		if pool != nil {
 			pool.Close()
 			log.Info("pgx listener pool closed.")
 		}
 
-		// 3. Синхронизируем логи
 		if err := logger.Sync(); err != nil {
 			fmt.Printf("Ошибка синхронизации логов: %v\n", err)
 		}
 
-		// 4. Закрываем соединение GORM
 		if sqlDB, err := db.DB(); err == nil {
 			if err := sqlDB.Close(); err != nil {
 				fmt.Printf("Ошибка закрытия базы данных: %v\n", err)

@@ -22,13 +22,10 @@ type databaseRepo struct {
 	db *gorm.DB
 }
 
-// NewDatabaseRepository создает новый экземпляр DatabaseRepository.
 func NewDatabaseRepository(db *gorm.DB) DatabaseRepository {
 	return &databaseRepo{db: db}
 }
 
-// ИСМРАВЛЕНО: Эта функция была ошибочно названа GetTableColumns.
-// Теперь это правильный метод applyFilters.
 func (r *databaseRepo) applyFilters(tx *gorm.DB, filters models.Filters) (*gorm.DB, error) {
 	if len(filters.Conditions) == 0 {
 		return tx, nil
@@ -38,7 +35,6 @@ func (r *databaseRepo) applyFilters(tx *gorm.DB, filters models.Filters) (*gorm.
 	var queryArgs []interface{}
 
 	for _, cond := range filters.Conditions {
-		// Проверка на nil, чтобы избежать ошибок с операторами IS NULL / IS NOT NULL
 		isNil := cond.Value == nil
 		op := strings.ToUpper(cond.Operator)
 
@@ -67,7 +63,6 @@ func (r *databaseRepo) applyFilters(tx *gorm.DB, filters models.Filters) (*gorm.
 }
 
 // GetTableColumns получает список столбцов для указанной таблицы из схемы БД.
-// ИСПРАВЛЕНО: Оставлена единственная, правильная реализация этого метода.
 func (r *databaseRepo) GetTableColumns(tableName string) ([]string, error) {
 	var columns []string
 	err := r.db.Raw(`
@@ -184,7 +179,6 @@ func (r *databaseRepo) UpdateData(tableName string, data map[string]interface{},
 	return result.RowsAffected, nil
 }
 
-// DeleteData удаляет записи из таблицы по заданным условиям.
 func (r *databaseRepo) DeleteData(tableName string, filters models.Filters) (int64, error) {
 	tx := r.db.Table(tableName)
 

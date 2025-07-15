@@ -9,12 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DatabaseHandler обрабатывает запросы на работу с данными таблиц.
 type DatabaseHandler struct {
 	service *services.DatabaseService
 }
 
-// NewDatabaseHandler создает новый экземпляр DatabaseHandler.
 func NewDatabaseHandler(service *services.DatabaseService) *DatabaseHandler {
 	return &DatabaseHandler{service: service}
 }

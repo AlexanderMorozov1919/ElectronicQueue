@@ -10,17 +10,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// RegistrarHandler обрабатывает запросы от рабочего места регистратора
 type RegistrarHandler struct {
 	ticketService *services.TicketService
 }
 
-// NewRegistrarHandler создает новый RegistrarHandler
 func NewRegistrarHandler(ts *services.TicketService) *RegistrarHandler {
 	return &RegistrarHandler{ticketService: ts}
 }
 
-// CallNextRequest описывает запрос на вызов следующего пациента
 type CallNextRequest struct {
 	WindowNumber int `json:"window_number" binding:"required,gt=0"`
 }
@@ -52,7 +49,7 @@ func (h *RegistrarHandler) CallNext(c *gin.Context) {
 	}
 
 	if req.WindowNumber <= 0 {
-		req.WindowNumber = 1 // Защита от нулевого или отрицательного значения
+		req.WindowNumber = 1 
 	}
 
 	ticket, err := h.ticketService.CallNextTicket(req.WindowNumber)

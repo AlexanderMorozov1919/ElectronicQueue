@@ -6,7 +6,6 @@ import (
 	"runtime"
 )
 
-// PrintFile отправляет файл на печать на указанный принтер
 func PrintFile(printerName, filePath string) error {
 	var cmd *exec.Cmd
 
