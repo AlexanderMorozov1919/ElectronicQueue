@@ -63,7 +63,6 @@ func (r *ticketRepo) Delete(id uint) error {
 
 func (r *ticketRepo) FindFirstByStatus(status models.TicketStatus) (*models.Ticket, error) {
 	var ticket models.Ticket
-	// Ищем самый последний талон, который перешел в указанный статус
 	err := r.db.Where("status = ?", status).Order("started_at desc").First(&ticket).Error
 	if err != nil {
 		return nil, err

@@ -85,14 +85,12 @@ func (s *DoctorService) GetCurrentAppointmentScreenState() (*models.Doctor, *mod
 
 	ticket, err := s.ticketRepo.FindFirstByStatus(models.StatusInProgress)
 	if err != nil {
-		// Ошибка "запись не найдена" - это нормальная ситуация, просто нет талона на приеме.
+		// "запись не найдена" - нет талона на приеме.
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.Default().WithError(err).Error("Error fetching current in-progress ticket")
 		}
-		// Возвращаем врача и nil для талона. Ошибки нет.
 		return doctor, nil, nil
 	}
 
-	// Возвращаем и врача, и талон.
 	return doctor, ticket, nil
 }

@@ -61,8 +61,6 @@ func main() {
 	}
 	log.WithField("dbname", cfg.DBName).Info("Database connected successfully")
 
-	// --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
-	// Создаем ДВА независимых канала
 	receptionChannel := make(chan string, 10) // Канал для табло регистратуры
 	doctorChannel := make(chan string, 10)    // Канал для экрана врача
 
@@ -75,10 +73,9 @@ func main() {
 		log.WithError(err).Fatal("Failed to initialize database listener with pgx")
 	}
 
-	// Запускаем ДВЕ горутины-слушателя, каждая со своим каналом
+	// Запускаем горутины-слушателя, каждая со своим каналом
 	go listenForNotifications(listenerCtx, pool, receptionChannel, log, "reception_listener")
 	go listenForNotifications(listenerCtx, pool, doctorChannel, log, "doctor_listener")
-	// --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 	// Настройка роутера
 	r := setupRouter(receptionChannel, doctorChannel, db, cfg)
@@ -154,7 +151,6 @@ func setupRouter(receptionChannel, doctorChannel chan string, db *gorm.DB, cfg *
 	r.Use(logger.GinLogger())
 	r.Use(middleware.CorsMiddleware())
 
-	// Эндпоинт для табло регистратуры использует свой канал
 	r.GET("/tickets", sseHandler(receptionChannel, "reception_sse"))
 
 	ticketRepo := repository.NewTicketRepository(db)
@@ -165,7 +161,6 @@ func setupRouter(receptionChannel, doctorChannel chan string, db *gorm.DB, cfg *
 	doctorService := services.NewDoctorService(ticketRepo, doctorRepo)
 
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
-	// Эндпоинт для экрана врача будет использовать СВОЙ канал
 	doctorHandler := handlers.NewDoctorHandler(doctorService, doctorChannel)
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
 
@@ -184,7 +179,6 @@ func setupRouter(receptionChannel, doctorChannel chan string, db *gorm.DB, cfg *
 	{
 		doctor.POST("/start-appointment", doctorHandler.StartAppointment)
 		doctor.POST("/complete-appointment", doctorHandler.CompleteAppointment)
-		// Этот эндпоинт теперь будет работать корректно
 		doctor.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
 	}
 

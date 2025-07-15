@@ -179,8 +179,7 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 	// Запускаем стрим для отправки обновлений
 	c.Stream(func(w io.Writer) bool {
 		select {
-		// --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
-		// Слушаем СВОЙ канал h.notifications
+		// Слушаем СВОй канал h.notifications
 		case _, ok := <-h.notifications:
 			if !ok {
 				log.Info("Notification channel closed.")
