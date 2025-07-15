@@ -7,19 +7,16 @@ type GetDataRequest struct {
 	Filters Filters `json:"filters"`
 }
 
-// InsertRequest определяет тело запроса для вставки данных.
 // Поле Data может содержать один объект (map[string]interface{}) или массив объектов.
 type InsertRequest struct {
 	Data interface{} `json:"data" binding:"required"`
 }
 
-// UpdateRequest определяет тело запроса для обновления данных.
 type UpdateRequest struct {
 	Data    map[string]interface{} `json:"data" binding:"required"`
 	Filters Filters                `json:"filters" binding:"required"`
 }
 
-// DeleteRequest определяет тело запроса для удаления данных.
 type DeleteRequest struct {
 	Filters Filters `json:"filters" binding:"required"`
 }

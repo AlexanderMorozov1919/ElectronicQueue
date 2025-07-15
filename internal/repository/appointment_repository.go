@@ -10,7 +10,6 @@ type appointmentRepo struct {
 	db *gorm.DB
 }
 
-// NewAppointmentRepository - конструктор для appointmentRepo.
 func NewAppointmentRepository(db *gorm.DB) AppointmentRepository {
 	return &appointmentRepo{db: db}
 }

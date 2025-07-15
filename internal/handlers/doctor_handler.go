@@ -8,12 +8,10 @@ import (
 )
 
 // DoctorHandler содержит обработчики HTTP-запросов для работы врача
-// DoctorHandler содержит обработчики HTTP-запросов для работы врача
 type DoctorHandler struct {
 	service *services.DoctorService
 }
 
-// NewDoctorHandler создает новый DoctorHandler
 func NewDoctorHandler(service *services.DoctorService) *DoctorHandler {
 	return &DoctorHandler{service: service}
 }

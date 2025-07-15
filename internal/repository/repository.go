@@ -57,7 +57,7 @@ type Repository struct {
 	Ticket      TicketRepository
 	Schedule    ScheduleRepository
 	Appointment AppointmentRepository
-	Service     ServiceRepository // добавлен репозиторий услуг
+	Service     ServiceRepository 
 }
 
 // NewRepository создает новый экземпляр главного репозитория.
@@ -68,6 +68,6 @@ func NewRepository(db *gorm.DB) *Repository {
 		Ticket:      NewTicketRepository(db),
 		Schedule:    NewScheduleRepository(db),
 		Appointment: NewAppointmentRepository(db),
-		Service:     NewServiceRepository(db), // добавлен репозиторий услуг
+		Service:     NewServiceRepository(db), 
 	}
 }

@@ -24,7 +24,6 @@ type TicketHandler struct {
 	config  *config.Config
 }
 
-// NewTicketHandler создает новый TicketHandler
 func NewTicketHandler(service *services.TicketService, cfg *config.Config) *TicketHandler {
 	return &TicketHandler{service: service, config: cfg}
 }
@@ -36,7 +35,6 @@ type ServiceSelectionRequest struct {
 	ServiceID string `json:"service_id" binding:"required" example:"make_appointment"`
 }
 
-// ServiceSelectionResponse описывает ответ после выбора услуги
 // @Description Ответ после выбора услуги
 // @Example {"action": "confirm_print", "service_name": "Записаться к врачу"}
 type ServiceSelectionResponse struct {
@@ -44,7 +42,6 @@ type ServiceSelectionResponse struct {
 	ServiceName string `json:"service_name" example:"Записаться к врачу"`
 }
 
-// ConfirmationRequest описывает запрос подтверждения действия
 // @Description Запрос подтверждения действия (печать талона или получение электронного)
 // @Example {"service_id": "make_appointment", "action": "print_ticket"}
 type ConfirmationRequest struct {
@@ -52,7 +49,6 @@ type ConfirmationRequest struct {
 	Action    string `json:"action" binding:"required" example:"print_ticket"`
 }
 
-// ConfirmationResponse описывает ответ после подтверждения действия
 // @Description Ответ после подтверждения действия
 // @Example {"service_name": "Записаться к врачу", "ticket_number": "A001", "message": "Ваш электронный талон", "timeout": 10}
 type ConfirmationResponse struct {
@@ -63,8 +59,6 @@ type ConfirmationResponse struct {
 }
 
 // TicketStatusRequest описывает запрос для смены статуса тикета
-// Удалено: структура и методы смены статуса, удаления тикета, вызова следующего (перенесены в registrar_handler.go)
-
 // StartPage godoc
 // @Summary      Получить стартовую информацию
 // @Description  Возвращает стартовую информацию для клиента (например, текст кнопки)
@@ -158,7 +152,7 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 				height = parsed
 			}
 		}
-		// Генерируем QR-код один раз
+		// Генерируем QR-код
 		qrData := []byte(fmt.Sprintf("Талон: %s\nВремя: %s\nУслуга: %s",
 			ticket.TicketNumber,
 			ticket.CreatedAt.Format("02.01.2006 15:04:05"),

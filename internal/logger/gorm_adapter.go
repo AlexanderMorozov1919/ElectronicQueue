@@ -16,7 +16,6 @@ type GORMLogger struct {
 	LogLevel      gormlogger.LogLevel
 }
 
-// NewGORMLogger создает новый логгер для GORM
 func NewGORMLogger() *GORMLogger {
 	return &GORMLogger{
 		SlowThreshold: 200 * time.Millisecond,

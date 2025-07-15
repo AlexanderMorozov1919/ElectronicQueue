@@ -10,7 +10,6 @@ type ticketRepo struct {
 	db *gorm.DB
 }
 
-// NewTicketRepository - конструктор для ticketRepo.
 func NewTicketRepository(db *gorm.DB) TicketRepository {
 	return &ticketRepo{db: db}
 }
@@ -41,8 +40,6 @@ func (r *ticketRepo) FindByStatuses(statuses []models.TicketStatus) ([]models.Ti
 
 func (r *ticketRepo) GetNextWaitingTicket() (*models.Ticket, error) {
 	var ticket models.Ticket
-	// Ищем самый старый талон со статусом "ожидает"
-	// TODO: что-то говорили про "привилегированные" талоны
 	err := r.db.Where("status = ?", models.StatusWaiting).Order("created_at asc").First(&ticket).Error
 	if err != nil {
 		return nil, err

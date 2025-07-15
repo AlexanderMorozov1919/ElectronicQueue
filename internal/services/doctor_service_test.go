@@ -22,7 +22,6 @@ func NewMockTicketRepository() *MockTicketRepository {
 	}
 }
 
-// GetByID - ищет талон по ID в памяти
 func (m *MockTicketRepository) GetByID(id uint) (*models.Ticket, error) {
 	if ticket, exists := m.tickets[id]; exists {
 		return ticket, nil
@@ -30,19 +29,16 @@ func (m *MockTicketRepository) GetByID(id uint) (*models.Ticket, error) {
 	return nil, errors.New("ticket not found")
 }
 
-// Update - обновляет талон в памяти
 func (m *MockTicketRepository) Update(ticket *models.Ticket) error {
 	m.tickets[ticket.ID] = ticket
 	return nil
 }
 
-// Create - создает новый талон в памяти
 func (m *MockTicketRepository) Create(ticket *models.Ticket) error {
 	m.tickets[ticket.ID] = ticket
 	return nil
 }
 
-// GetAll - возвращает все талоны из памяти
 func (m *MockTicketRepository) GetAll() ([]*models.Ticket, error) {
 	tickets := make([]*models.Ticket, 0, len(m.tickets))
 	for _, ticket := range m.tickets {
@@ -51,7 +47,6 @@ func (m *MockTicketRepository) GetAll() ([]*models.Ticket, error) {
 	return tickets, nil
 }
 
-// GetByStatus - ищет талоны по статусу
 func (m *MockTicketRepository) GetByStatus(status string) ([]*models.Ticket, error) {
 	var tickets []*models.Ticket
 	for _, ticket := range m.tickets {
@@ -62,7 +57,6 @@ func (m *MockTicketRepository) GetByStatus(status string) ([]*models.Ticket, err
 	return tickets, nil
 }
 
-// FindByStatuses - ищет талоны по списку статусов
 func (m *MockTicketRepository) FindByStatuses(statuses []models.TicketStatus) ([]models.Ticket, error) {
 	var tickets []models.Ticket
 	for _, ticket := range m.tickets {
@@ -76,12 +70,10 @@ func (m *MockTicketRepository) FindByStatuses(statuses []models.TicketStatus) ([
 	return tickets, nil
 }
 
-// GetMaxTicketNumber - возвращает максимальный номер талона
 func (m *MockTicketRepository) GetMaxTicketNumber() (int, error) {
 	return len(m.tickets), nil
 }
 
-// GetNextWaitingTicket - находит следующий талон в статусе "ожидает"
 func (m *MockTicketRepository) GetNextWaitingTicket() (*models.Ticket, error) {
 	for _, ticket := range m.tickets {
 		if ticket.Status == models.StatusWaiting {
@@ -91,7 +83,6 @@ func (m *MockTicketRepository) GetNextWaitingTicket() (*models.Ticket, error) {
 	return nil, errors.New("no waiting tickets")
 }
 
-// Delete - удаляет талон по ID
 func (m *MockTicketRepository) Delete(id uint) error {
 	if _, exists := m.tickets[id]; exists {
 		delete(m.tickets, id)

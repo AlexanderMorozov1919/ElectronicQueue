@@ -10,7 +10,6 @@ type patientRepo struct {
 	db *gorm.DB
 }
 
-// NewPatientRepository - конструктор для patientRepo.
 func NewPatientRepository(db *gorm.DB) PatientRepository {
 	return &patientRepo{db: db}
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GinLogger возвращает middleware для GIN, который логирует запросы в новом формате.
+// GinLogger возвращает middleware для GIN
 func GinLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
