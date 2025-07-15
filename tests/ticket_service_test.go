@@ -1,39 +1,33 @@
-package services_test
+package services
 
 import (
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/models"
-	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 )
 
 func init() {
-	// Инициализируем логгер для тестов
 	logger.Init("")
 }
 
 /*
 Мок-репозиторий для тестирования услуг
-Имитирует работу с таблицей услуг в базе данных.
-Реализует интерфейс repository.ServiceRepository.
+Имитирует работу с таблицей услуг в базе данных
+Позволяет тестировать логику работы с услугами без реальной БД
 */
 type MockServiceRepository struct {
 	services map[string]*models.Service
-	nextID   uint
 }
 
 func NewMockServiceRepository() *MockServiceRepository {
 	return &MockServiceRepository{
 		services: make(map[string]*models.Service),
-		nextID:   1,
 	}
 }
 
-// GetAll - возвращает все услуги из памяти
 func (m *MockServiceRepository) GetAll() ([]models.Service, error) {
 	services := make([]models.Service, 0, len(m.services))
 	for _, service := range m.services {
@@ -42,7 +36,6 @@ func (m *MockServiceRepository) GetAll() ([]models.Service, error) {
 	return services, nil
 }
 
-// GetByID - ищет услугу по числовому ID
 func (m *MockServiceRepository) GetByID(id uint) (*models.Service, error) {
 	for _, service := range m.services {
 		if service.ID == id {
@@ -52,23 +45,16 @@ func (m *MockServiceRepository) GetByID(id uint) (*models.Service, error) {
 	return nil, errors.New("service not found")
 }
 
-// Create - создает новую услугу в памяти
 func (m *MockServiceRepository) Create(service *models.Service) error {
-	if service.ID == 0 {
-		service.ID = m.nextID
-		m.nextID++
-	}
 	m.services[service.ServiceID] = service
 	return nil
 }
 
-// Update - обновляет услугу в памяти
 func (m *MockServiceRepository) Update(service *models.Service) error {
 	m.services[service.ServiceID] = service
 	return nil
 }
 
-// Delete - удаляет услугу по числовому ID
 func (m *MockServiceRepository) Delete(id uint) error {
 	for serviceID, service := range m.services {
 		if service.ID == id {
@@ -79,7 +65,6 @@ func (m *MockServiceRepository) Delete(id uint) error {
 	return errors.New("service not found")
 }
 
-// GetByServiceID - ищет услугу по строковому идентификатору
 func (m *MockServiceRepository) GetByServiceID(serviceID string) (*models.Service, error) {
 	if service, exists := m.services[serviceID]; exists {
 		return service, nil
@@ -87,28 +72,31 @@ func (m *MockServiceRepository) GetByServiceID(serviceID string) (*models.Servic
 	return nil, errors.New("service not found")
 }
 
-// Статическая проверка реализации интерфейса
-var _ repository.ServiceRepository = &MockServiceRepository{}
-
 /*
 Расширенный мок-репозиторий для тестирования TicketService
-Реализует интерфейс repository.TicketRepository.
+Включает дополнительные методы, необходимые для TicketService
 */
 type MockTicketRepositoryWithServices struct {
 	tickets map[uint]*models.Ticket
 	maxNum  int
-	nextID  uint
+}
+
+func (m *MockTicketRepositoryWithServices) FindFirstByStatus(status models.TicketStatus) (*models.Ticket, error) {
+	for _, ticket := range m.tickets {
+		if ticket.Status == status {
+			return ticket, nil
+		}
+	}
+	return nil, errors.New("ticket not found")
 }
 
 func NewMockTicketRepositoryWithServices() *MockTicketRepositoryWithServices {
 	return &MockTicketRepositoryWithServices{
 		tickets: make(map[uint]*models.Ticket),
 		maxNum:  0,
-		nextID:  1,
 	}
 }
 
-// GetByID - ищет талон по ID в памяти
 func (m *MockTicketRepositoryWithServices) GetByID(id uint) (*models.Ticket, error) {
 	if ticket, exists := m.tickets[id]; exists {
 		return ticket, nil
@@ -116,24 +104,35 @@ func (m *MockTicketRepositoryWithServices) GetByID(id uint) (*models.Ticket, err
 	return nil, errors.New("ticket not found")
 }
 
-// Update - обновляет талон в памяти
 func (m *MockTicketRepositoryWithServices) Update(ticket *models.Ticket) error {
 	m.tickets[ticket.ID] = ticket
 	return nil
 }
 
-// Create - создает новый талон в памяти и увеличивает счетчик
 func (m *MockTicketRepositoryWithServices) Create(ticket *models.Ticket) error {
-	if ticket.ID == 0 {
-		ticket.ID = m.nextID
-		m.nextID++
-	}
 	m.tickets[ticket.ID] = ticket
 	m.maxNum++
 	return nil
 }
 
-// Delete - удаляет талон по ID
+func (m *MockTicketRepositoryWithServices) GetAll() ([]*models.Ticket, error) {
+	tickets := make([]*models.Ticket, 0, len(m.tickets))
+	for _, ticket := range m.tickets {
+		tickets = append(tickets, ticket)
+	}
+	return tickets, nil
+}
+
+func (m *MockTicketRepositoryWithServices) GetByStatus(status string) ([]*models.Ticket, error) {
+	var tickets []*models.Ticket
+	for _, ticket := range m.tickets {
+		if string(ticket.Status) == status {
+			tickets = append(tickets, ticket)
+		}
+	}
+	return tickets, nil
+}
+
 func (m *MockTicketRepositoryWithServices) Delete(id uint) error {
 	if _, exists := m.tickets[id]; exists {
 		delete(m.tickets, id)
@@ -142,28 +141,19 @@ func (m *MockTicketRepositoryWithServices) Delete(id uint) error {
 	return errors.New("ticket not found")
 }
 
-// GetMaxTicketNumber - возвращает максимальный номер талона
 func (m *MockTicketRepositoryWithServices) GetMaxTicketNumber() (int, error) {
 	return m.maxNum, nil
 }
 
-// GetNextWaitingTicket - находит следующий талон в статусе "ожидает"
 func (m *MockTicketRepositoryWithServices) GetNextWaitingTicket() (*models.Ticket, error) {
-	var earliestTicket *models.Ticket
 	for _, ticket := range m.tickets {
 		if ticket.Status == models.StatusWaiting {
-			if earliestTicket == nil || ticket.CreatedAt.Before(earliestTicket.CreatedAt) {
-				earliestTicket = ticket
-			}
+			return ticket, nil
 		}
-	}
-	if earliestTicket != nil {
-		return earliestTicket, nil
 	}
 	return nil, errors.New("no waiting tickets")
 }
 
-// FindByStatuses - ищет талоны по списку статусов
 func (m *MockTicketRepositoryWithServices) FindByStatuses(statuses []models.TicketStatus) ([]models.Ticket, error) {
 	var tickets []models.Ticket
 	for _, ticket := range m.tickets {
@@ -177,9 +167,6 @@ func (m *MockTicketRepositoryWithServices) FindByStatuses(statuses []models.Tick
 	return tickets, nil
 }
 
-// Статическая проверка реализации интерфейса
-var _ repository.TicketRepository = &MockTicketRepositoryWithServices{}
-
 /*
 Тест: Успешное создание талона
 Проверяет, что система может создать новый талон для выбранной услуги
@@ -192,11 +179,12 @@ func TestCreateTicket_Success(t *testing.T) {
 
 	// Добавляем тестовую услугу в мок
 	service := &models.Service{
+		ID:        1,
 		ServiceID: "1",
 		Name:      "Консультация",
 		Letter:    "A",
 	}
-	mockServiceRepo.Create(service)
+	mockServiceRepo.services["1"] = service
 
 	// Создаем экземпляр сервиса с моками
 	serviceInstance := services.NewTicketService(mockTicketRepo, mockServiceRepo)
@@ -266,7 +254,7 @@ func TestCreateTicket_InvalidServiceID(t *testing.T) {
 
 	// Проверяем текст ошибки
 	expectedError := "service not found"
-	if !strings.Contains(err.Error(), expectedError) {
+	if !contains(err.Error(), expectedError) {
 		t.Errorf("Ошибка должна содержать '%s', получено: '%s'",
 			expectedError, err.Error())
 	}
@@ -309,7 +297,7 @@ func TestCreateTicket_EmptyServiceID(t *testing.T) {
 
 	// Проверяем текст ошибки
 	expectedError := "serviceID is required"
-	if !strings.Contains(err.Error(), expectedError) {
+	if !contains(err.Error(), expectedError) {
 		t.Errorf("Ошибка должна содержать '%s', получено: '%s'",
 			expectedError, err.Error())
 	}
@@ -335,6 +323,7 @@ func TestCallNextTicket_Success(t *testing.T) {
 
 	// Создаем талон в статусе "ожидает" - это пациент в очереди
 	ticket := &models.Ticket{
+		ID:           1,
 		TicketNumber: "A001",
 		Status:       models.StatusWaiting, // Пациент ожидает в очереди
 		CreatedAt:    time.Now(),
@@ -408,7 +397,7 @@ func TestCallNextTicket_EmptyQueue(t *testing.T) {
 
 	// Проверяем текст ошибки
 	expectedError := "очередь пуста"
-	if !strings.Contains(err.Error(), expectedError) {
+	if !contains(err.Error(), expectedError) {
 		t.Errorf("Ошибка должна содержать '%s', получено: '%s'",
 			expectedError, err.Error())
 	}
@@ -433,8 +422,10 @@ func TestGetAllServices_Success(t *testing.T) {
 	mockServiceRepo := NewMockServiceRepository()
 
 	// Добавляем тестовые услуги
-	mockServiceRepo.Create(&models.Service{ServiceID: "1", Name: "Консультация", Letter: "A"})
-	mockServiceRepo.Create(&models.Service{ServiceID: "2", Name: "Анализы", Letter: "B"})
+	service1 := &models.Service{ID: 1, ServiceID: "1", Name: "Консультация", Letter: "A"}
+	service2 := &models.Service{ID: 2, ServiceID: "2", Name: "Анализы", Letter: "B"}
+	mockServiceRepo.services["1"] = service1
+	mockServiceRepo.services["2"] = service2
 
 	// Создаем сервис
 	serviceInstance := services.NewTicketService(mockTicketRepo, mockServiceRepo)
@@ -474,7 +465,8 @@ func TestMapServiceIDToName_Success(t *testing.T) {
 	mockServiceRepo := NewMockServiceRepository()
 
 	// Добавляем тестовую услугу
-	mockServiceRepo.Create(&models.Service{ServiceID: "1", Name: "Консультация", Letter: "A"})
+	service := &models.Service{ID: 1, ServiceID: "1", Name: "Консультация", Letter: "A"}
+	mockServiceRepo.services["1"] = service
 
 	// Создаем сервис
 	serviceInstance := services.NewTicketService(mockTicketRepo, mockServiceRepo)

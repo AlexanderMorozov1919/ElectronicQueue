@@ -341,6 +341,114 @@
                 }
             }
         },
+        "/api/doctor/complete-appointment": {
+            "post": {
+                "description": "Завершает прием пациента по талону",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Завершить прием пациента",
+                "parameters": [
+                    {
+                        "description": "Данные для завершения приема",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CompleteAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointment completed successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "ticket_id is required or error message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/screen-updates": {
+            "get": {
+                "description": "Отправляет начальное состояние и последующие обновления статуса приема через Server-Sent Events.",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Получить обновления для табло врача",
+                "responses": {
+                    "200": {
+                        "description": "Поток событий",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.DoctorScreenResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/start-appointment": {
+            "post": {
+                "description": "Начинает прием пациента по талону",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Начать прием пациента",
+                "parameters": [
+                    {
+                        "description": "Данные для начала приема",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.StartAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointment started successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "ticket_id is required or error message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/registrar/call-next": {
             "post": {
                 "description": "Находит первого пациента в очереди, меняет его статус на \"приглашен\" и присваивает номер окна",
@@ -810,94 +918,6 @@
                     }
                 }
             }
-        },
-        "/doctor/appointment/complete": {
-            "post": {
-                "description": "Завершает прием пациента по талону",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "doctor"
-                ],
-                "summary": "Завершить прием пациента",
-                "parameters": [
-                    {
-                        "description": "Данные для завершения приема",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.CompleteAppointmentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Appointment completed successfully",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "ticket_id is required or error message",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/doctor/appointment/start": {
-            "post": {
-                "description": "Начинает прием пациента по талону",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "doctor"
-                ],
-                "summary": "Начать прием пациента",
-                "parameters": [
-                    {
-                        "description": "Данные для начала приема",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.StartAppointmentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Appointment started successfully",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "ticket_id is required or error message",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -961,6 +981,26 @@
                 "timeout": {
                     "type": "integer",
                     "example": 10
+                }
+            }
+        },
+        "handlers.DoctorScreenResponse": {
+            "type": "object",
+            "properties": {
+                "doctor_name": {
+                    "type": "string"
+                },
+                "doctor_specialty": {
+                    "type": "string"
+                },
+                "is_waiting": {
+                    "type": "boolean"
+                },
+                "office_number": {
+                    "type": "integer"
+                },
+                "ticket_number": {
+                    "type": "string"
                 }
             }
         },

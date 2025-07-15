@@ -1,22 +1,29 @@
-package services_test
+package services
 
 import (
 	"ElectronicQueue/internal/models"
-	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 )
 
 /*
 Мок-репозиторий для тестирования DoctorService
-Имитирует работу с базой данных, но хранит данные в памяти.
-Корректно реализует интерфейс repository.TicketRepository.
+Имитирует работу с базой данных, но хранит данные в памяти
+Это позволяет тестировать логику сервиса без реальной БД
 */
 type MockTicketRepository struct {
 	tickets map[uint]*models.Ticket
+}
+
+func (m *MockTicketRepository) FindFirstByStatus(status models.TicketStatus) (*models.Ticket, error) {
+	for _, ticket := range m.tickets {
+		if ticket.Status == status {
+			return ticket, nil
+		}
+	}
+	return nil, errors.New("ticket not found")
 }
 
 func NewMockTicketRepository() *MockTicketRepository {
@@ -25,7 +32,6 @@ func NewMockTicketRepository() *MockTicketRepository {
 	}
 }
 
-// GetByID - ищет талон по ID в памяти
 func (m *MockTicketRepository) GetByID(id uint) (*models.Ticket, error) {
 	if ticket, exists := m.tickets[id]; exists {
 		return ticket, nil
@@ -33,25 +39,34 @@ func (m *MockTicketRepository) GetByID(id uint) (*models.Ticket, error) {
 	return nil, errors.New("ticket not found")
 }
 
-// Update - обновляет талон в памяти
 func (m *MockTicketRepository) Update(ticket *models.Ticket) error {
-	if _, exists := m.tickets[ticket.ID]; exists {
-		m.tickets[ticket.ID] = ticket
-		return nil
-	}
-	return errors.New("ticket not found")
-}
-
-// Create - создает новый талон в памяти
-func (m *MockTicketRepository) Create(ticket *models.Ticket) error {
-	if ticket.ID == 0 {
-		ticket.ID = uint(len(m.tickets) + 1)
-	}
 	m.tickets[ticket.ID] = ticket
 	return nil
 }
 
-// FindByStatuses - ищет талоны по списку статусов
+func (m *MockTicketRepository) Create(ticket *models.Ticket) error {
+	m.tickets[ticket.ID] = ticket
+	return nil
+}
+
+func (m *MockTicketRepository) GetAll() ([]*models.Ticket, error) {
+	tickets := make([]*models.Ticket, 0, len(m.tickets))
+	for _, ticket := range m.tickets {
+		tickets = append(tickets, ticket)
+	}
+	return tickets, nil
+}
+
+func (m *MockTicketRepository) GetByStatus(status string) ([]*models.Ticket, error) {
+	var tickets []*models.Ticket
+	for _, ticket := range m.tickets {
+		if string(ticket.Status) == status {
+			tickets = append(tickets, ticket)
+		}
+	}
+	return tickets, nil
+}
+
 func (m *MockTicketRepository) FindByStatuses(statuses []models.TicketStatus) ([]models.Ticket, error) {
 	var tickets []models.Ticket
 	for _, ticket := range m.tickets {
@@ -65,28 +80,19 @@ func (m *MockTicketRepository) FindByStatuses(statuses []models.TicketStatus) ([
 	return tickets, nil
 }
 
-// GetMaxTicketNumber - возвращает максимальный номер талона
 func (m *MockTicketRepository) GetMaxTicketNumber() (int, error) {
 	return len(m.tickets), nil
 }
 
-// GetNextWaitingTicket - находит следующий талон в статусе "ожидает"
 func (m *MockTicketRepository) GetNextWaitingTicket() (*models.Ticket, error) {
-	var earliestTicket *models.Ticket
 	for _, ticket := range m.tickets {
 		if ticket.Status == models.StatusWaiting {
-			if earliestTicket == nil || ticket.CreatedAt.Before(earliestTicket.CreatedAt) {
-				earliestTicket = ticket
-			}
+			return ticket, nil
 		}
-	}
-	if earliestTicket != nil {
-		return earliestTicket, nil
 	}
 	return nil, errors.New("no waiting tickets")
 }
 
-// Delete - удаляет талон по ID
 func (m *MockTicketRepository) Delete(id uint) error {
 	if _, exists := m.tickets[id]; exists {
 		delete(m.tickets, id)
@@ -94,9 +100,6 @@ func (m *MockTicketRepository) Delete(id uint) error {
 	}
 	return errors.New("ticket not found")
 }
-
-// Статическая проверка, что MockTicketRepository реализует интерфейс repository.TicketRepository
-var _ repository.TicketRepository = &MockTicketRepository{}
 
 /*
 Тест: Успешное начало приема пациента
@@ -106,7 +109,7 @@ var _ repository.TicketRepository = &MockTicketRepository{}
 func TestStartAppointment_Success(t *testing.T) {
 	// Подготавливаем тестовые данные
 	mockRepo := NewMockTicketRepository()
-	service := services.NewDoctorService(mockRepo)
+	service := services.NewDoctorService(mockRepo, nil)
 
 	// Создаем талон в статусе "приглашен" - это правильный статус для начала приема
 	ticket := &models.Ticket{
@@ -155,7 +158,7 @@ func TestStartAppointment_Success(t *testing.T) {
 func TestStartAppointment_TicketNotFound(t *testing.T) {
 	// Подготавливаем пустой репозиторий (нет талонов)
 	mockRepo := NewMockTicketRepository()
-	service := services.NewDoctorService(mockRepo)
+	service := services.NewDoctorService(mockRepo, nil)
 
 	// Пытаемся начать прием с несуществующим ID
 	result, err := service.StartAppointment(999)
@@ -173,7 +176,7 @@ func TestStartAppointment_TicketNotFound(t *testing.T) {
 
 	// Проверяем текст ошибки
 	expectedError := "ticket not found"
-	if !strings.Contains(err.Error(), expectedError) {
+	if !contains(err.Error(), expectedError) {
 		t.Errorf("Ошибка должна содержать '%s', получено: '%s'",
 			expectedError, err.Error())
 	}
@@ -195,7 +198,7 @@ func TestStartAppointment_TicketNotFound(t *testing.T) {
 */
 func TestStartAppointment_InvalidStatus(t *testing.T) {
 	mockRepo := NewMockTicketRepository()
-	service := services.NewDoctorService(mockRepo)
+	service := services.NewDoctorService(mockRepo, nil)
 
 	// Создаем талон в статусе "завершен" - это неправильный статус для начала приема
 	ticket := &models.Ticket{
@@ -222,7 +225,7 @@ func TestStartAppointment_InvalidStatus(t *testing.T) {
 
 	// Проверяем текст ошибки
 	expectedError := "ticket must be in 'приглашен' status"
-	if !strings.Contains(err.Error(), expectedError) {
+	if !contains(err.Error(), expectedError) {
 		t.Errorf("Ошибка должна содержать '%s', получено: '%s'",
 			expectedError, err.Error())
 	}
@@ -243,7 +246,7 @@ func TestStartAppointment_InvalidStatus(t *testing.T) {
 */
 func TestCompleteAppointment_Success(t *testing.T) {
 	mockRepo := NewMockTicketRepository()
-	service := services.NewDoctorService(mockRepo)
+	service := services.NewDoctorService(mockRepo, nil)
 
 	// Создаем талон в статусе "на_приеме" с установленным временем начала
 	startTime := time.Now()
@@ -294,7 +297,7 @@ func TestCompleteAppointment_Success(t *testing.T) {
 */
 func TestCompleteAppointment_InvalidStatus(t *testing.T) {
 	mockRepo := NewMockTicketRepository()
-	service := services.NewDoctorService(mockRepo)
+	service := services.NewDoctorService(mockRepo, nil)
 
 	// Создаем талон в статусе "ожидает" - это неправильный статус для завершения приема
 	ticket := &models.Ticket{
@@ -321,7 +324,7 @@ func TestCompleteAppointment_InvalidStatus(t *testing.T) {
 
 	// Проверяем текст ошибки
 	expectedError := "ticket must be in 'на_приеме' status"
-	if !strings.Contains(err.Error(), expectedError) {
+	if !contains(err.Error(), expectedError) {
 		t.Errorf("Ошибка должна содержать '%s', получено: '%s'",
 			expectedError, err.Error())
 	}
@@ -333,4 +336,19 @@ func TestCompleteAppointment_InvalidStatus(t *testing.T) {
 	t.Logf("[COMPLETE_APPOINTMENT] CALLS: repo.GetByID(4) x1")
 	t.Logf("[COMPLETE_APPOINTMENT] STATUS: PASS")
 	t.Logf("========================================")
+}
+
+// Вспомогательная функция для проверки содержимого строки
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr ||
+		(len(s) > len(substr) && (s[:len(substr)] == substr ||
+			s[len(s)-len(substr):] == substr ||
+			func() bool {
+				for i := 1; i <= len(s)-len(substr); i++ {
+					if s[i:i+len(substr)] == substr {
+						return true
+					}
+				}
+				return false
+			}())))
 }

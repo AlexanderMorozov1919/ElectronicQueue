@@ -44,6 +44,19 @@ definitions:
         example: 10
         type: integer
     type: object
+  handlers.DoctorScreenResponse:
+    properties:
+      doctor_name:
+        type: string
+      doctor_specialty:
+        type: string
+      is_waiting:
+        type: boolean
+      office_number:
+        type: integer
+      ticket_number:
+        type: string
+    type: object
   handlers.ServiceSelectionRequest:
     description: Запрос для выбора услуги
     properties:
@@ -404,6 +417,78 @@ paths:
       summary: Обновление данных в таблице
       tags:
       - database
+  /api/doctor/complete-appointment:
+    post:
+      consumes:
+      - application/json
+      description: Завершает прием пациента по талону
+      parameters:
+      - description: Данные для завершения приема
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CompleteAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Appointment completed successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: ticket_id is required or error message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Завершить прием пациента
+      tags:
+      - doctor
+  /api/doctor/screen-updates:
+    get:
+      description: Отправляет начальное состояние и последующие обновления статуса
+        приема через Server-Sent Events.
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Поток событий
+          schema:
+            $ref: '#/definitions/handlers.DoctorScreenResponse'
+      summary: Получить обновления для табло врача
+      tags:
+      - doctor
+  /api/doctor/start-appointment:
+    post:
+      consumes:
+      - application/json
+      description: Начинает прием пациента по талону
+      parameters:
+      - description: Данные для начала приема
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.StartAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Appointment started successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: ticket_id is required or error message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Начать прием пациента
+      tags:
+      - doctor
   /api/registrar/call-next:
     post:
       consumes:
@@ -716,64 +801,6 @@ paths:
       summary: Просмотр изображения талона
       tags:
       - tickets
-  /doctor/appointment/complete:
-    post:
-      consumes:
-      - application/json
-      description: Завершает прием пациента по талону
-      parameters:
-      - description: Данные для завершения приема
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.CompleteAppointmentRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Appointment completed successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: ticket_id is required or error message
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Завершить прием пациента
-      tags:
-      - doctor
-  /doctor/appointment/start:
-    post:
-      consumes:
-      - application/json
-      description: Начинает прием пациента по талону
-      parameters:
-      - description: Данные для начала приема
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.StartAppointmentRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Appointment started successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: ticket_id is required or error message
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Начать прием пациента
-      tags:
-      - doctor
 securityDefinitions:
   ApiKeyAuth:
     in: header
