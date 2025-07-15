@@ -31,6 +31,16 @@ func (s *TicketService) GetAllServices() ([]models.Service, error) {
 	return s.serviceRepo.GetAll()
 }
 
+func (s *TicketService) GetAllActiveTickets() ([]models.Ticket, error) {
+	activeStatuses := []models.TicketStatus{models.StatusWaiting, models.StatusInvited}
+	tickets, err := s.repo.FindByStatuses(activeStatuses)
+	if err != nil {
+		logger.Default().WithError(err).Error("GetAllActiveTickets: repo error")
+		return nil, err
+	}
+	return tickets, nil
+}
+
 func (s *TicketService) GetServiceByID(id uint) (*models.Service, error) {
 	return s.serviceRepo.GetByID(id)
 }
