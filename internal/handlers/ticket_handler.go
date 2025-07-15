@@ -3,6 +3,7 @@ package handlers
 import (
 	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/logger"
+	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/services"
 	"ElectronicQueue/internal/utils"
 	"fmt"
@@ -275,4 +276,28 @@ func (h *TicketHandler) ViewTicket(c *gin.Context) {
 	c.Header("Content-Type", "image/png")
 
 	c.File(filePath)
+}
+
+// GetAllActive godoc
+// @Summary      Получить все активные талоны
+// @Description  Возвращает список всех талонов в статусе 'ожидает' и 'приглашен' для первоначальной загрузки табло.
+// @Tags         tickets
+// @Produce      json
+// @Success      200 {object} []models.TicketResponse "Список активных талонов"
+// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Router       /api/tickets/active [get]
+func (h *TicketHandler) GetAllActive(c *gin.Context) {
+	tickets, err := h.service.GetAllActiveTickets()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get active tickets"})
+		return
+	}
+
+	// Конвертируем []models.Ticket в []models.TicketResponse
+	var response []models.TicketResponse
+	for _, t := range tickets {
+		response = append(response, t.ToResponse())
+	}
+
+	c.JSON(http.StatusOK, response)
 }
