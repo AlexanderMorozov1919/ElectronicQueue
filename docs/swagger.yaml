@@ -533,6 +533,28 @@ paths:
       summary: Сменить статус тикета
       tags:
       - registrar
+  /api/tickets/active:
+    get:
+      description: Возвращает список всех талонов в статусе 'ожидает' и 'приглашен'
+        для первоначальной загрузки табло.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список активных талонов
+          schema:
+            items:
+              $ref: '#/definitions/models.TicketResponse'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить все активные талоны
+      tags:
+      - tickets
   /api/tickets/download/{ticket_number}:
     get:
       description: Позволяет скачать изображение талона по номеру

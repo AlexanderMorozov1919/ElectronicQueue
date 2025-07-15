@@ -159,6 +159,7 @@ func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *
 	{
 		tickets.GET("/start", ticketHandler.StartPage)
 		tickets.GET("/services", ticketHandler.Services)
+		tickets.GET("/active", ticketHandler.GetAllActive)
 		tickets.POST("/print/selection", ticketHandler.Selection)
 		tickets.POST("/print/confirmation", ticketHandler.Confirmation)
 		tickets.GET("/download/:ticket_number", ticketHandler.DownloadTicket)

@@ -535,6 +535,38 @@
                 }
             }
         },
+        "/api/tickets/active": {
+            "get": {
+                "description": "Возвращает список всех талонов в статусе 'ожидает' и 'приглашен' для первоначальной загрузки табло.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Получить все активные талоны",
+                "responses": {
+                    "200": {
+                        "description": "Список активных талонов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TicketResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/tickets/download/{ticket_number}": {
             "get": {
                 "description": "Позволяет скачать изображение талона по номеру",
