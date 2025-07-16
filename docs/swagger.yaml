@@ -421,7 +421,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Завершает прием пациента по талону
+      description: Завершает прием пациента по талону. Статус талона должен быть 'на_приеме'.
       parameters:
       - description: Данные для завершения приема
         in: body
@@ -438,7 +438,7 @@ paths:
             additionalProperties: true
             type: object
         "400":
-          description: ticket_id is required or error message
+          description: Неверный запрос или статус талона
           schema:
             additionalProperties:
               type: string
@@ -464,7 +464,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Начинает прием пациента по талону
+      description: Начинает прием пациента по талону. Статус талона должен быть 'зарегистрирован'.
       parameters:
       - description: Данные для начала приема
         in: body
@@ -481,12 +481,56 @@ paths:
             additionalProperties: true
             type: object
         "400":
-          description: ticket_id is required or error message
+          description: Неверный запрос или статус талона
           schema:
             additionalProperties:
               type: string
             type: object
       summary: Начать прием пациента
+      tags:
+      - doctor
+  /api/doctor/tickets/in-progress:
+    get:
+      description: Возвращает список талонов со статусом "на_приеме". Обычно это один
+        талон.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список талонов
+          schema:
+            items:
+              $ref: '#/definitions/models.TicketResponse'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить талоны на приеме
+      tags:
+      - doctor
+  /api/doctor/tickets/registered:
+    get:
+      description: Возвращает список талонов со статусом "зарегистрирован", т.е. очередь
+        непосредственно к врачу.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список талонов
+          schema:
+            items:
+              $ref: '#/definitions/models.TicketResponse'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить очередь к врачу
       tags:
       - doctor
   /api/registrar/call-next:

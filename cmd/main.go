@@ -16,6 +16,7 @@ import (
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/middleware"
 	"ElectronicQueue/internal/models"
+	"ElectronicQueue/internal/pubsub"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
 
@@ -61,30 +62,29 @@ func main() {
 	}
 	log.WithField("dbname", cfg.DBName).Info("Database connected successfully")
 
-	receptionChannel := make(chan string, 10) // Канал для табло регистратуры
-	doctorChannel := make(chan string, 10)    // Канал для экрана врача
+	// Канал для получения уведомлений из PostgreSQL
+	notificationChannel := make(chan string, 100)
+	// Контекст для управления жизненным циклом листенера
+	listenerCtx, cancelListener := context.WithCancel(context.Background())
 
-	// Контекст для управления жизненным циклом листенеров
-	listenerCtx, cancelListeners := context.WithCancel(context.Background())
+	psBroker := pubsub.NewBroker()
+	go psBroker.ListenAndPublish(notificationChannel)
 
-	// Пул соединений для листенеров
 	pool, err := initPgxPool(listenerCtx, cfg)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to initialize database listener with pgx")
 	}
 
-	// Запускаем горутины-слушателя, каждая со своим каналом
-	go listenForNotifications(listenerCtx, pool, receptionChannel, log, "reception_listener")
-	go listenForNotifications(listenerCtx, pool, doctorChannel, log, "doctor_listener")
+	// Запускаем единый листенер, который будет отправлять все уведомления в notificationChannel
+	go listenForNotifications(listenerCtx, pool, notificationChannel, log)
 
-	// Настройка роутера
-	r := setupRouter(receptionChannel, doctorChannel, db, cfg)
+	r := setupRouter(psBroker, db, cfg)
 
 	// Swagger endpoint
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Обработка сигналов завершения
-	handleGracefulShutdown(db, pool, cancelListeners, log)
+	handleGracefulShutdown(db, pool, cancelListener, log)
 
 	fmt.Printf("Сервер запущен на порту: %s\n", cfg.BackendPort)
 	if err := r.Run(":" + cfg.BackendPort); err != nil {
@@ -112,21 +112,20 @@ func initPgxPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error)
 }
 
 // listenForNotifications слушает LISTEN/NOTIFY и отправляет в указанный канал
-func listenForNotifications(ctx context.Context, pool *pgxpool.Pool, notifications chan<- string, log *logger.AsyncLogger, listenerID string) {
-	log = log.WithField("listener_id", listenerID)
+func listenForNotifications(ctx context.Context, pool *pgxpool.Pool, notifications chan<- string, log *logger.AsyncLogger) {
 	conn, err := pool.Acquire(ctx)
 	if err != nil {
-		log.WithError(err).Error("Failed to acquire connection from pool for listener")
+		log.WithError(err).Error("Listener: Failed to acquire connection from pool")
 		return
 	}
 	defer conn.Release()
 
 	_, err = conn.Exec(ctx, "LISTEN ticket_update")
 	if err != nil {
-		log.WithError(err).Error("Failed to execute LISTEN command")
+		log.WithError(err).Error("Listener: Failed to execute LISTEN command")
 		return
 	}
-	log.Info("Listening to 'ticket_update' channel")
+	log.Info("Listener: Listening to 'ticket_update' channel")
 
 	for {
 		notification, err := conn.Conn().WaitForNotification(ctx)
@@ -135,7 +134,7 @@ func listenForNotifications(ctx context.Context, pool *pgxpool.Pool, notificatio
 				log.Info("Listener context cancelled, shutting down.")
 				return
 			}
-			log.WithError(err).Error("Error waiting for notification")
+			log.WithError(err).Error("Listener: Error waiting for notification")
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -144,14 +143,12 @@ func listenForNotifications(ctx context.Context, pool *pgxpool.Pool, notificatio
 }
 
 // setupRouter настраивает маршруты и middleware
-func setupRouter(receptionChannel, doctorChannel chan string, db *gorm.DB, cfg *config.Config) *gin.Engine {
+func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.SetTrustedProxies(nil)
 	r.Use(logger.GinLogger())
 	r.Use(middleware.CorsMiddleware())
-
-	r.GET("/tickets", sseHandler(receptionChannel, "reception_sse"))
 
 	ticketRepo := repository.NewTicketRepository(db)
 	serviceRepo := repository.NewServiceRepository(db)
@@ -161,9 +158,13 @@ func setupRouter(receptionChannel, doctorChannel chan string, db *gorm.DB, cfg *
 	doctorService := services.NewDoctorService(ticketRepo, doctorRepo)
 
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
-	doctorHandler := handlers.NewDoctorHandler(doctorService, doctorChannel)
+	doctorHandler := handlers.NewDoctorHandler(doctorService, broker)
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
 
+	// SSE-эндпоинт для табло регистратуры
+	r.GET("/tickets", sseHandler(broker, "reception_sse"))
+
+	// Группа роутов для терминала
 	tickets := r.Group("/api/tickets")
 	{
 		tickets.GET("/start", ticketHandler.StartPage)
@@ -175,13 +176,13 @@ func setupRouter(receptionChannel, doctorChannel chan string, db *gorm.DB, cfg *
 		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)
 	}
 
-	// Doctor routes
 	doctorGroup := r.Group("/api/doctor")
 	{
 		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
 		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
 		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
 		doctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
+		// SSE-эндпоинт для табло у кабинета врача
 		doctorGroup.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
 	}
 
@@ -192,10 +193,10 @@ func setupRouter(receptionChannel, doctorChannel chan string, db *gorm.DB, cfg *
 		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 	}
 
+	// Группа роутов для прямого доступа к БД
 	databaseRepo := repository.NewDatabaseRepository(db)
 	databaseService := services.NewDatabaseService(databaseRepo)
 	databaseHandler := handlers.NewDatabaseHandler(databaseService)
-
 	dbAPI := r.Group("/api/database").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
 	{
 		dbAPI.POST("/:table/select", databaseHandler.GetData)
@@ -208,35 +209,45 @@ func setupRouter(receptionChannel, doctorChannel chan string, db *gorm.DB, cfg *
 }
 
 type NotificationPayload struct {
-	Action string        `json:"action"`
-	Data   models.Ticket `json:"data"`
+	Action string                `json:"action"`
+	Data   models.TicketResponse `json:"data"`
 }
 
-// sseHandler стал более универсальным, принимает канал и ID для логгирования
-func sseHandler(notifications <-chan string, handlerID string) gin.HandlerFunc {
+// sseHandler подписывает клиента на события от брокера
+func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
 		log := logger.Default().WithField("handler_id", handlerID)
 
+		// Создаем канал для этого конкретного клиента и подписываем его на брокера.
+		clientChan := broker.Subscribe()
+		defer broker.Unsubscribe(clientChan) // Гарантируем отписку при выходе из функции.
+
 		c.Stream(func(w io.Writer) bool {
 			select {
-			case payloadStr, ok := <-notifications:
-				if !ok {
-					log.Info("Notification channel closed.")
+			// Слушаем сообщения из персонального канала клиента.
+			case payloadStr, ok := <-clientChan:
+				if !ok { // Канал был закрыт брокером
+					log.Info("Client channel closed.")
 					return false
 				}
-				log.WithField("payload", payloadStr).Info("Received notification from channel")
+
+				log.WithField("payload", payloadStr).Info("SSE Handler: Sending message to client")
 				var payload NotificationPayload
 				if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
 					log.WithError(err).Error("Failed to unmarshal notification payload")
-					return true
+					return true // Продолжаем слушать, несмотря на ошибку парсинга.
 				}
-				c.SSEvent(payload.Action, payload.Data.ToResponse())
+
+				// Отправляем событие клиенту.
+				c.SSEvent(payload.Action, payload.Data)
 				return true
+
+			// Клиент отключился.
 			case <-c.Request.Context().Done():
-				log.Info("Client disconnected")
+				log.Info("Client disconnected.")
 				return false
 			}
 		})

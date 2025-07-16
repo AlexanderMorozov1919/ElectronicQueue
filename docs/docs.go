@@ -349,7 +349,7 @@ const docTemplate = `{
         },
         "/api/doctor/complete-appointment": {
             "post": {
-                "description": "Завершает прием пациента по талону",
+                "description": "Завершает прием пациента по талону. Статус талона должен быть 'на_приеме'.",
                 "consumes": [
                     "application/json"
                 ],
@@ -380,7 +380,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "ticket_id is required or error message",
+                        "description": "Неверный запрос или статус талона",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -413,7 +413,7 @@ const docTemplate = `{
         },
         "/api/doctor/start-appointment": {
             "post": {
-                "description": "Начинает прием пациента по талону",
+                "description": "Начинает прием пациента по талону. Статус талона должен быть 'зарегистрирован'.",
                 "consumes": [
                     "application/json"
                 ],
@@ -444,7 +444,71 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "ticket_id is required or error message",
+                        "description": "Неверный запрос или статус талона",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/tickets/in-progress": {
+            "get": {
+                "description": "Возвращает список талонов со статусом \"на_приеме\". Обычно это один талон.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Получить талоны на приеме",
+                "responses": {
+                    "200": {
+                        "description": "Список талонов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TicketResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/tickets/registered": {
+            "get": {
+                "description": "Возвращает список талонов со статусом \"зарегистрирован\", т.е. очередь непосредственно к врачу.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Получить очередь к врачу",
+                "responses": {
+                    "200": {
+                        "description": "Список талонов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TicketResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
