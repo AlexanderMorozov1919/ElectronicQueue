@@ -1,20 +1,26 @@
 package services
 
 import (
+	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
+	"errors"
 	"fmt"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // DoctorService предоставляет методы для работы врача с талонами
 type DoctorService struct {
 	ticketRepo repository.TicketRepository
+	doctorRepo repository.DoctorRepository
 }
 
-func NewDoctorService(ticketRepo repository.TicketRepository) *DoctorService {
+func NewDoctorService(ticketRepo repository.TicketRepository, doctorRepo repository.DoctorRepository) *DoctorService {
 	return &DoctorService{
 		ticketRepo: ticketRepo,
+		doctorRepo: doctorRepo,
 	}
 }
 
@@ -65,4 +71,26 @@ func (s *DoctorService) CompleteAppointment(ticketID uint) (*models.Ticket, erro
 	}
 
 	return ticket, nil
+}
+
+// GetCurrentAppointmentScreenState находит талон "на приеме" и врача для табло.
+func (s *DoctorService) GetCurrentAppointmentScreenState() (*models.Doctor, *models.Ticket, error) {
+	doctor, err := s.doctorRepo.GetAnyDoctor()
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Default().WithError(err).Error("Error fetching a default doctor")
+		}
+		return nil, nil, fmt.Errorf("no active doctors found in the database: %w", err)
+	}
+
+	ticket, err := s.ticketRepo.FindFirstByStatus(models.StatusInProgress)
+	if err != nil {
+		// "запись не найдена" - нет талона на приеме.
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Default().WithError(err).Error("Error fetching current in-progress ticket")
+		}
+		return doctor, nil, nil
+	}
+
+	return doctor, ticket, nil
 }

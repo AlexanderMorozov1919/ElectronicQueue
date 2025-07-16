@@ -11,6 +11,14 @@ VALUES
   ('A002', 'приглашен', 2, CURRENT_TIMESTAMP),
   ('B003', 'на_приеме', 3, CURRENT_TIMESTAMP),
   ('B004', 'завершен', 1, CURRENT_TIMESTAMP),
-  ('C005', 'подойти_к_окну', 2, CURRENT_TIMESTAMP),
-  ('D006', 'зарегистрирован', 3, CURRENT_TIMESTAMP)
+  ('D005', 'зарегистрирован', 3, CURRENT_TIMESTAMP)
 ON CONFLICT (ticket_number) DO NOTHING;
+
+-- Добавляем данные о враче
+-- Предполагаем, что этот врач будет иметь ID=1
+INSERT INTO doctors (doctor_id, full_name, specialization, is_active) VALUES
+(1, 'Иванов Иван Иванович', 'Терапевт', TRUE)
+ON CONFLICT (doctor_id) DO UPDATE SET
+  full_name = EXCLUDED.full_name,
+  specialization = EXCLUDED.specialization,
+  is_active = EXCLUDED.is_active;

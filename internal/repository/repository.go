@@ -14,6 +14,7 @@ type DoctorRepository interface {
 	Delete(id uint) error
 	GetByID(id uint) (*models.Doctor, error)
 	GetAll(onlyActive bool) ([]models.Doctor, error)
+	GetAnyDoctor() (*models.Doctor, error)
 }
 
 // PatientRepository определяет методы для взаимодействия с данными пациентов.
@@ -33,6 +34,7 @@ type TicketRepository interface {
 	GetNextWaitingTicket() (*models.Ticket, error)
 	GetMaxTicketNumber() (int, error)
 	Delete(id uint) error
+	FindFirstByStatus(status models.TicketStatus) (*models.Ticket, error)
 }
 
 // ScheduleRepository определяет методы для взаимодействия с расписанием.
@@ -57,7 +59,7 @@ type Repository struct {
 	Ticket      TicketRepository
 	Schedule    ScheduleRepository
 	Appointment AppointmentRepository
-	Service     ServiceRepository 
+	Service     ServiceRepository
 }
 
 // NewRepository создает новый экземпляр главного репозитория.
@@ -68,6 +70,6 @@ func NewRepository(db *gorm.DB) *Repository {
 		Ticket:      NewTicketRepository(db),
 		Schedule:    NewScheduleRepository(db),
 		Appointment: NewAppointmentRepository(db),
-		Service:     NewServiceRepository(db), 
+		Service:     NewServiceRepository(db),
 	}
 }

@@ -6,9 +6,6 @@ source ./.env
 set +o allexport
 
 # Автоматический поиск main файлов Flutter frontend
-cd "$(dirname "$0")/../electronicqueue-frontend/lib" || { echo "lib directory not found!"; exit 1; }
-mapfile -t FLUTTER_MAIN_FILES < <(find . -maxdepth 2 -mindepth 2 -type f -name '*.dart' | sed 's|^./||')
-cd - > /dev/null 2>&1
 cd "$(dirname "$0")" && docker compose down > /dev/null 2>&1
 cd "$(dirname "$0")/../electronicqueue-frontend" && docker compose down > /dev/null 2>&1
 cd - > /dev/null > /dev/null 2>&1
@@ -47,6 +44,7 @@ kill_by_port() {
   fi
 }
 
+# --- Аргументы ---
 usage() {
   echo "Usage: $0 [go|go-docker] [flutter|flutter-docker] [local|docker]"
   echo
@@ -100,6 +98,9 @@ if { [[ "$RUN_GO" == "true" && -n "$BACKEND_PORT" ]] || [[ "$RUN_GO_DOCKER" == "
   kill_by_port $BACKEND_PORT
 fi
 if { [[ "$RUN_FLUTTER" == "true" && -n "$FRONTEND_PORT" ]] || [[ "$RUN_FLUTTER_DOCKER" == "true" && -n "$FRONTEND_PORT" ]]; }; then
+  cd "$(dirname "$0")/../electronicqueue-frontend/lib" || { echo "lib directory not found!"; exit 1; }
+  mapfile -t FLUTTER_MAIN_FILES < <(find . -maxdepth 2 -mindepth 2 -type f -name '*.dart' | sed 's|^./||')
+  cd - > /dev/null 2>&1
   N=${#FLUTTER_MAIN_FILES[@]}
   for ((i=0; i<N; i++)); do
     PORT=$((FRONTEND_PORT+i))
@@ -130,6 +131,7 @@ elif [[ "$RUN_GO_DOCKER" == "true" ]]; then
     echo "Make sure that Docker Engine is running. Try restarting Docker Desktop."
     exit 1
   fi
+  docker compose down > /dev/null 2>&1
   if (cd "$(dirname "$0")" && docker compose up &); then
     echo "Go backend (Docker Compose) started."
   else
@@ -156,7 +158,7 @@ if [[ "$RUN_FLUTTER" == "true" ]]; then
   PORT=$FRONTEND_PORT
   for MAIN_FILE in "${FLUTTER_MAIN_FILES[@]}"; do
     echo "Starting Flutter frontend: $MAIN_FILE on port $PORT..."
-    flutter run -t "lib/$MAIN_FILE" -d edge --web-port=$PORT &
+    flutter run -t "lib/$MAIN_FILE" -d chrome --web-port=$PORT &
     PORT=$((PORT+1))
   done
   echo "All Flutter frontends started."
@@ -165,12 +167,13 @@ if [[ "$RUN_FLUTTER" == "true" ]]; then
 
 
 elif [[ "$RUN_FLUTTER_DOCKER" == "true" ]]; then
-  cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
   echo "Starting Flutter frontend containers from compose.yaml..."
+  cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
   if ! docker info > /dev/null 2>&1; then
     echo "Make sure that Docker Engine is running. Try restarting Docker Desktop."
     exit 1
   fi
+  docker compose down > /dev/null 2>&1
   if [ ! -f compose.yaml ]; then
     echo "compose.yaml not found! Please run install.sh with --flutter-docker first."
     exit 1

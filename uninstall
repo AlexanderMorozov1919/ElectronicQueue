@@ -12,10 +12,7 @@ set +o allexport
 : "${DB_PORT?Need to set DB_PORT}"
 : "${DB_NAME?Need to set DB_NAME}"
 
-cd "$(dirname "$0")" && docker compose down > /dev/null 2>&1
-cd "$(dirname "$0")/../electronicqueue-frontend" && docker compose down > /dev/null 2>&1
-cd - > /dev/null > /dev/null 2>&1
-
+# --- Аргументы ---
 usage() {
   echo "Usage: $0 [go] [go-docker] [flutter] [flutter-docker] [local] [docker]"
   echo
@@ -29,7 +26,6 @@ usage() {
   exit 1
 }
 
-# --- Аргументы ---
 if [[ $# -eq 0 ]]; then
   usage
 fi
@@ -112,11 +108,11 @@ fi
 
 if [[ "$FLUTTER_DOCKER" == "true" ]]; then
   echo "Full cleanup for Flutter: containers, images, volumes, orphans..."
+  cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
   if ! docker info > /dev/null 2>&1; then
     echo "Make sure that Docker Engine is running. Try restarting Docker Desktop."
     exit 1
   fi
-  cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
   if docker compose down --rmi all --volumes --remove-orphans; then
     echo "Full Flutter docker cleanup complete."
   else
