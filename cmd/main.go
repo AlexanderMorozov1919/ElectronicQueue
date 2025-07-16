@@ -62,7 +62,7 @@ func main() {
 	}
 	log.WithField("dbname", cfg.DBName).Info("Database connected successfully")
 
-	// Канал для передачи уведомлений из листенера в SSE хендлеры
+	// Канал для получения уведомлений из PostgreSQL
 	notificationChannel := make(chan string, 100)
 	// Контекст для управления жизненным циклом листенера
 	listenerCtx, cancelListener := context.WithCancel(context.Background())
@@ -75,17 +75,16 @@ func main() {
 		log.WithError(err).Fatal("Failed to initialize database listener with pgx")
 	}
 
-	// Запускаем горутины-слушателя, каждая со своим каналом
+	// Запускаем единый листенер, который будет отправлять все уведомления в notificationChannel
 	go listenForNotifications(listenerCtx, pool, notificationChannel, log)
 
-	// Настройка роутера
 	r := setupRouter(psBroker, db, cfg)
 
 	// Swagger endpoint
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Обработка сигналов завершения
-	handleGracefulShutdown(db, pool, cancelListeners, log)
+	handleGracefulShutdown(db, pool, cancelListener, log)
 
 	fmt.Printf("Сервер запущен на порту: %s\n", cfg.BackendPort)
 	if err := r.Run(":" + cfg.BackendPort); err != nil {
@@ -93,8 +92,6 @@ func main() {
 	}
 }
 
-// initPgxPool инициализирует пул соединений pgx
-func initPgxPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 // initPgxPool инициализирует пул соединений pgx
 func initPgxPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	dsn := fmt.Sprintf(
@@ -110,9 +107,6 @@ func initPgxPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error)
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("unable to ping database: %w", err)
-	}
-	return pool, nil
-}
 	}
 	return pool, nil
 }
@@ -156,23 +150,21 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	r.Use(logger.GinLogger())
 	r.Use(middleware.CorsMiddleware())
 
-	r.GET("/tickets", sseHandler(broker))
-
 	ticketRepo := repository.NewTicketRepository(db)
 	serviceRepo := repository.NewServiceRepository(db)
 	doctorRepo := repository.NewDoctorRepository(db)
 
-	doctorRepo := repository.NewDoctorRepository(db)
-
 	ticketService := services.NewTicketService(ticketRepo, serviceRepo)
-	doctorService := services.NewDoctorService(ticketRepo, doctorRepo)
-
 	doctorService := services.NewDoctorService(ticketRepo, doctorRepo)
 
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
 	doctorHandler := handlers.NewDoctorHandler(doctorService, broker)
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
 
+	// SSE-эндпоинт для табло регистратуры
+	r.GET("/tickets", sseHandler(broker, "reception_sse"))
+
+	// Группа роутов для терминала
 	tickets := r.Group("/api/tickets")
 	{
 		tickets.GET("/start", ticketHandler.StartPage)
@@ -184,20 +176,13 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)
 	}
 
-	// Doctor routes
-	doctorGroup := r.Group("/api/doctor")
-	// Doctor routes
 	doctorGroup := r.Group("/api/doctor")
 	{
 		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
 		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
 		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
 		doctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
-		doctorGroup.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
-		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
-		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
-		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
-		doctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
+		// SSE-эндпоинт для табло у кабинета врача
 		doctorGroup.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
 	}
 
@@ -208,10 +193,10 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 	}
 
+	// Группа роутов для прямого доступа к БД
 	databaseRepo := repository.NewDatabaseRepository(db)
 	databaseService := services.NewDatabaseService(databaseRepo)
 	databaseHandler := handlers.NewDatabaseHandler(databaseService)
-
 	dbAPI := r.Group("/api/database").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
 	{
 		dbAPI.POST("/:table/select", databaseHandler.GetData)
@@ -224,26 +209,28 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 }
 
 type NotificationPayload struct {
-	Action string        `json:"action"`
-	Data   models.Ticket `json:"data"`
+	Action string                `json:"action"`
+	Data   models.TicketResponse `json:"data"`
 }
 
-func sseHandler(broker *pubsub.Broker) gin.HandlerFunc {
+// sseHandler подписывает клиента на события от брокера
+func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
-		log := logger.Default()
+		log := logger.Default().WithField("handler_id", handlerID)
 
-		// Создаем канал для этого конкретного клиента и подписываем его
+		// Создаем канал для этого конкретного клиента и подписываем его на брокера.
 		clientChan := broker.Subscribe()
-		defer broker.Unsubscribe(clientChan) // Гарантируем отписку при выходе.
+		defer broker.Unsubscribe(clientChan) // Гарантируем отписку при выходе из функции.
 
 		c.Stream(func(w io.Writer) bool {
 			select {
 			// Слушаем сообщения из персонального канала клиента.
 			case payloadStr, ok := <-clientChan:
 				if !ok { // Канал был закрыт брокером
+					log.Info("Client channel closed.")
 					return false
 				}
 
@@ -251,17 +238,16 @@ func sseHandler(broker *pubsub.Broker) gin.HandlerFunc {
 				var payload NotificationPayload
 				if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
 					log.WithError(err).Error("Failed to unmarshal notification payload")
-					return true // Продолжаем слушать, несмотря на ошибку
+					return true // Продолжаем слушать, несмотря на ошибку парсинга.
 				}
 
-				// Отправляем событие клиенту
-				c.SSEvent(payload.Action, payload.Data.ToResponse())
+				// Отправляем событие клиенту.
+				c.SSEvent(payload.Action, payload.Data)
 				return true
 
 			// Клиент отключился.
 			case <-c.Request.Context().Done():
-				log.Info("Client disconnected")
-				log.Info("Client disconnected")
+				log.Info("Client disconnected.")
 				return false
 			}
 		})
