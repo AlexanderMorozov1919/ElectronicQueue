@@ -26,8 +26,8 @@ func (s *DoctorService) StartAppointment(ticketID uint) (*models.Ticket, error) 
 		return nil, fmt.Errorf("ticket not found: %w", err)
 	}
 
-	if ticket.Status != models.StatusInvited {
-		return nil, fmt.Errorf("ticket must be in 'приглашен' status to start appointment")
+	if ticket.Status != models.StatusRegistered {
+		return nil, fmt.Errorf("ticket must be in 'зарегистрирован' status to start appointment")
 	}
 
 	// Обновляем статус и время начала приема
