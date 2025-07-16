@@ -16,6 +16,7 @@ import (
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/middleware"
 	"ElectronicQueue/internal/models"
+	"ElectronicQueue/internal/pubsub"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
 
@@ -66,13 +67,16 @@ func main() {
 	// Контекст для управления жизненным циклом листенера
 	listenerCtx, cancelListener := context.WithCancel(context.Background())
 
+	psBroker := pubsub.NewBroker()
+	go psBroker.ListenAndPublish(notificationChannel)
+
 	pool, err := initListener(listenerCtx, cfg, log, notificationChannel)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to initialize database listener with pgx")
 	}
 
 	// Настройка роутера
-	r := setupRouter(notificationChannel, db, cfg)
+	r := setupRouter(psBroker, db, cfg)
 
 	// Swagger endpoint
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -138,14 +142,14 @@ func initListener(ctx context.Context, cfg *config.Config, log *logger.AsyncLogg
 }
 
 // setupRouter настраивает маршруты и middleware
-func setupRouter(notifications <-chan string, db *gorm.DB, cfg *config.Config) *gin.Engine {
+func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.SetTrustedProxies(nil)
 	r.Use(logger.GinLogger())
 	r.Use(middleware.CorsMiddleware())
 
-	r.GET("/tickets", sseHandler(notifications))
+	r.GET("/tickets", sseHandler(broker))
 
 	ticketRepo := repository.NewTicketRepository(db)
 	serviceRepo := repository.NewServiceRepository(db)
@@ -199,24 +203,37 @@ type NotificationPayload struct {
 	Data   models.Ticket `json:"data"`
 }
 
-func sseHandler(notifications <-chan string) gin.HandlerFunc {
+func sseHandler(broker *pubsub.Broker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
 		log := logger.Default()
 
+		// Создаем канал для этого конкретного клиента и подписываем его
+		clientChan := broker.Subscribe()
+		defer broker.Unsubscribe(clientChan) // Гарантируем отписку при выходе.
+
 		c.Stream(func(w io.Writer) bool {
 			select {
-			case payloadStr := <-notifications:
-				log.WithField("payload", payloadStr).Info("Received notification from channel")
+			// Слушаем сообщения из персонального канала клиента.
+			case payloadStr, ok := <-clientChan:
+				if !ok { // Канал был закрыт брокером
+					return false
+				}
+
+				log.WithField("payload", payloadStr).Info("SSE Handler: Sending message to client")
 				var payload NotificationPayload
 				if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
 					log.WithError(err).Error("Failed to unmarshal notification payload")
-					return true
+					return true // Продолжаем слушать, несмотря на ошибку
 				}
+
+				// Отправляем событие клиенту
 				c.SSEvent(payload.Action, payload.Data.ToResponse())
 				return true
+
+			// Клиент отключился.
 			case <-c.Request.Context().Done():
 				log.Info("Client disconnected (SSE)")
 				return false
