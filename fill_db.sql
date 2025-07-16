@@ -5,14 +5,14 @@ INSERT INTO services (service_id, name, letter) VALUES
   ('documents', 'Другой вопрос', 'D')
 ON CONFLICT (service_id) DO NOTHING;
 
-INSERT INTO tickets (ticket_number, status, window_number, created_at)
-VALUES
-  ('A001', 'ожидает', 1, CURRENT_TIMESTAMP),
-  ('A002', 'приглашен', 2, CURRENT_TIMESTAMP),
-  ('B003', 'на_приеме', 3, CURRENT_TIMESTAMP),
-  ('B004', 'завершен', 1, CURRENT_TIMESTAMP),
-  ('D005', 'зарегистрирован', 3, CURRENT_TIMESTAMP)
-ON CONFLICT (ticket_number) DO NOTHING;
+-- INSERT INTO tickets (ticket_number, status, window_number, created_at)
+-- VALUES
+--   ('A001', 'ожидает', 1, CURRENT_TIMESTAMP),
+--   ('A002', 'приглашен', 2, CURRENT_TIMESTAMP),
+--   ('B003', 'на_приеме', 3, CURRENT_TIMESTAMP),
+--   ('B004', 'завершен', 1, CURRENT_TIMESTAMP),
+--   ('D005', 'зарегистрирован', 3, CURRENT_TIMESTAMP)
+-- ON CONFLICT (ticket_number) DO NOTHING;
 
 -- Добавляем данные о враче
 -- Предполагаем, что этот врач будет иметь ID=1

@@ -146,11 +146,12 @@ func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
 		return "", err
 	}
 	letter := service.Letter
-	maxNum, err := s.repo.GetMaxTicketNumber()
+	maxNum, err := s.repo.GetMaxTicketNumberForPrefix(letter)
 	if err != nil {
-		logger.Default().Error(fmt.Sprintf("generateTicketNumber: repo error: %v", err))
+		logger.Default().Error(fmt.Sprintf("generateTicketNumber: repo error getting max number for prefix %s: %v", letter, err))
 		return "", err
 	}
+
 	num := maxNum + 1
 	if num > maxTicketNumber {
 		num = 1

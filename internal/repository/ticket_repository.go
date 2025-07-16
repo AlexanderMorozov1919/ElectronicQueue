@@ -55,10 +55,11 @@ func (r *ticketRepo) GetNextWaitingTicket() (*models.Ticket, error) {
 	return &ticket, nil
 }
 
-// GetMaxTicketNumber возвращает максимальный числовой номер билета (от 1 до 1000)
-func (r *ticketRepo) GetMaxTicketNumber() (int, error) {
+// GetMaxTicketNumberForPrefix возвращает максимальный номер талона для конкретной буквы (префикса).
+func (r *ticketRepo) GetMaxTicketNumberForPrefix(prefix string) (int, error) {
 	var maxNum int
-	err := r.db.Raw(`SELECT COALESCE(MAX(CAST(SUBSTRING(ticket_number, 2) AS INTEGER)), 0) FROM tickets`).Scan(&maxNum).Error
+	query := `SELECT COALESCE(MAX(CAST(SUBSTRING(ticket_number, 2) AS INTEGER)), 0) FROM tickets WHERE ticket_number LIKE ?`
+	err := r.db.Raw(query, prefix+"%").Scan(&maxNum).Error
 	if err != nil {
 		return 0, err
 	}

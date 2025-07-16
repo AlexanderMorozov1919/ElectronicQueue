@@ -33,7 +33,7 @@ type TicketRepository interface {
 	FindByStatuses(statuses []models.TicketStatus) ([]models.Ticket, error)
 	FindByStatus(status models.TicketStatus) ([]models.Ticket, error)
 	GetNextWaitingTicket() (*models.Ticket, error)
-	GetMaxTicketNumber() (int, error)
+	GetMaxTicketNumberForPrefix(prefix string) (int, error)
 	Delete(id uint) error
 	FindFirstByStatus(status models.TicketStatus) (*models.Ticket, error)
 }
