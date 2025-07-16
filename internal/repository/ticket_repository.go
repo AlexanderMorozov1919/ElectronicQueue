@@ -38,6 +38,14 @@ func (r *ticketRepo) FindByStatuses(statuses []models.TicketStatus) ([]models.Ti
 	return tickets, nil
 }
 
+func (r *ticketRepo) FindByStatus(status models.TicketStatus) ([]models.Ticket, error) {
+	var tickets []models.Ticket
+	if err := r.db.Where("status = ?", status).Order("created_at asc").Find(&tickets).Error; err != nil {
+		return nil, err
+	}
+	return tickets, nil
+}
+
 func (r *ticketRepo) GetNextWaitingTicket() (*models.Ticket, error) {
 	var ticket models.Ticket
 	err := r.db.Where("status = ?", models.StatusWaiting).Order("created_at asc").First(&ticket).Error
@@ -59,4 +67,13 @@ func (r *ticketRepo) GetMaxTicketNumber() (int, error) {
 
 func (r *ticketRepo) Delete(id uint) error {
 	return r.db.Delete(&models.Ticket{}, id).Error
+}
+
+func (r *ticketRepo) FindFirstByStatus(status models.TicketStatus) (*models.Ticket, error) {
+	var ticket models.Ticket
+	err := r.db.Where("status = ?", status).Order("started_at desc").First(&ticket).Error
+	if err != nil {
+		return nil, err
+	}
+	return &ticket, nil
 }

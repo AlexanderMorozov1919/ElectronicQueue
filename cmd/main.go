@@ -63,17 +63,20 @@ func main() {
 	log.WithField("dbname", cfg.DBName).Info("Database connected successfully")
 
 	// Канал для передачи уведомлений из листенера в SSE хендлеры
-	notificationChannel := make(chan string)
+	notificationChannel := make(chan string, 100)
 	// Контекст для управления жизненным циклом листенера
 	listenerCtx, cancelListener := context.WithCancel(context.Background())
 
 	psBroker := pubsub.NewBroker()
 	go psBroker.ListenAndPublish(notificationChannel)
 
-	pool, err := initListener(listenerCtx, cfg, log, notificationChannel)
+	pool, err := initPgxPool(listenerCtx, cfg)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to initialize database listener with pgx")
 	}
+
+	// Запускаем горутины-слушателя, каждая со своим каналом
+	go listenForNotifications(listenerCtx, pool, notificationChannel, log)
 
 	// Настройка роутера
 	r := setupRouter(psBroker, db, cfg)
@@ -90,8 +93,8 @@ func main() {
 	}
 }
 
-// initListener инициализирует LISTEN/NOTIFY через pgx
-func initListener(ctx context.Context, cfg *config.Config, log *logger.AsyncLogger, notifications chan<- string) (*pgxpool.Pool, error) {
+// initPgxPool инициализирует пул соединений pgx
+func initPgxPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBSSLMode,
@@ -106,39 +109,38 @@ func initListener(ctx context.Context, cfg *config.Config, log *logger.AsyncLogg
 		pool.Close()
 		return nil, fmt.Errorf("unable to ping database: %w", err)
 	}
-
-	// Запускаем горутину, которая будет слушать уведомления
-	go func() {
-		conn, err := pool.Acquire(ctx)
-		if err != nil {
-			log.WithError(err).Error("Failed to acquire connection from pool for listener")
-			return
-		}
-		defer conn.Release()
-
-		_, err = conn.Exec(ctx, "LISTEN ticket_update")
-		if err != nil {
-			log.WithError(err).Error("Failed to execute LISTEN command")
-			return
-		}
-		log.Info("Listening to 'ticket_update' channel with pgx")
-
-		for {
-			notification, err := conn.Conn().WaitForNotification(ctx)
-			if err != nil {
-				if ctx.Err() != nil {
-					log.Info("Listener context cancelled, shutting down.")
-					return
-				}
-				log.WithError(err).Error("Error waiting for notification")
-				time.Sleep(5 * time.Second)
-				continue
-			}
-			notifications <- notification.Payload
-		}
-	}()
-
 	return pool, nil
+}
+
+// listenForNotifications слушает LISTEN/NOTIFY и отправляет в указанный канал
+func listenForNotifications(ctx context.Context, pool *pgxpool.Pool, notifications chan<- string, log *logger.AsyncLogger) {
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		log.WithError(err).Error("Listener: Failed to acquire connection from pool")
+		return
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, "LISTEN ticket_update")
+	if err != nil {
+		log.WithError(err).Error("Listener: Failed to execute LISTEN command")
+		return
+	}
+	log.Info("Listener: Listening to 'ticket_update' channel")
+
+	for {
+		notification, err := conn.Conn().WaitForNotification(ctx)
+		if err != nil {
+			if ctx.Err() != nil {
+				log.Info("Listener context cancelled, shutting down.")
+				return
+			}
+			log.WithError(err).Error("Listener: Error waiting for notification")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		notifications <- notification.Payload
+	}
 }
 
 // setupRouter настраивает маршруты и middleware
@@ -153,10 +155,13 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 
 	ticketRepo := repository.NewTicketRepository(db)
 	serviceRepo := repository.NewServiceRepository(db)
+	doctorRepo := repository.NewDoctorRepository(db)
+
 	ticketService := services.NewTicketService(ticketRepo, serviceRepo)
+	doctorService := services.NewDoctorService(ticketRepo, doctorRepo)
+
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
-	doctorService := services.NewDoctorService(ticketRepo)
-	doctorHandler := handlers.NewDoctorHandler(doctorService)
+	doctorHandler := handlers.NewDoctorHandler(doctorService, broker)
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
 
 	tickets := r.Group("/api/tickets")
@@ -170,10 +175,14 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)
 	}
 
-	doctor := r.Group("/api/doctor")
+	// Doctor routes
+	doctorGroup := r.Group("/api/doctor")
 	{
-		doctor.POST("/start-appointment", doctorHandler.StartAppointment)
-		doctor.POST("/complete-appointment", doctorHandler.CompleteAppointment)
+		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
+		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
+		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
+		doctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
+		doctorGroup.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
 	}
 
 	registrar := r.Group("/api/registrar")
@@ -235,7 +244,7 @@ func sseHandler(broker *pubsub.Broker) gin.HandlerFunc {
 
 			// Клиент отключился.
 			case <-c.Request.Context().Done():
-				log.Info("Client disconnected (SSE)")
+				log.Info("Client disconnected")
 				return false
 			}
 		})
