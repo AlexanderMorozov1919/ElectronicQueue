@@ -31,6 +31,7 @@ type TicketRepository interface {
 	Update(ticket *models.Ticket) error
 	GetByID(id uint) (*models.Ticket, error)
 	FindByStatuses(statuses []models.TicketStatus) ([]models.Ticket, error)
+	FindByStatus(status models.TicketStatus) ([]models.Ticket, error)
 	GetNextWaitingTicket() (*models.Ticket, error)
 	GetMaxTicketNumber() (int, error)
 	Delete(id uint) error

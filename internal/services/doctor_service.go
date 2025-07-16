@@ -24,6 +24,56 @@ func NewDoctorService(ticketRepo repository.TicketRepository, doctorRepo reposit
 	}
 }
 
+// GetRegisteredTickets returns tickets with "зарегистрирован" status
+func (s *DoctorService) GetRegisteredTickets() ([]models.TicketResponse, error) {
+	tickets, err := s.ticketRepo.FindByStatus(models.StatusRegistered)
+	if err != nil {
+		return nil, err
+	}
+
+	var response []models.TicketResponse
+	for _, ticket := range tickets {
+		response = append(response, models.TicketResponse{
+			ID:           ticket.ID,
+			TicketNumber: ticket.TicketNumber,
+			Status:       ticket.Status,
+			ServiceType:  ticket.ServiceType,
+			WindowNumber: ticket.WindowNumber,
+			CreatedAt:    ticket.CreatedAt,
+			CalledAt:     ticket.CalledAt,
+			StartedAt:    ticket.StartedAt,
+			CompletedAt:  ticket.CompletedAt,
+		})
+	}
+
+	return response, nil
+}
+
+// GetInProgressTickets returns tickets with "на_приеме" status
+func (s *DoctorService) GetInProgressTickets() ([]models.TicketResponse, error) {
+	tickets, err := s.ticketRepo.FindByStatus(models.StatusInProgress)
+	if err != nil {
+		return nil, err
+	}
+
+	var response []models.TicketResponse
+	for _, ticket := range tickets {
+		response = append(response, models.TicketResponse{
+			ID:           ticket.ID,
+			TicketNumber: ticket.TicketNumber,
+			Status:       ticket.Status,
+			ServiceType:  ticket.ServiceType,
+			WindowNumber: ticket.WindowNumber,
+			CreatedAt:    ticket.CreatedAt,
+			CalledAt:     ticket.CalledAt,
+			StartedAt:    ticket.StartedAt,
+			CompletedAt:  ticket.CompletedAt,
+		})
+	}
+
+	return response, nil
+}
+
 // StartAppointment начинает прием пациента
 // Изменяет статус талона на "на_приеме" и фиксирует время начала
 func (s *DoctorService) StartAppointment(ticketID uint) (*models.Ticket, error) {

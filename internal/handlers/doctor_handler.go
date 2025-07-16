@@ -12,14 +12,14 @@ import (
 
 // DoctorHandler содержит обработчики HTTP-запросов для работы врача
 type DoctorHandler struct {
-	service       *services.DoctorService
+	doctorService *services.DoctorService
 	notifications <-chan string // Принимает свой, выделенный канал
 }
 
 // Конструктор принимает выделенный канал
 func NewDoctorHandler(service *services.DoctorService, notifications <-chan string) *DoctorHandler {
 	return &DoctorHandler{
-		service:       service,
+		doctorService: service,
 		notifications: notifications,
 	}
 }
@@ -45,6 +45,28 @@ type DoctorScreenResponse struct {
 	IsWaiting       bool   `json:"is_waiting"`
 }
 
+// GetRegisteredTickets returns tickets with "зарегистрирован" status for doctor's window
+func (h *DoctorHandler) GetRegisteredTickets(c *gin.Context) {
+	tickets, err := h.doctorService.GetRegisteredTickets()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tickets)
+}
+
+// GetInProgressTickets returns tickets with "на_приеме" status for doctor's window
+func (h *DoctorHandler) GetInProgressTickets(c *gin.Context) {
+	tickets, err := h.doctorService.GetInProgressTickets()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tickets)
+}
+
 // StartAppointment обрабатывает запрос на начало приема пациента
 // @Summary      Начать прием пациента
 // @Description  Начинает прием пациента по талону
@@ -63,7 +85,7 @@ func (h *DoctorHandler) StartAppointment(c *gin.Context) {
 	}
 
 	// Вызываем сервис для начала приема
-	ticket, err := h.service.StartAppointment(req.TicketID)
+	ticket, err := h.doctorService.StartAppointment(req.TicketID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -99,7 +121,7 @@ func (h *DoctorHandler) CompleteAppointment(c *gin.Context) {
 	}
 
 	// Вызываем сервис для завершения приема
-	ticket, err := h.service.CompleteAppointment(req.TicketID)
+	ticket, err := h.doctorService.CompleteAppointment(req.TicketID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -132,7 +154,7 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 
 	// Функция для получения и отправки текущего состояния
 	sendCurrentState := func() bool {
-		doctor, ticket, err := h.service.GetCurrentAppointmentScreenState()
+		doctor, ticket, err := h.doctorService.GetCurrentAppointmentScreenState()
 
 		// Если нет активных врачей в БД - это ошибка конфигурации.
 		if err != nil || doctor == nil {

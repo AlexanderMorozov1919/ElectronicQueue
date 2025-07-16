@@ -175,11 +175,14 @@ func setupRouter(receptionChannel, doctorChannel chan string, db *gorm.DB, cfg *
 		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)
 	}
 
-	doctor := r.Group("/api/doctor")
+	// Doctor routes
+	doctorGroup := r.Group("/api/doctor")
 	{
-		doctor.POST("/start-appointment", doctorHandler.StartAppointment)
-		doctor.POST("/complete-appointment", doctorHandler.CompleteAppointment)
-		doctor.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
+		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
+		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
+		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
+		doctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
+		doctorGroup.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
 	}
 
 	registrar := r.Group("/api/registrar")
