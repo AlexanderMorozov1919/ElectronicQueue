@@ -85,7 +85,7 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Обработка сигналов завершения
-	handleGracefulShutdown(db, pool, cancelListener, log)
+	handleGracefulShutdown(db, pool, cancelListeners, log)
 
 	fmt.Printf("Сервер запущен на порту: %s\n", cfg.BackendPort)
 	if err := r.Run(":" + cfg.BackendPort); err != nil {
@@ -93,6 +93,8 @@ func main() {
 	}
 }
 
+// initPgxPool инициализирует пул соединений pgx
+func initPgxPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 // initPgxPool инициализирует пул соединений pgx
 func initPgxPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	dsn := fmt.Sprintf(
@@ -108,6 +110,9 @@ func initPgxPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error)
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("unable to ping database: %w", err)
+	}
+	return pool, nil
+}
 	}
 	return pool, nil
 }
@@ -157,7 +162,11 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	serviceRepo := repository.NewServiceRepository(db)
 	doctorRepo := repository.NewDoctorRepository(db)
 
+	doctorRepo := repository.NewDoctorRepository(db)
+
 	ticketService := services.NewTicketService(ticketRepo, serviceRepo)
+	doctorService := services.NewDoctorService(ticketRepo, doctorRepo)
+
 	doctorService := services.NewDoctorService(ticketRepo, doctorRepo)
 
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
@@ -177,7 +186,14 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 
 	// Doctor routes
 	doctorGroup := r.Group("/api/doctor")
+	// Doctor routes
+	doctorGroup := r.Group("/api/doctor")
 	{
+		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
+		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
+		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
+		doctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
+		doctorGroup.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
 		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
 		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
 		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
@@ -244,6 +260,7 @@ func sseHandler(broker *pubsub.Broker) gin.HandlerFunc {
 
 			// Клиент отключился.
 			case <-c.Request.Context().Done():
+				log.Info("Client disconnected")
 				log.Info("Client disconnected")
 				return false
 			}

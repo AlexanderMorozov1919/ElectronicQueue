@@ -5,9 +5,11 @@ import (
 	"ElectronicQueue/internal/pubsub"
 	"ElectronicQueue/internal/services"
 	"io"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus"
 )
 
@@ -68,6 +70,37 @@ func (h *DoctorHandler) GetInProgressTickets(c *gin.Context) {
 	c.JSON(http.StatusOK, tickets)
 }
 
+// DoctorScreenResponse определяет структуру данных для экрана ожидания врача.
+type DoctorScreenResponse struct {
+	DoctorName      string `json:"doctor_name"`
+	DoctorSpecialty string `json:"doctor_specialty"`
+	OfficeNumber    int    `json:"office_number"`
+	TicketNumber    string `json:"ticket_number,omitempty"`
+	IsWaiting       bool   `json:"is_waiting"`
+}
+
+// GetRegisteredTickets returns tickets with "зарегистрирован" status for doctor's window
+func (h *DoctorHandler) GetRegisteredTickets(c *gin.Context) {
+	tickets, err := h.doctorService.GetRegisteredTickets()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tickets)
+}
+
+// GetInProgressTickets returns tickets with "на_приеме" status for doctor's window
+func (h *DoctorHandler) GetInProgressTickets(c *gin.Context) {
+	tickets, err := h.doctorService.GetInProgressTickets()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tickets)
+}
+
 // StartAppointment обрабатывает запрос на начало приема пациента
 // @Summary      Начать прием пациента
 // @Description  Начинает прием пациента по талону
@@ -78,6 +111,7 @@ func (h *DoctorHandler) GetInProgressTickets(c *gin.Context) {
 // @Success      200 {object} map[string]interface{} "Appointment started successfully"
 // @Failure      400 {object} map[string]string "ticket_id is required or error message"
 // @Router       /api/doctor/start-appointment [post]
+// @Router       /api/doctor/start-appointment [post]
 func (h *DoctorHandler) StartAppointment(c *gin.Context) {
 	var req StartAppointmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -86,6 +120,7 @@ func (h *DoctorHandler) StartAppointment(c *gin.Context) {
 	}
 
 	// Вызываем сервис для начала приема
+	ticket, err := h.doctorService.StartAppointment(req.TicketID)
 	ticket, err := h.doctorService.StartAppointment(req.TicketID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -114,6 +149,7 @@ func (h *DoctorHandler) StartAppointment(c *gin.Context) {
 // @Success      200 {object} map[string]interface{} "Appointment completed successfully"
 // @Failure      400 {object} map[string]string "ticket_id is required or error message"
 // @Router       /api/doctor/complete-appointment [post]
+// @Router       /api/doctor/complete-appointment [post]
 func (h *DoctorHandler) CompleteAppointment(c *gin.Context) {
 	var req CompleteAppointmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -122,6 +158,7 @@ func (h *DoctorHandler) CompleteAppointment(c *gin.Context) {
 	}
 
 	// Вызываем сервис для завершения приема
+	ticket, err := h.doctorService.CompleteAppointment(req.TicketID)
 	ticket, err := h.doctorService.CompleteAppointment(req.TicketID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
