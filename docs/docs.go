@@ -1236,6 +1236,9 @@ const docTemplate = `{
             "x-enum-comments": {
                 "StatusInvited": "Пациент вызван к окну"
             },
+            "x-enum-descriptions": [
+                "Пациент вызван к окну"
+            ],
             "x-enum-varnames": [
                 "StatusWaiting",
                 "StatusInvited",
