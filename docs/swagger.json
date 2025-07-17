@@ -9,6 +9,60 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
+        "/api/audio/announce": {
+            "get": {
+                "description": "Создает и возвращает WAV файл с озвучкой номера талона и окна.",
+                "produces": [
+                    "audio/wav"
+                ],
+                "tags": [
+                    "audio"
+                ],
+                "summary": "Сгенерировать звуковое оповещение",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Номер талона (например, A007 или C21)",
+                        "name": "ticket",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Номер окна (например, 5)",
+                        "name": "window",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "WAV файл оповещения",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверные параметры",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/database/{table}/delete": {
             "delete": {
                 "security": [
@@ -1230,6 +1284,9 @@
             "x-enum-comments": {
                 "StatusInvited": "Пациент вызван к окну"
             },
+            "x-enum-descriptions": [
+                "Пациент вызван к окну"
+            ],
             "x-enum-varnames": [
                 "StatusWaiting",
                 "StatusInvited",
