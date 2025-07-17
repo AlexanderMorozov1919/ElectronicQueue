@@ -99,7 +99,7 @@ if { [[ "$RUN_GO" == "true" && -n "$BACKEND_PORT" ]] || [[ "$RUN_GO_DOCKER" == "
 fi
 if { [[ "$RUN_FLUTTER" == "true" && -n "$FRONTEND_PORT" ]] || [[ "$RUN_FLUTTER_DOCKER" == "true" && -n "$FRONTEND_PORT" ]]; }; then
   cd "$(dirname "$0")/../electronicqueue-frontend/lib" || { echo "lib directory not found!"; exit 1; }
-  mapfile -t FLUTTER_MAIN_FILES < <(find . -maxdepth 2 -mindepth 2 -type f -name '*.dart' | sed 's|^./||')
+  mapfile -t FLUTTER_MAIN_FILES < <(find . -maxdepth 2 -mindepth 2 -type f -name '*main*.dart' | sed 's|^./||')
   cd - > /dev/null 2>&1
   N=${#FLUTTER_MAIN_FILES[@]}
   for ((i=0; i<N; i++)); do
