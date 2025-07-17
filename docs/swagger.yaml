@@ -202,6 +202,42 @@ info:
   title: Electronic Queue API
   version: "1.0"
 paths:
+  /api/audio/announce:
+    get:
+      description: Создает и возвращает WAV файл с озвучкой номера талона и окна.
+      parameters:
+      - description: Номер талона (например, A007 или C21)
+        in: query
+        name: ticket
+        required: true
+        type: string
+      - description: Номер окна (например, 5)
+        in: query
+        name: window
+        required: true
+        type: string
+      produces:
+      - audio/wav
+      responses:
+        "200":
+          description: WAV файл оповещения
+          schema:
+            type: file
+        "400":
+          description: 'Ошибка: неверные параметры'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Сгенерировать звуковое оповещение
+      tags:
+      - audio
   /api/database/{table}/delete:
     delete:
       consumes:
