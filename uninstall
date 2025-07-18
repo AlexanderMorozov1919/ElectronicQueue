@@ -1,0 +1,125 @@
+#!/bin/bash
+
+# Загружаем переменные из .env
+set -o allexport
+source ./.env
+set +o allexport
+
+# Проверяем наличие обязательных переменных
+: "${DB_USER?Need to set DB_USER}"
+: "${DB_PASSWORD?Need to set DB_PASSWORD}"
+: "${DB_HOST?Need to set DB_HOST}"
+: "${DB_PORT?Need to set DB_PORT}"
+: "${DB_NAME?Need to set DB_NAME}"
+
+# --- Аргументы ---
+usage() {
+  echo "Usage: $0 [go] [go-docker] [flutter] [flutter-docker] [local] [docker]"
+  echo
+  echo "Key descriptions:"
+  echo "  go                   - Removes PostgreSQL database and Go build artifacts"
+  echo "  go-docker            - Full backend cleanup: containers, images, volume, orphans"
+  echo "  flutter              - Cleans the Flutter project"
+  echo "  flutter-docker       - Full frontend cleanup: containers, images, volume, orphans"
+  echo "  local                - Local environment cleanup, combining Go and Flutter cleanup"
+  echo "  docker               - Full backend and frontend cleanup in Docker"
+  exit 1
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
+fi
+GO=""
+FLUTTER=""
+GO_DOCKER=""
+FLUTTER_DOCKER=""
+DOCKER_GARD=""
+for arg in "$@"; do
+  case $arg in
+    go)
+      GO="true"
+      ;;
+    flutter)
+      FLUTTER="true"
+      ;;
+    go-docker)
+      GO_DOCKER="true"
+      ;;
+    flutter-docker)
+      FLUTTER_DOCKER="true"
+      ;;
+    local)
+      GO="true"
+      FLUTTER="true"
+      ;;
+    docker)
+      GO_DOCKER="true"
+      FLUTTER_DOCKER="true"
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+
+if [[ "$GO" == "true" ]]; then
+  echo "Cleaning Go project..."
+  echo "Dropping database '$DB_NAME'..."
+  if PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"; then
+      echo "Database '$DB_NAME' dropped successfully."
+  else
+      echo "Failed to drop database '$DB_NAME'."
+      exit 1
+  fi
+  echo "Cleaning up build artifacts..."
+  if find . -type f -name "*.exe" -delete; then
+    echo "Go project cleaned."
+  else
+    echo "Failed to remove .exe files."
+    exit 1
+  fi
+fi
+
+if [[ "$FLUTTER" == "true" ]]; then
+  cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
+  echo "Cleaning Flutter project..."
+  if flutter clean; then
+    echo "Flutter project cleaned."
+  else
+    echo "Failed to clean Flutter project."
+    exit 1
+  fi
+  cd - > /dev/null
+fi
+
+if [[ "$GO_DOCKER" == "true" ]]; then
+  echo "Full cleanup for Go: containers, images, volumes, orphans..."
+  if ! docker info > /dev/null 2>&1; then
+    echo "Make sure that Docker Engine is running. Try restarting Docker Desktop."
+    exit 1
+  fi
+  if docker compose down --rmi all --volumes --remove-orphans; then
+    echo "Full Go docker cleanup complete."
+  else
+    echo "Failed to perform full docker cleanup."
+    exit 1
+  fi
+fi
+
+if [[ "$FLUTTER_DOCKER" == "true" ]]; then
+  echo "Full cleanup for Flutter: containers, images, volumes, orphans..."
+  cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
+  if ! docker info > /dev/null 2>&1; then
+    echo "Make sure that Docker Engine is running. Try restarting Docker Desktop."
+    exit 1
+  fi
+  if docker compose down --rmi all --volumes --remove-orphans; then
+    echo "Full Flutter docker cleanup complete."
+  else
+    echo "Failed to perform full Flutter docker cleanup."
+    exit 1
+  fi
+  cd - > /dev/null
+fi
+
+exit 0

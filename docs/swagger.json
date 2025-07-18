@@ -1,0 +1,1336 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API для системы электронной очереди",
+        "title": "Electronic Queue API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/api/audio/announce": {
+            "get": {
+                "description": "Создает и возвращает WAV файл с озвучкой номера талона и окна.",
+                "produces": [
+                    "audio/wav"
+                ],
+                "tags": [
+                    "audio"
+                ],
+                "summary": "Сгенерировать звуковое оповещение",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Номер талона (например, A007 или C21)",
+                        "name": "ticket",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Номер окна (например, 5)",
+                        "name": "window",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "WAV файл оповещения",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверные параметры",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/database/{table}/delete": {
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Позволяет удалить записи из указанной таблицы по заданным фильтрам.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "database"
+                ],
+                "summary": "Удаление данных из таблицы",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Имя таблицы для удаления (e.g., tickets, doctors)",
+                        "name": "table",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Фильтры для удаления",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DeleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные успешно удалены",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка в запросе (например, удаление без фильтров)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Отсутствует ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Неверный ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/database/{table}/insert": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Позволяет вставить одну или несколько записей в указанную таблицу.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "database"
+                ],
+                "summary": "Вставка данных в таблицу",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Имя таблицы для вставки (e.g., services, doctors)",
+                        "name": "table",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные для вставки",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.InsertRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Данные успешно вставлены",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка в запросе",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Отсутствует ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Неверный ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/database/{table}/select": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Позволяет получить данные из указанной таблицы с фильтрацией и пагинацией.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "database"
+                ],
+                "summary": "Получение данных из таблицы",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Имя таблицы для получения данных (e.g., tickets, doctors)",
+                        "name": "table",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Фильтры и параметры пагинации",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.GetDataRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ с данными",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка в запросе (неверная таблица, поле или оператор)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Отсутствует ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Неверный ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/database/{table}/update": {
+            "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Позволяет обновить записи в указанной таблице по заданным фильтрам.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "database"
+                ],
+                "summary": "Обновление данных в таблице",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Имя таблицы для обновления (e.g., tickets, doctors)",
+                        "name": "table",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные и фильтры для обновления",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные успешно обновлены",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка в запросе (например, обновление без фильтров)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Отсутствует ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Неверный ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/complete-appointment": {
+            "post": {
+                "description": "Завершает прием пациента по талону. Статус талона должен быть 'на_приеме'.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Завершить прием пациента",
+                "parameters": [
+                    {
+                        "description": "Данные для завершения приема",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CompleteAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointment completed successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный запрос или статус талона",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/screen-updates": {
+            "get": {
+                "description": "Отправляет начальное состояние и последующие обновления статуса приема через Server-Sent Events.",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Получить обновления для табло врача",
+                "responses": {
+                    "200": {
+                        "description": "Поток событий",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.DoctorScreenResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/start-appointment": {
+            "post": {
+                "description": "Начинает прием пациента по талону. Статус талона должен быть 'зарегистрирован'.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Начать прием пациента",
+                "parameters": [
+                    {
+                        "description": "Данные для начала приема",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.StartAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointment started successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный запрос или статус талона",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/tickets/in-progress": {
+            "get": {
+                "description": "Возвращает список талонов со статусом \"на_приеме\". Обычно это один талон.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Получить талоны на приеме",
+                "responses": {
+                    "200": {
+                        "description": "Список талонов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TicketResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/tickets/registered": {
+            "get": {
+                "description": "Возвращает список талонов со статусом \"зарегистрирован\", т.е. очередь непосредственно к врачу.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Получить очередь к врачу",
+                "responses": {
+                    "200": {
+                        "description": "Список талонов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TicketResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrar/call-next": {
+            "post": {
+                "description": "Находит первого пациента в очереди, меняет его статус на \"приглашен\" и присваивает номер окна",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Вызвать следующего пациента",
+                "parameters": [
+                    {
+                        "description": "Номер окна, которое вызывает пациента",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CallNextRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные вызванного талона",
+                        "schema": {
+                            "$ref": "#/definitions/models.TicketResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный номер окна",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ошибка: очередь пуста",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrar/tickets/{id}": {
+            "delete": {
+                "description": "Удаляет тикет по ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Удалить тикет",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID тикета",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Тикет удален",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка запроса",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Тикет не найден",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrar/tickets/{id}/status": {
+            "patch": {
+                "description": "Изменяет статус тикета по ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Сменить статус тикета",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID тикета",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Новый статус",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdateStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Статус обновлен",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка запроса",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Тикет не найден",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/active": {
+            "get": {
+                "description": "Возвращает список всех талонов в статусе 'ожидает' и 'приглашен' для первоначальной загрузки табло.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Получить все активные талоны",
+                "responses": {
+                    "200": {
+                        "description": "Список активных талонов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TicketResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/download/{ticket_number}": {
+            "get": {
+                "description": "Позволяет скачать изображение талона по номеру",
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Скачать изображение талона",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Номер талона",
+                        "name": "ticket_number",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Изображение талона",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: не передан ticket_number",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Талон не найден",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/print/confirmation": {
+            "post": {
+                "description": "Обрабатывает подтверждение действия (печать талона или получение электронного)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Подтверждение действия",
+                "parameters": [
+                    {
+                        "description": "Данные для подтверждения действия",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ConfirmationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ответ после подтверждения действия",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ConfirmationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: не передан service_id или action",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/print/selection": {
+            "post": {
+                "description": "Определяет следующий шаг после выбора услуги",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Выбор услуги",
+                "parameters": [
+                    {
+                        "description": "Данные для выбора услуги",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ServiceSelectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Следующий шаг после выбора услуги",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ServiceSelectionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: не передан service_id",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/services": {
+            "get": {
+                "description": "Возвращает список доступных услуг",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Получить список услуг",
+                "responses": {
+                    "200": {
+                        "description": "Список услуг",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/services.Service"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/start": {
+            "get": {
+                "description": "Возвращает стартовую информацию для клиента (например, текст кнопки)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Получить стартовую информацию",
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ: текст кнопки",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/view/{ticket_number}": {
+            "get": {
+                "description": "Позволяет просмотреть изображение талона в браузере по номеру",
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Просмотр изображения талона",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Номер талона",
+                        "name": "ticket_number",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Изображение талона",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: не передан ticket_number",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Талон не найден",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.CallNextRequest": {
+            "type": "object",
+            "required": [
+                "window_number"
+            ],
+            "properties": {
+                "window_number": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.CompleteAppointmentRequest": {
+            "type": "object",
+            "required": [
+                "ticket_id"
+            ],
+            "properties": {
+                "ticket_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "handlers.ConfirmationRequest": {
+            "description": "Запрос подтверждения действия (печать талона или получение электронного)",
+            "type": "object",
+            "required": [
+                "action",
+                "service_id"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "example": "print_ticket"
+                },
+                "service_id": {
+                    "type": "string",
+                    "example": "make_appointment"
+                }
+            }
+        },
+        "handlers.ConfirmationResponse": {
+            "description": "Ответ после подтверждения действия",
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Ваш электронный талон"
+                },
+                "service_name": {
+                    "type": "string",
+                    "example": "Записаться к врачу"
+                },
+                "ticket_number": {
+                    "type": "string",
+                    "example": "A001"
+                },
+                "timeout": {
+                    "type": "integer",
+                    "example": 10
+                }
+            }
+        },
+        "handlers.DoctorScreenResponse": {
+            "type": "object",
+            "properties": {
+                "doctor_name": {
+                    "type": "string"
+                },
+                "doctor_specialty": {
+                    "type": "string"
+                },
+                "is_waiting": {
+                    "type": "boolean"
+                },
+                "office_number": {
+                    "type": "integer"
+                },
+                "ticket_number": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ServiceSelectionRequest": {
+            "description": "Запрос для выбора услуги",
+            "type": "object",
+            "required": [
+                "service_id"
+            ],
+            "properties": {
+                "service_id": {
+                    "type": "string",
+                    "example": "make_appointment"
+                }
+            }
+        },
+        "handlers.ServiceSelectionResponse": {
+            "description": "Ответ после выбора услуги",
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "example": "confirm_print"
+                },
+                "service_name": {
+                    "type": "string",
+                    "example": "Записаться к врачу"
+                }
+            }
+        },
+        "handlers.StartAppointmentRequest": {
+            "type": "object",
+            "required": [
+                "ticket_id"
+            ],
+            "properties": {
+                "ticket_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "handlers.UpdateStatusRequest": {
+            "description": "Запрос для смены статуса тикета",
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.DeleteRequest": {
+            "type": "object",
+            "required": [
+                "filters"
+            ],
+            "properties": {
+                "filters": {
+                    "$ref": "#/definitions/models.Filters"
+                }
+            }
+        },
+        "models.FilterCondition": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "value": {}
+            }
+        },
+        "models.Filters": {
+            "type": "object",
+            "properties": {
+                "conditions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.FilterCondition"
+                    }
+                },
+                "logical_operator": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.GetDataRequest": {
+            "type": "object",
+            "properties": {
+                "filters": {
+                    "$ref": "#/definitions/models.Filters"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.InsertRequest": {
+            "type": "object",
+            "required": [
+                "data"
+            ],
+            "properties": {
+                "data": {}
+            }
+        },
+        "models.TicketResponse": {
+            "description": "Ответ API с данными талона",
+            "type": "object",
+            "properties": {
+                "called_at": {
+                    "type": "string"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "qr_code": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "service_type": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.TicketStatus"
+                },
+                "ticket_number": {
+                    "type": "string"
+                },
+                "window_number": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.TicketStatus": {
+            "type": "string",
+            "enum": [
+                "ожидает",
+                "приглашен",
+                "на_приеме",
+                "завершен",
+                "зарегистрирован"
+            ],
+            "x-enum-comments": {
+                "StatusInvited": "Пациент вызван к окну"
+            },
+            "x-enum-descriptions": [
+                "Пациент вызван к окну"
+            ],
+            "x-enum-varnames": [
+                "StatusWaiting",
+                "StatusInvited",
+                "StatusInProgress",
+                "StatusCompleted",
+                "StatusRegistered"
+            ]
+        },
+        "models.UpdateRequest": {
+            "type": "object",
+            "required": [
+                "data",
+                "filters"
+            ],
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "filters": {
+                    "$ref": "#/definitions/models.Filters"
+                }
+            }
+        },
+        "services.Service": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "letter": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "X-API-KEY",
+            "in": "header"
+        }
+    }
+}

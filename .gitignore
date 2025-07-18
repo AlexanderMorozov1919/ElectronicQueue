@@ -1,0 +1,66 @@
+# Файлы окружения
+.env
+
+# Логи и временные файлы
+logs/
+tickets/
+*.log
+tmp/
+temp/
+
+# Локальная документация
+*.txt
+*.docx
+*.pdf
+*.png
+# Системные файлы
+.DS_Store
+.idea/
+*.swp
+
+# Бинарники и зависимости
+/bin/
+/vendor/
+/node_modules/
+*.exe
+*.exe~
+*.dll
+*.lib
+*.so
+
+# Автогенерируемые файлы
+*.sqlite3
+*.db
+# Go специфичные файлы
+*.test
+*.out
+go.work
+go.work.sum
+# Бинарные файлы Go
+main.exe
+main
+*.exe
+*.exe~
+
+# Кэш Go
+go.sum.backup
+# Временные файлы Go
+*.tmp
+*.temp
+# Файлы IDE
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+# Файлы Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+# Файлы macOS
+.AppleDouble
+.LSOverride
+# Файлы Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
