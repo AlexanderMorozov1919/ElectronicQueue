@@ -208,7 +208,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 	}
 
-	// Группа роутов для прямого доступа к БД
 	databaseRepo := repository.NewDatabaseRepository(db)
 	databaseService := services.NewDatabaseService(databaseRepo)
 	databaseHandler := handlers.NewDatabaseHandler(databaseService)
