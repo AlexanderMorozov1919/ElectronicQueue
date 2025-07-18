@@ -52,6 +52,10 @@ type AppointmentRepository interface {
 	Update(appointment *models.Appointment) error
 	GetByID(id uint) (*models.Appointment, error)
 }
+type RegistrarRepository interface {
+	FindByLogin(login string) (*models.Registrar, error)
+	Create(registrar *models.Registrar) error
+}
 
 // Repository содержит все репозитории приложения.
 type Repository struct {
@@ -61,6 +65,7 @@ type Repository struct {
 	Schedule    ScheduleRepository
 	Appointment AppointmentRepository
 	Service     ServiceRepository
+	Registrar   RegistrarRepository
 }
 
 // NewRepository создает новый экземпляр главного репозитория.
@@ -72,5 +77,6 @@ func NewRepository(db *gorm.DB) *Repository {
 		Schedule:    NewScheduleRepository(db),
 		Appointment: NewAppointmentRepository(db),
 		Service:     NewServiceRepository(db),
+		Registrar:   NewRegistrarRepository(db),
 	}
 }

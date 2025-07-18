@@ -44,6 +44,19 @@ definitions:
         example: 10
         type: integer
     type: object
+  handlers.CreateRegistrarRequest:
+    properties:
+      full_name:
+        type: string
+      login:
+        type: string
+      password:
+        type: string
+    required:
+    - full_name
+    - login
+    - password
+    type: object
   handlers.DoctorScreenResponse:
     properties:
       doctor_name:
@@ -56,6 +69,16 @@ definitions:
         type: integer
       ticket_number:
         type: string
+    type: object
+  handlers.LoginRequest:
+    properties:
+      login:
+        type: string
+      password:
+        type: string
+    required:
+    - login
+    - password
     type: object
   handlers.ServiceSelectionRequest:
     description: Запрос для выбора услуги
@@ -238,6 +261,80 @@ paths:
       summary: Сгенерировать звуковое оповещение
       tags:
       - audio
+  /api/auth/create/registrar:
+    post:
+      consumes:
+      - application/json
+      description: Создает нового пользователя с ролью "регистратор". Требует INTERNAL_API_KEY.
+      parameters:
+      - description: Данные нового регистратора
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateRegistrarRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Регистратор успешно создан
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: 'Ошибка: логин уже занят'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Создать нового регистратора (Админ)
+      tags:
+      - auth
+  /api/auth/login/registrar:
+    post:
+      consumes:
+      - application/json
+      description: Принимает логин и пароль, возвращает JWT токен.
+      parameters:
+      - description: Учетные данные
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с токеном
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'Ошибка: неверные учетные данные'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Аутентификация регистратора
+      tags:
+      - auth
   /api/database/{table}/delete:
     delete:
       consumes:
