@@ -170,10 +170,9 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
 	authHandler := handlers.NewAuthHandler(authService)
 
-	// SSE-эндпоинт для табло регистратуры
+	// SSE-эндпоинт для табло очереди регистратуры
 	r.GET("/tickets", sseHandler(broker, "reception_sse"))
 
-	// Группа роутов для аутентификации
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/login/registrar", authHandler.LoginRegistrar)
