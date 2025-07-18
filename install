@@ -237,7 +237,7 @@ if [[ "$FLUTTER_DOCKER_MODE" == "true" ]]; then
   fi
   docker compose down > /dev/null 2>&1
   cd "$(dirname "$0")/../electronicqueue-frontend/lib" || { echo "lib directory not found!"; exit 1; }
-  mapfile -t FLUTTER_MAIN_FILES < <(find . -maxdepth 2 -mindepth 2 -type f -name '*.dart' | sed 's|^./||')
+  mapfile -t FLUTTER_MAIN_FILES < <(find . -maxdepth 2 -mindepth 2 -type f -name '*main*.dart' | sed 's|^./||')
   cd - > /dev/null 2>&1
   rm -f .env
   if [ -n "$BACKEND_PORT" ]; then

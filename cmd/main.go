@@ -182,7 +182,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
 		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
 		doctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
-		// SSE-эндпоинт для табло у кабинета врача
 		doctorGroup.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
 	}
 
@@ -203,6 +202,12 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		dbAPI.POST("/:table/insert", databaseHandler.InsertData)
 		dbAPI.PATCH("/:table/update", databaseHandler.UpdateData)
 		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
+	}
+
+	audioHandler := handlers.NewAudioHandler()
+	audioGroup := r.Group("/api/audio")
+	{
+		audioGroup.GET("/announce", audioHandler.GenerateAnnouncement)
 	}
 
 	return r
