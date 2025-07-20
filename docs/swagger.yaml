@@ -115,12 +115,79 @@ definitions:
     required:
     - status
     type: object
+  models.Appointment:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      patient:
+        $ref: '#/definitions/models.Patient'
+      patient_id:
+        type: integer
+      schedule:
+        $ref: '#/definitions/models.Schedule'
+      schedule_id:
+        type: integer
+      ticket:
+        $ref: '#/definitions/models.Ticket'
+      ticket_id:
+        type: integer
+    type: object
+  models.CreateAppointmentRequest:
+    properties:
+      patient_id:
+        type: integer
+      schedule_id:
+        type: integer
+      ticket_id:
+        type: integer
+    required:
+    - patient_id
+    - schedule_id
+    type: object
+  models.CreatePatientRequest:
+    properties:
+      birth_date:
+        type: string
+      full_name:
+        type: string
+      oms_number:
+        type: string
+      passport_number:
+        type: string
+      passport_series:
+        type: string
+      phone:
+        type: string
+    required:
+    - birth_date
+    - full_name
+    - oms_number
+    - passport_number
+    - passport_series
+    type: object
   models.DeleteRequest:
     properties:
       filters:
         $ref: '#/definitions/models.Filters'
     required:
     - filters
+    type: object
+  models.Doctor:
+    properties:
+      full_name:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      schedules:
+        items:
+          $ref: '#/definitions/models.Schedule'
+        type: array
+      specialization:
+        type: string
     type: object
   models.FilterCondition:
     properties:
@@ -153,6 +220,106 @@ definitions:
       data: {}
     required:
     - data
+    type: object
+  models.Patient:
+    properties:
+      birth_date:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: integer
+      oms_number:
+        type: string
+      passport_number:
+        type: string
+      passport_series:
+        type: string
+      phone:
+        type: string
+    type: object
+  models.Schedule:
+    properties:
+      date:
+        type: string
+      doctor:
+        allOf:
+        - $ref: '#/definitions/models.Doctor'
+        description: |-
+          --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+          Добавляем связь с моделью Doctor.
+          GORM теперь будет знать, что поле DoctorID связано с таблицей doctors.
+          Это позволит `Preload("Schedule.Doctor")` работать корректно.
+      doctor_id:
+        type: integer
+      end_time:
+        type: string
+      is_available:
+        type: boolean
+      schedule_id:
+        type: integer
+      start_time:
+        type: string
+    type: object
+  models.ScheduleWithAppointmentInfo:
+    properties:
+      appointment:
+        $ref: '#/definitions/models.Appointment'
+      date:
+        type: string
+      doctor:
+        allOf:
+        - $ref: '#/definitions/models.Doctor'
+        description: |-
+          --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+          Добавляем связь с моделью Doctor.
+          GORM теперь будет знать, что поле DoctorID связано с таблицей doctors.
+          Это позволит `Preload("Schedule.Doctor")` работать корректно.
+      doctor_id:
+        type: integer
+      end_time:
+        type: string
+      is_available:
+        type: boolean
+      schedule_id:
+        type: integer
+      start_time:
+        type: string
+    type: object
+  models.Service:
+    properties:
+      id:
+        type: string
+      letter:
+        type: string
+      title:
+        type: string
+    type: object
+  models.Ticket:
+    description: Модель талона электронной очереди
+    properties:
+      called_at:
+        type: string
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      qr_code:
+        items:
+          type: integer
+        type: array
+      service_type:
+        type: string
+      started_at:
+        type: string
+      status:
+        $ref: '#/definitions/models.TicketStatus'
+      ticket_number:
+        type: string
+      window_number:
+        type: integer
     type: object
   models.TicketResponse:
     description: Ответ API с данными талона
@@ -208,15 +375,6 @@ definitions:
     required:
     - data
     - filters
-    type: object
-  services.Service:
-    properties:
-      id:
-        type: string
-      letter:
-        type: string
-      name:
-        type: string
     type: object
 host: localhost:8080
 info:
@@ -552,6 +710,30 @@ paths:
       summary: Обновление данных в таблице
       tags:
       - database
+  /api/doctor/active:
+    get:
+      description: Возвращает список всех врачей, у которых is_active = true. Используется
+        для заполнения выпадающих списков на клиенте.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Массив моделей врачей
+          schema:
+            items:
+              $ref: '#/definitions/models.Doctor'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить список активных врачей
+      tags:
+      - doctor
   /api/doctor/complete-appointment:
     post:
       consumes:
@@ -668,6 +850,43 @@ paths:
       summary: Получить очередь к врачу
       tags:
       - doctor
+  /api/registrar/appointments:
+    post:
+      consumes:
+      - application/json
+      description: Создает новую запись на прием для пациента, связывая ее со слотом
+        в расписании и исходным талоном. Обновляет слот как занятый.
+      parameters:
+      - description: Данные для создания записи
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешно созданная запись
+          schema:
+            $ref: '#/definitions/models.Appointment'
+        "400":
+          description: 'Ошибка: неверный формат запроса'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера (например, слот уже занят)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Создать новую запись на прием
+      tags:
+      - registrar
   /api/registrar/call-next:
     post:
       consumes:
@@ -707,6 +926,121 @@ paths:
               type: string
             type: object
       summary: Вызвать следующего пациента
+      tags:
+      - registrar
+  /api/registrar/patients:
+    post:
+      consumes:
+      - application/json
+      description: Создает новую запись о пациенте в базе данных. Используется, когда
+        пациент не найден через поиск.
+      parameters:
+      - description: Данные нового пациента
+        in: body
+        name: patient
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreatePatientRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешно созданный пациент
+          schema:
+            $ref: '#/definitions/models.Patient'
+        "400":
+          description: 'Ошибка: неверный формат запроса'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Создать нового пациента
+      tags:
+      - registrar
+  /api/registrar/patients/search:
+    get:
+      description: Ищет пациентов по частичному совпадению в ФИО, номере полиса ОМС
+        или полному номеру паспорта (серия + номер без пробелов). Возвращает до 10
+        совпадений.
+      parameters:
+      - description: Строка для поиска (минимум 2 символа)
+        in: query
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Массив найденных пациентов
+          schema:
+            items:
+              $ref: '#/definitions/models.Patient'
+            type: array
+        "400":
+          description: 'Ошибка: отсутствует или слишком короткий параметр поиска'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Поиск пациентов по ФИО, ОМС или паспорту
+      tags:
+      - registrar
+  /api/registrar/schedules/doctor/{doctor_id}:
+    get:
+      description: Возвращает все временные слоты врача на указанную дату, включая
+        информацию о том, кто записан в занятые слоты.
+      parameters:
+      - description: ID Врача
+        in: path
+        name: doctor_id
+        required: true
+        type: integer
+      - description: Дата в формате YYYY-MM-DD
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Массив слотов расписания с информацией о записях
+          schema:
+            items:
+              $ref: '#/definitions/models.ScheduleWithAppointmentInfo'
+            type: array
+        "400":
+          description: 'Ошибка: неверный ID или формат даты'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить расписание врача с информацией о записях
       tags:
       - registrar
   /api/registrar/tickets/{id}:
@@ -926,7 +1260,7 @@ paths:
           schema:
             additionalProperties:
               items:
-                $ref: '#/definitions/services.Service'
+                $ref: '#/definitions/models.Service'
               type: array
             type: object
       summary: Получить список услуг

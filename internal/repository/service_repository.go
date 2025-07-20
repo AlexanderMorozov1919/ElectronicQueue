@@ -6,15 +6,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type ServiceRepository interface {
-	GetAll() ([]models.Service, error)
-	GetByID(id uint) (*models.Service, error)
-	GetByServiceID(serviceID string) (*models.Service, error)
-	Create(service *models.Service) error
-	Update(service *models.Service) error
-	Delete(id uint) error
-}
-
 type serviceRepo struct {
 	db *gorm.DB
 }

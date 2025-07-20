@@ -19,9 +19,9 @@ type DoctorRepository interface {
 
 // PatientRepository определяет методы для взаимодействия с данными пациентов.
 type PatientRepository interface {
-	Create(patient *models.Patient) error
-	Update(patient *models.Patient) error
-	GetByID(id uint) (*models.Patient, error)
+	Create(patient *models.Patient) (*models.Patient, error)
+	// --- ИЗМЕНЕНИЕ ЗДЕСЬ: FindByName заменен на Search ---
+	Search(query string) ([]models.Patient, error)
 	FindByPassport(series, number string) (*models.Patient, error)
 }
 
@@ -48,13 +48,24 @@ type ScheduleRepository interface {
 
 // AppointmentRepository определяет методы для взаимодействия с записями на прием.
 type AppointmentRepository interface {
-	Create(appointment *models.Appointment) error
-	Update(appointment *models.Appointment) error
-	GetByID(id uint) (*models.Appointment, error)
+	CreateAppointmentInTransaction(req *models.CreateAppointmentRequest) (*models.Appointment, error)
+	FindScheduleAndAppointmentsByDoctorAndDate(doctorID uint, date time.Time) ([]models.ScheduleWithAppointmentInfo, error)
 }
+
+// RegistrarRepository определяет методы для аутентификации регистраторов.
 type RegistrarRepository interface {
 	FindByLogin(login string) (*models.Registrar, error)
 	Create(registrar *models.Registrar) error
+}
+
+// ServiceRepository определяет методы для работы с услугами терминала.
+type ServiceRepository interface {
+	GetAll() ([]models.Service, error)
+	GetByID(id uint) (*models.Service, error)
+	GetByServiceID(serviceID string) (*models.Service, error)
+	Create(service *models.Service) error
+	Update(service *models.Service) error
+	Delete(id uint) error
 }
 
 // Repository содержит все репозитории приложения.
