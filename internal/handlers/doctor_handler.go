@@ -46,6 +46,24 @@ type DoctorScreenResponse struct {
 	IsWaiting       bool   `json:"is_waiting"`
 }
 
+// GetAllActiveDoctors возвращает список всех активных врачей.
+// @Summary      Получить список активных врачей
+// @Description  Возвращает список всех врачей, у которых is_active = true. Используется для заполнения выпадающих списков на клиенте.
+// @Tags         doctor
+// @Produce      json
+// @Success      200 {array} models.Doctor "Массив моделей врачей"
+// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Security     ApiKeyAuth
+// @Router       /api/doctor/active [get]
+func (h *DoctorHandler) GetAllActiveDoctors(c *gin.Context) {
+	doctors, err := h.doctorService.GetAllActiveDoctors()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось получить список врачей: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, doctors)
+}
+
 // GetRegisteredTickets возвращает талоны со статусом "зарегистрирован"
 // @Summary      Получить очередь к врачу
 // @Description  Возвращает список талонов со статусом "зарегистрирован", т.е. очередь непосредственно к врачу.
@@ -160,13 +178,13 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 		if err != nil || doctor == nil {
 			log.WithError(err).Error("Cannot get doctor screen state, no active doctor found in DB.")
 			c.SSEvent("error", gin.H{"error": "No active doctor configured."})
-			return false // Останавливаем стрим
+			return false
 		}
 
 		response := DoctorScreenResponse{
 			DoctorName:      doctor.FullName,
 			DoctorSpecialty: doctor.Specialization,
-			OfficeNumber:    1, // TODO: Получить номер кабинета из данных врача
+			OfficeNumber:    1,
 			IsWaiting:       ticket == nil,
 		}
 		if ticket != nil {

@@ -12,19 +12,15 @@ import (
 
 const maxTicketNumber = 1000
 
-// Service описывает услугу
-// ID — уникальный идентификатор, Name — русское название
-// Letter — буква для талона
-type Service struct {
-	ID     string
-	Name   string
-	Letter string
-}
-
 // TicketService предоставляет методы для работы с талонами
 type TicketService struct {
 	repo        repository.TicketRepository
 	serviceRepo repository.ServiceRepository
+}
+
+// NewTicketService создает новый экземпляр TicketService
+func NewTicketService(repo repository.TicketRepository, serviceRepo repository.ServiceRepository) *TicketService {
+	return &TicketService{repo: repo, serviceRepo: serviceRepo}
 }
 
 func (s *TicketService) GetAllServices() ([]models.Service, error) {
@@ -74,12 +70,11 @@ func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 		logger.Default().Error(fmt.Sprintf("CreateTicket: failed to generate ticket number: %v", err))
 		return nil, err
 	}
-	// Найти категорию услуги по serviceID
-	// В качестве категории используем serviceID
 	ticket := &models.Ticket{
 		TicketNumber: ticketNumber,
 		Status:       models.StatusWaiting,
 		CreatedAt:    time.Now(),
+		ServiceType:  &serviceID,
 	}
 	if err := s.repo.Create(ticket); err != nil {
 		logger.Default().Error(fmt.Sprintf("CreateTicket: repo create error: %v", err))
@@ -117,13 +112,11 @@ func (s *TicketService) CallNextTicket(windowNumber int) (*models.Ticket, error)
 		return nil, fmt.Errorf("очередь пуста")
 	}
 
-	// Обновление данных талона
 	now := time.Now()
 	ticket.Status = models.StatusInvited
 	ticket.WindowNumber = &windowNumber
 	ticket.CalledAt = &now
 
-	// Сохраняем изменения в БД при вызове Update (сработает триггер и отправит NOTIFY)
 	if err := s.repo.Update(ticket); err != nil {
 		logger.Default().Error(fmt.Sprintf("CallNextTicket: repo update error: %v", err))
 		return nil, err
@@ -133,12 +126,6 @@ func (s *TicketService) CallNextTicket(windowNumber int) (*models.Ticket, error)
 	return ticket, nil
 }
 
-// NewTicketService создает новый экземпляр TicketService
-func NewTicketService(repo repository.TicketRepository, serviceRepo repository.ServiceRepository) *TicketService {
-	return &TicketService{repo: repo, serviceRepo: serviceRepo}
-}
-
-// generateTicketNumber генерирует уникальный номер талона для услуги
 func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
 	service, err := s.serviceRepo.GetByServiceID(serviceID)
 	if err != nil {
@@ -153,13 +140,12 @@ func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
 	}
 
 	num := maxNum + 1
-	if num > maxTicketNumber {
+	if num >= maxTicketNumber { // Use >= to be safe
 		num = 1
 	}
 	return fmt.Sprintf("%s%03d", letter, num), nil
 }
 
-// MapServiceIDToName возвращает название услуги по её идентификатору
 func (s *TicketService) MapServiceIDToName(serviceID string) string {
 	service, err := s.serviceRepo.GetByServiceID(serviceID)
 	if err != nil {
@@ -168,12 +154,16 @@ func (s *TicketService) MapServiceIDToName(serviceID string) string {
 	return service.Name
 }
 
-// Модификация существующего метода для использования нового генератора
 func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string, mode string, qrData []byte) ([]byte, error) {
 	waitingTickets, err := s.repo.FindByStatuses([]models.TicketStatus{models.StatusWaiting})
-	waitingNumber := len(waitingTickets) - 1
-	if err != nil {
-		waitingNumber = 0
+	waitingNumber := 0
+	if err == nil {
+		// Считаем только талоны, созданные до текущего
+		for _, wt := range waitingTickets {
+			if wt.CreatedAt.Before(ticket.CreatedAt) {
+				waitingNumber++
+			}
+		}
 	}
 
 	background := "assets/img/ticket_bw.png"

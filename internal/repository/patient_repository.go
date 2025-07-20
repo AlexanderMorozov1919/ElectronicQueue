@@ -14,20 +14,27 @@ func NewPatientRepository(db *gorm.DB) PatientRepository {
 	return &patientRepo{db: db}
 }
 
-func (r *patientRepo) Create(patient *models.Patient) error {
-	return r.db.Create(patient).Error
-}
-
-func (r *patientRepo) Update(patient *models.Patient) error {
-	return r.db.Save(patient).Error
-}
-
-func (r *patientRepo) GetByID(id uint) (*models.Patient, error) {
-	var patient models.Patient
-	if err := r.db.First(&patient, id).Error; err != nil {
+func (r *patientRepo) Create(patient *models.Patient) (*models.Patient, error) {
+	err := r.db.Create(patient).Error
+	if err != nil {
 		return nil, err
 	}
-	return &patient, nil
+	return patient, nil
+}
+
+// Search ищет по ФИО, номеру ОМС и полному номеру паспорта.
+func (r *patientRepo) Search(query string) ([]models.Patient, error) {
+	var patients []models.Patient
+	searchQuery := "%" + query + "%"
+
+	err := r.db.Where(
+		"full_name ILIKE ? OR oms_number LIKE ? OR (passport_series || passport_number) LIKE ?",
+		searchQuery,
+		searchQuery,
+		searchQuery,
+	).Limit(10).Find(&patients).Error
+
+	return patients, err
 }
 
 func (r *patientRepo) FindByPassport(series, number string) (*models.Patient, error) {

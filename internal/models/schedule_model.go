@@ -6,12 +6,13 @@ import (
 
 // Schedule представляет собой модель слота в расписании врача.
 type Schedule struct {
-	ID          uint      `gorm:"primaryKey;autoIncrement;column:schedule_id" json:"id"`
+	ID          uint      `gorm:"primaryKey;autoIncrement;column:schedule_id" json:"schedule_id"`
 	DoctorID    uint      `gorm:"not null;uniqueIndex:idx_doctor_date_start;column:doctor_id" json:"doctor_id"`
 	Date        time.Time `gorm:"type:date;not null;uniqueIndex:idx_doctor_date_start" json:"date"`
-	StartTime   time.Time `gorm:"type:time;not null;uniqueIndex:idx_doctor_date_start;column:start_time" json:"start_time"`
-	EndTime     time.Time `gorm:"type:time;not null;column:end_time" json:"end_time"`
+	StartTime   string    `gorm:"type:time;not null;uniqueIndex:idx_doctor_date_start;column:start_time" json:"start_time"`
+	EndTime     string    `gorm:"type:time;not null;column:end_time" json:"end_time"`
 	IsAvailable bool      `gorm:"default:true;column:is_available" json:"is_available"`
+	Doctor      Doctor    `gorm:"foreignKey:DoctorID" json:"doctor,omitempty"`
 }
 
 // ScheduleResponse определяет данные, возвращаемые API, возможно с информацией о враче.
@@ -19,8 +20,8 @@ type ScheduleResponse struct {
 	ID          uint      `json:"id"`
 	DoctorID    uint      `json:"doctor_id"`
 	Date        time.Time `json:"date"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
+	StartTime   string    `json:"start_time"`
+	EndTime     string    `json:"end_time"`
 	IsAvailable bool      `json:"is_available"`
 }
 
