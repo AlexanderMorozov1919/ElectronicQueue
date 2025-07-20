@@ -19,6 +19,7 @@ import (
 	"ElectronicQueue/internal/pubsub"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/services"
+	"ElectronicQueue/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -150,19 +151,33 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	r.Use(logger.GinLogger())
 	r.Use(middleware.CorsMiddleware())
 
+	jwtManager, err := utils.NewJWTManager(cfg.JWTSecret, cfg.JWTExpiration)
+	if err != nil {
+		logger.Default().WithError(err).Fatal("Failed to initialize JWT Manager")
+	}
+
 	ticketRepo := repository.NewTicketRepository(db)
 	serviceRepo := repository.NewServiceRepository(db)
 	doctorRepo := repository.NewDoctorRepository(db)
+	registrarRepo := repository.NewRegistrarRepository(db)
 
 	ticketService := services.NewTicketService(ticketRepo, serviceRepo)
 	doctorService := services.NewDoctorService(ticketRepo, doctorRepo)
+	authService := services.NewAuthService(registrarRepo, jwtManager)
 
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
 	doctorHandler := handlers.NewDoctorHandler(doctorService, broker)
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
+	authHandler := handlers.NewAuthHandler(authService)
 
-	// SSE-эндпоинт для табло регистратуры
+	// SSE-эндпоинт для табло очереди регистратуры
 	r.GET("/tickets", sseHandler(broker, "reception_sse"))
+
+	auth := r.Group("/api/auth")
+	{
+		auth.POST("/login/registrar", authHandler.LoginRegistrar)
+		auth.POST("/create/registrar", authHandler.CreateRegistrar)
+	}
 
 	// Группа роутов для терминала
 	tickets := r.Group("/api/tickets")
@@ -185,14 +200,13 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		doctorGroup.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
 	}
 
-	registrar := r.Group("/api/registrar")
+	registrar := r.Group("/api/registrar").Use(middleware.RequireRole(jwtManager, "registrar"))
 	{
 		registrar.POST("/call-next", registrarHandler.CallNext)
 		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
 		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 	}
 
-	// Группа роутов для прямого доступа к БД
 	databaseRepo := repository.NewDatabaseRepository(db)
 	databaseService := services.NewDatabaseService(databaseRepo)
 	databaseHandler := handlers.NewDatabaseHandler(databaseService)
@@ -218,6 +232,7 @@ type NotificationPayload struct {
 	Data   models.TicketResponse `json:"data"`
 }
 
+// TODO: убрать SSE-хендлер в каталог хендлеров
 // sseHandler подписывает клиента на события от брокера
 func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -219,6 +219,12 @@ fi
 
 if [[ "$FLUTTER_MODE" == "true" ]]; then
   cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
+  # Generate .env for Flutter frontend
+  FLUTTER_ENV_FILE=".env"
+  API_BASE_URL="http://localhost:${BACKEND_PORT}"
+  echo "API_BASE_URL=${API_BASE_URL}" > "$FLUTTER_ENV_FILE"
+  echo "EXTERNAL_API_KEY=${EXTERNAL_API_KEY}" >> "$FLUTTER_ENV_FILE"
+  echo ".env file for Flutter frontend generated."
   echo "Getting Flutter packages..."
   if flutter pub get --no-example; then
     echo "Flutter setup complete."
@@ -239,13 +245,12 @@ if [[ "$FLUTTER_DOCKER_MODE" == "true" ]]; then
   cd "$(dirname "$0")/../electronicqueue-frontend/lib" || { echo "lib directory not found!"; exit 1; }
   mapfile -t FLUTTER_MAIN_FILES < <(find . -maxdepth 2 -mindepth 2 -type f -name '*main*.dart' | sed 's|^./||')
   cd - > /dev/null 2>&1
-  rm -f .env
-  if [ -n "$BACKEND_PORT" ]; then
-    echo "BACKEND_PORT=$BACKEND_PORT" > .env
-    echo ".env file generated with BACKEND_PORT=$BACKEND_PORT"
-  else
-    echo "BACKEND_PORT is not set! .env not generated."
-  fi
+  # Generate .env for Flutter frontend
+  FLUTTER_ENV_FILE=".env"
+  API_BASE_URL="http://localhost:${BACKEND_PORT}"
+  echo "API_BASE_URL=${API_BASE_URL}" > "$FLUTTER_ENV_FILE"
+  echo "EXTERNAL_API_KEY=${EXTERNAL_API_KEY}" >> "$FLUTTER_ENV_FILE"
+  echo ".env file for Flutter frontend generated."
   rm -f Dockerfile
   cat > Dockerfile <<EOF
 FROM ghcr.io/cirruslabs/flutter:3.32.5 AS build
