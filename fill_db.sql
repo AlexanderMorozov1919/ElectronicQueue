@@ -15,7 +15,7 @@ ON CONFLICT (doctor_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 -- Добавляем двух тестовых регистраторов.
--- Пароль для обоих: 'admin1' и 'admin2'
+-- Пароли: 'admin1' и 'admin2'
 INSERT INTO registrars (registrar_id, full_name, login, password_hash, is_active) VALUES
 (1, 'Петрова Анна Сергеевна', 'admin1', '$2a$10$Bpqg4mfUfFNLe09MC6QvveFNcY80VAiLSjpOOSBqAnV7avNJo5eEi', TRUE),
 (2, 'Сидорова Елена Игоревна', 'admin2', '$2a$10$l3Lt5ogEKuQ1.PoSilqWQ.12ymyxTcpWTOBBBKJE6grMJ2emeFPcy', TRUE)
