@@ -159,6 +159,11 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db)) // Для универсального API
 	patientService := services.NewPatientService(repo.Patient)
 	appointmentService := services.NewAppointmentService(repo.Appointment)
+	cleanupService := services.NewCleanupService(repo.Cleanup)
+	tasksTimerService := services.NewTasksTimerService(cleanupService, cfg)
+
+	// Запускаем планировщик задач в фоне
+	go tasksTimerService.Start(context.Background())
 
 	// --- Инициализация всех обработчиков ---
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)

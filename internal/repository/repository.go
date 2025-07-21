@@ -70,6 +70,13 @@ type ServiceRepository interface {
 	Delete(id uint) error
 }
 
+// CleanupRepository определяет методы для очистки данных.
+type CleanupRepository interface {
+	TruncateTickets() error
+	GetTicketsCount() (int64, error)
+	GetOrphanedAppointmentsCount() (int64, error)
+}
+
 // Repository содержит все репозитории приложения.
 type Repository struct {
 	Doctor      DoctorRepository
@@ -79,6 +86,7 @@ type Repository struct {
 	Appointment AppointmentRepository
 	Service     ServiceRepository
 	Registrar   RegistrarRepository
+	Cleanup     CleanupRepository
 }
 
 // NewRepository создает новый экземпляр главного репозитория.
@@ -91,5 +99,6 @@ func NewRepository(db *gorm.DB) *Repository {
 		Appointment: NewAppointmentRepository(db),
 		Service:     NewServiceRepository(db),
 		Registrar:   NewRegistrarRepository(db),
+		Cleanup:     NewCleanupRepository(db),
 	}
 }
