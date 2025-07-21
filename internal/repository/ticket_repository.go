@@ -2,6 +2,7 @@ package repository
 
 import (
 	"ElectronicQueue/internal/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -70,9 +71,17 @@ func (r *ticketRepo) Delete(id uint) error {
 	return r.db.Delete(&models.Ticket{}, id).Error
 }
 
-func (r *ticketRepo) FindFirstByStatus(status models.TicketStatus) (*models.Ticket, error) {
+// FindInProgressTicketForCabinet находит талон в статусе "на приеме" для конкретного кабинета на сегодня.
+func (r *ticketRepo) FindInProgressTicketForCabinet(cabinetNumber int) (*models.Ticket, error) {
 	var ticket models.Ticket
-	err := r.db.Where("status = ?", status).Order("started_at desc").First(&ticket).Error
+	today := time.Now().Format("2006-01-02")
+
+	err := r.db.Joins("JOIN appointments ON appointments.ticket_id = tickets.ticket_id").
+		Joins("JOIN schedules ON schedules.schedule_id = appointments.schedule_id").
+		Where("tickets.status = ? AND schedules.cabinet = ? AND schedules.date = ?",
+			models.StatusInProgress, cabinetNumber, today).
+		First(&ticket).Error
+
 	if err != nil {
 		return nil, err
 	}

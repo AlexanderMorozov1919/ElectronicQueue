@@ -553,6 +553,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/doctor/cabinets/active": {
+            "get": {
+                "description": "Возвращает список всех уникальных номеров кабинетов, когда-либо существовавших в расписании.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Получить список всех существующих кабинетов",
+                "responses": {
+                    "200": {
+                        "description": "Массив номеров кабинетов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/doctor/complete-appointment": {
             "post": {
                 "description": "Завершает прием пациента по талону. Статус талона должен быть 'на_приеме'.",
@@ -597,9 +629,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/doctor/screen-updates": {
+        "/api/doctor/screen-updates/{cabinet_number}": {
             "get": {
-                "description": "Отправляет начальное состояние и последующие обновления статуса приема через Server-Sent Events.",
+                "description": "Отправляет начальное состояние и последующие обновления статуса приема через Server-Sent Events для конкретного кабинета.",
                 "produces": [
                     "text/event-stream"
                 ],
@@ -607,11 +639,29 @@ const docTemplate = `{
                     "doctor"
                 ],
                 "summary": "Получить обновления для табло врача",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Номер кабинета",
+                        "name": "cabinet_number",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Поток событий",
                         "schema": {
                             "$ref": "#/definitions/handlers.DoctorScreenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный формат номера кабинета",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -1513,6 +1563,9 @@ const docTemplate = `{
         "handlers.DoctorScreenResponse": {
             "type": "object",
             "properties": {
+                "cabinet_number": {
+                    "type": "integer"
+                },
                 "doctor_name": {
                     "type": "string"
                 },
@@ -1522,8 +1575,9 @@ const docTemplate = `{
                 "is_waiting": {
                     "type": "boolean"
                 },
-                "office_number": {
-                    "type": "integer"
+                "message": {
+                    "description": "Поле для сообщений, например, \"нет приема\"",
+                    "type": "string"
                 },
                 "ticket_number": {
                     "type": "string"
@@ -1785,16 +1839,14 @@ const docTemplate = `{
         "models.Schedule": {
             "type": "object",
             "properties": {
+                "cabinet": {
+                    "type": "integer"
+                },
                 "date": {
                     "type": "string"
                 },
                 "doctor": {
-                    "description": "--- ИСПРАВЛЕНИЕ ЗДЕСЬ ---\nДобавляем связь с моделью Doctor.\nGORM теперь будет знать, что поле DoctorID связано с таблицей doctors.\nЭто позволит ` + "`" + `Preload(\"Schedule.Doctor\")` + "`" + ` работать корректно.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.Doctor"
-                        }
-                    ]
+                    "$ref": "#/definitions/models.Doctor"
                 },
                 "doctor_id": {
                     "type": "integer"
@@ -1819,16 +1871,14 @@ const docTemplate = `{
                 "appointment": {
                     "$ref": "#/definitions/models.Appointment"
                 },
+                "cabinet": {
+                    "type": "integer"
+                },
                 "date": {
                     "type": "string"
                 },
                 "doctor": {
-                    "description": "--- ИСПРАВЛЕНИЕ ЗДЕСЬ ---\nДобавляем связь с моделью Doctor.\nGORM теперь будет знать, что поле DoctorID связано с таблицей doctors.\nЭто позволит ` + "`" + `Preload(\"Schedule.Doctor\")` + "`" + ` работать корректно.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.Doctor"
-                        }
-                    ]
+                    "$ref": "#/definitions/models.Doctor"
                 },
                 "doctor_id": {
                     "type": "integer"

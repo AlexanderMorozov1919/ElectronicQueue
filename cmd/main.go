@@ -154,7 +154,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 
 	// --- Инициализация всех сервисов ---
 	ticketService := services.NewTicketService(repo.Ticket, repo.Service)
-	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor)
+	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule)
 	authService := services.NewAuthService(repo.Registrar, jwtManager)
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db)) // Для универсального API
 	patientService := services.NewPatientService(repo.Patient)
@@ -194,13 +194,12 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	doctorGroup := r.Group("/api/doctor")
 	{
 		doctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
-
-		// Маршруты для окна врача
+		doctorGroup.GET("/cabinets/active", doctorHandler.GetActiveCabinets)
 		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
 		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
 		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
 		doctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
-		doctorGroup.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
+		doctorGroup.GET("/screen-updates/:cabinet_number", doctorHandler.DoctorScreenUpdates)
 	}
 
 	// Группа для регистратора, защищенная JWT токеном

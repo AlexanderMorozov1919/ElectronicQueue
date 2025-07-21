@@ -13,7 +13,6 @@ set +o allexport
 : "${DB_NAME?Need to set DB_NAME}"
 : "${DB_SSLMODE:=disable}"
 
-# Автоматический поиск main файлов Flutter frontend
 rm -f migrations/fill_db.sql
 
 # --- Аргументы ---

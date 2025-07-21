@@ -41,3 +41,42 @@ func (r *scheduleRepo) FindByDoctorAndDate(doctorID uint, date time.Time) ([]mod
 	}
 	return schedules, nil
 }
+
+// FindByCabinetAndCurrentTime находит активное расписание для кабинета в данный момент времени.
+func (r *scheduleRepo) FindByCabinetAndCurrentTime(cabinetNumber int) (*models.Schedule, error) {
+	var schedule models.Schedule
+	now := time.Now()
+	currentTime := now.Format("15:04:05")
+
+	// Preload("Doctor") загружает связанные данные о враче одним запросом
+	err := r.db.Preload("Doctor").
+		Where("cabinet = ? AND date = ? AND start_time <= ? AND end_time > ?",
+			cabinetNumber,
+			now.Format("2006-01-02"),
+			currentTime,
+			currentTime,
+		).
+		First(&schedule).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return &schedule, nil
+}
+
+// GetAllUniqueCabinets возвращает отсортированный список всех уникальных номеров кабинетов,
+// когда-либо существовавших в расписании.
+func (r *scheduleRepo) GetAllUniqueCabinets() ([]int, error) {
+	var cabinets []int
+
+	err := r.db.Model(&models.Schedule{}).
+		Distinct().
+		Where("cabinet IS NOT NULL").
+		Order("cabinet asc").
+		Pluck("cabinet", &cabinets).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return cabinets, nil
+}
