@@ -5,6 +5,8 @@ type Doctor struct {
 	ID             uint       `gorm:"primaryKey;autoIncrement;column:doctor_id" json:"id"`
 	FullName       string     `gorm:"type:varchar(100);not null;column:full_name" json:"full_name"`
 	Specialization string     `gorm:"type:varchar(100);not null" json:"specialization"`
+	Login          string     `gorm:"column:login;unique" json:"login,omitempty"`
+	PasswordHash   string     `gorm:"column:password_hash" json:"-"`
 	IsActive       bool       `gorm:"default:true;column:is_active" json:"is_active"`
 	Schedules      []Schedule `gorm:"foreignKey:DoctorID;constraint:OnDelete:SET NULL" json:"schedules,omitempty"`
 }

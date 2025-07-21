@@ -15,12 +15,12 @@ type DoctorRepository interface {
 	GetByID(id uint) (*models.Doctor, error)
 	GetAll(onlyActive bool) ([]models.Doctor, error)
 	GetAnyDoctor() (*models.Doctor, error)
+	FindByLogin(login string) (*models.Doctor, error)
 }
 
 // PatientRepository определяет методы для взаимодействия с данными пациентов.
 type PatientRepository interface {
 	Create(patient *models.Patient) (*models.Patient, error)
-	// --- ИЗМЕНЕНИЕ ЗДЕСЬ: FindByName заменен на Search ---
 	Search(query string) ([]models.Patient, error)
 	FindByPassport(series, number string) (*models.Patient, error)
 }

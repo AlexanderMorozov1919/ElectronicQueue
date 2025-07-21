@@ -54,3 +54,11 @@ func (r *doctorRepo) GetAnyDoctor() (*models.Doctor, error) {
 	}
 	return &doctor, nil
 }
+
+func (r *doctorRepo) FindByLogin(login string) (*models.Doctor, error) {
+	var doctor models.Doctor
+	if err := r.db.Where("login = ?", login).First(&doctor).Error; err != nil {
+		return nil, err
+	}
+	return &doctor, nil
+}

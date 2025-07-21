@@ -155,7 +155,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	// --- Инициализация всех сервисов ---
 	ticketService := services.NewTicketService(repo.Ticket, repo.Service)
 	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor)
-	authService := services.NewAuthService(repo.Registrar, jwtManager)
+	authService := services.NewAuthService(repo.Registrar, repo.Doctor, jwtManager)
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db)) // Для универсального API
 	patientService := services.NewPatientService(repo.Patient)
 	appointmentService := services.NewAppointmentService(repo.Appointment)
@@ -177,7 +177,9 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/login/registrar", authHandler.LoginRegistrar)
+		auth.POST("/login/doctor", authHandler.LoginDoctor)
 		auth.POST("/create/registrar", authHandler.CreateRegistrar)
+		auth.POST("/create/doctor", authHandler.CreateDoctor)
 	}
 
 	tickets := r.Group("/api/tickets")
@@ -191,17 +193,17 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)
 	}
 
-	doctorGroup := r.Group("/api/doctor")
+	doctorGroup := r.Group("/api/doctor").Use(middleware.RequireRole(jwtManager, "doctor"))
 	{
 		doctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
 
-		// Маршруты для окна врача
 		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
 		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
 		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
 		doctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
-		doctorGroup.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
 	}
+	doctorGroup.GET("/api/screen-updates", doctorHandler.DoctorScreenUpdates)
+
 
 	// Группа для регистратора, защищенная JWT токеном
 	registrar := r.Group("/api/registrar").Use(middleware.RequireRole(jwtManager, "registrar"))
@@ -210,8 +212,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		registrar.POST("/call-next", registrarHandler.CallNext)
 		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
 		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
-
-		// Новые маршруты для формы записи на прием
 		registrar.GET("/patients/search", patientHandler.SearchPatients)
 		registrar.POST("/patients", patientHandler.CreatePatient)
 		registrar.GET("/schedules/doctor/:doctor_id", appointmentHandler.GetDoctorSchedule)

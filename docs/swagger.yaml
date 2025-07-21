@@ -44,6 +44,22 @@ definitions:
         example: 10
         type: integer
     type: object
+  handlers.CreateDoctorRequest:
+    properties:
+      full_name:
+        type: string
+      login:
+        type: string
+      password:
+        type: string
+      specialization:
+        type: string
+    required:
+    - full_name
+    - login
+    - password
+    - specialization
+    type: object
   handlers.CreateRegistrarRequest:
     properties:
       login:
@@ -182,6 +198,8 @@ definitions:
         type: integer
       is_active:
         type: boolean
+      login:
+        type: string
       schedules:
         items:
           $ref: '#/definitions/models.Schedule'
@@ -407,6 +425,43 @@ paths:
       summary: Сгенерировать звуковое оповещение
       tags:
       - audio
+  /api/auth/create/doctor:
+    post:
+      consumes:
+      - application/json
+      description: Создает нового пользователя с ролью "врач". Требует INTERNAL_API_KEY.
+      parameters:
+      - description: Данные нового врача
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateDoctorRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Врач успешно создан
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: 'Ошибка: логин уже занят'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Создать нового врача (Админ)
+      tags:
+      - auth
   /api/auth/create/registrar:
     post:
       consumes:
@@ -442,6 +497,41 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Создать нового регистратора (Админ)
+      tags:
+      - auth
+  /api/auth/login/doctor:
+    post:
+      consumes:
+      - application/json
+      description: Принимает логин и пароль, возвращает JWT токен и информацию о враче.
+      parameters:
+      - description: Учетные данные
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с токеном и данными врача
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'Ошибка: неверные учетные данные'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Аутентификация врача
       tags:
       - auth
   /api/auth/login/registrar:
