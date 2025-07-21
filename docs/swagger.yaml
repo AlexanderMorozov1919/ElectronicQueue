@@ -46,16 +46,16 @@ definitions:
     type: object
   handlers.CreateRegistrarRequest:
     properties:
-      full_name:
-        type: string
       login:
         type: string
       password:
         type: string
+      window_number:
+        type: integer
     required:
-    - full_name
     - login
     - password
+    - window_number
     type: object
   handlers.DoctorScreenResponse:
     properties:
@@ -243,13 +243,7 @@ definitions:
       date:
         type: string
       doctor:
-        allOf:
-        - $ref: '#/definitions/models.Doctor'
-        description: |-
-          --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-          Добавляем связь с моделью Doctor.
-          GORM теперь будет знать, что поле DoctorID связано с таблицей doctors.
-          Это позволит `Preload("Schedule.Doctor")` работать корректно.
+        $ref: '#/definitions/models.Doctor'
       doctor_id:
         type: integer
       end_time:
@@ -268,13 +262,7 @@ definitions:
       date:
         type: string
       doctor:
-        allOf:
-        - $ref: '#/definitions/models.Doctor'
-        description: |-
-          --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-          Добавляем связь с моделью Doctor.
-          GORM теперь будет знать, что поле DoctorID связано с таблицей doctors.
-          Это позволит `Preload("Schedule.Doctor")` работать корректно.
+        $ref: '#/definitions/models.Doctor'
       doctor_id:
         type: integer
       end_time:
@@ -437,8 +425,7 @@ paths:
         "201":
           description: Регистратор успешно создан
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
         "400":
           description: 'Ошибка: неверный запрос'

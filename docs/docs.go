@@ -103,9 +103,7 @@ const docTemplate = `{
                         "description": "Регистратор успешно создан",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -1494,19 +1492,19 @@ const docTemplate = `{
         "handlers.CreateRegistrarRequest": {
             "type": "object",
             "required": [
-                "full_name",
                 "login",
-                "password"
+                "password",
+                "window_number"
             ],
             "properties": {
-                "full_name": {
-                    "type": "string"
-                },
                 "login": {
                     "type": "string"
                 },
                 "password": {
                     "type": "string"
+                },
+                "window_number": {
+                    "type": "integer"
                 }
             }
         },
@@ -1789,12 +1787,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "doctor": {
-                    "description": "--- ИСПРАВЛЕНИЕ ЗДЕСЬ ---\nДобавляем связь с моделью Doctor.\nGORM теперь будет знать, что поле DoctorID связано с таблицей doctors.\nЭто позволит ` + "`" + `Preload(\"Schedule.Doctor\")` + "`" + ` работать корректно.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.Doctor"
-                        }
-                    ]
+                    "$ref": "#/definitions/models.Doctor"
                 },
                 "doctor_id": {
                     "type": "integer"
@@ -1823,12 +1816,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "doctor": {
-                    "description": "--- ИСПРАВЛЕНИЕ ЗДЕСЬ ---\nДобавляем связь с моделью Doctor.\nGORM теперь будет знать, что поле DoctorID связано с таблицей doctors.\nЭто позволит ` + "`" + `Preload(\"Schedule.Doctor\")` + "`" + ` работать корректно.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.Doctor"
-                        }
-                    ]
+                    "$ref": "#/definitions/models.Doctor"
                 },
                 "doctor_id": {
                     "type": "integer"

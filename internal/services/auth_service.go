@@ -38,7 +38,7 @@ func (s *AuthService) AuthenticateRegistrar(login, password string) (string, err
 	return s.jwtManager.GenerateJWT(registrar.RegistrarID, "registrar")
 }
 
-func (s *AuthService) CreateRegistrar(fullName, login, password string) (*models.Registrar, error) {
+func (s *AuthService) CreateRegistrar(windowNumber int, login, password string) (*models.Registrar, error) {
 	_, err := s.repo.FindByLogin(login)
 	if err == nil {
 		return nil, fmt.Errorf("логин '%s' уже занят", login)
@@ -53,7 +53,7 @@ func (s *AuthService) CreateRegistrar(fullName, login, password string) (*models
 	}
 
 	newRegistrar := &models.Registrar{
-		FullName:     fullName,
+		WindowNumber: windowNumber,
 		Login:        login,
 		PasswordHash: string(hashedPassword),
 	}

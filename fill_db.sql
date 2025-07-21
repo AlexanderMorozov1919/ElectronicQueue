@@ -31,11 +31,11 @@ ON CONFLICT (doctor_id) DO UPDATE SET
 -- --                      3. РЕГИСТРАТОРЫ                        --
 -- -----------------------------------------------------------------
 -- Пароли: 'admin1' и 'admin2'
-INSERT INTO registrars (registrar_id, full_name, login, password_hash, is_active) VALUES
-(1, 'Петрова Анна Сергеевна', 'admin1', '$2a$10$Bpqg4mfUfFNLe09MC6QvveFNcY80VAiLSjpOOSBqAnV7avNJo5eEi', TRUE),
-(2, 'Сидорова Елена Игоревна', 'admin2', '$2a$10$l3Lt5ogEKuQ1.PoSilqWQ.12ymyxTcpWTOBBBKJE6grMJ2emeFPcy', TRUE)
+INSERT INTO registrars (registrar_id, window_number, login, password_hash, is_active) VALUES
+(1, 2, 'admin1', '$2a$10$Bpqg4mfUfFNLe09MC6QvveFNcY80VAiLSjpOOSBqAnV7avNJo5eEi', TRUE),
+(2, 1, 'admin2', '$2a$10$l3Lt5ogEKuQ1.PoSilqWQ.12ymyxTcpWTOBBBKJE6grMJ2emeFPcy', TRUE)
 ON CONFLICT (registrar_id) DO UPDATE SET
-  full_name = EXCLUDED.full_name,
+  window_number = EXCLUDED.window_number,
   login = EXCLUDED.login,
   password_hash = EXCLUDED.password_hash,
   is_active = EXCLUDED.is_active;

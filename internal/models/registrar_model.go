@@ -4,7 +4,7 @@ import "time"
 
 type Registrar struct {
 	RegistrarID  uint      `gorm:"primaryKey;column:registrar_id"`
-	FullName     string    `gorm:"column:full_name;not null"`
+	WindowNumber int       `gorm:"column:window_number;not null"`
 	Login        string    `gorm:"column:login;unique;not null"`
 	PasswordHash string    `gorm:"column:password_hash;not null"`
 	IsActive     bool      `gorm:"column:is_active;default:true"`

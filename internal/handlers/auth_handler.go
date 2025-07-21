@@ -21,9 +21,9 @@ type LoginRequest struct {
 }
 
 type CreateRegistrarRequest struct {
-	FullName string `json:"full_name" binding:"required"`
-	Login    string `json:"login" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	WindowNumber int    `json:"window_number" binding:"required"`
+	Login       string `json:"login" binding:"required"`
+	Password    string `json:"password" binding:"required"`
 }
 
 // LoginRegistrar обрабатывает аутентификацию регистратора
@@ -60,7 +60,7 @@ func (h *AuthHandler) LoginRegistrar(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        credentials body CreateRegistrarRequest true "Данные нового регистратора"
-// @Success      201 {object} map[string]string "Регистратор успешно создан"
+// @Success      201 {object} map[string]interface{} "Регистратор успешно создан"
 // @Failure      400 {object} map[string]string "Ошибка: неверный запрос"
 // @Failure      409 {object} map[string]string "Ошибка: логин уже занят"
 // @Security     ApiKeyAuth
@@ -72,7 +72,7 @@ func (h *AuthHandler) CreateRegistrar(c *gin.Context) {
 		return
 	}
 
-	registrar, err := h.authService.CreateRegistrar(req.FullName, req.Login, req.Password)
+	registrar, err := h.authService.CreateRegistrar(req.WindowNumber, req.Login, req.Password)
 	if err != nil {
 		// Проверяем, является ли ошибка конфликтом (логин занят)
 		if err.Error() == "логин '"+req.Login+"' уже занят" {
@@ -87,5 +87,6 @@ func (h *AuthHandler) CreateRegistrar(c *gin.Context) {
 		"message":      "Регистратор успешно создан",
 		"registrar_id": registrar.RegistrarID,
 		"login":        registrar.Login,
+		"window_number": registrar.WindowNumber,
 	})
 }
