@@ -4,8 +4,10 @@ import (
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/pubsub"
 	"ElectronicQueue/internal/services"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -39,11 +41,12 @@ type CompleteAppointmentRequest struct {
 
 // DoctorScreenResponse определяет структуру данных для экрана у кабинета врача.
 type DoctorScreenResponse struct {
-	DoctorName      string `json:"doctor_name"`
-	DoctorSpecialty string `json:"doctor_specialty"`
-	OfficeNumber    int    `json:"office_number"`
+	DoctorName      string `json:"doctor_name,omitempty"`
+	DoctorSpecialty string `json:"doctor_specialty,omitempty"`
+	CabinetNumber   int    `json:"cabinet_number"`
 	TicketNumber    string `json:"ticket_number,omitempty"`
 	IsWaiting       bool   `json:"is_waiting"`
+	Message         string `json:"message,omitempty"` // Поле для сообщений, например, "нет приема"
 }
 
 // GetAllActiveDoctors возвращает список всех активных врачей.
@@ -62,6 +65,23 @@ func (h *DoctorHandler) GetAllActiveDoctors(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, doctors)
+}
+
+// GetActiveCabinets godoc
+// @Summary      Получить список всех существующих кабинетов
+// @Description  Возвращает список всех уникальных номеров кабинетов, когда-либо существовавших в расписании.
+// @Tags         doctor
+// @Produce      json
+// @Success      200 {array} integer "Массив номеров кабинетов"
+// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Router       /api/doctor/cabinets/active [get]
+func (h *DoctorHandler) GetActiveCabinets(c *gin.Context) {
+	cabinets, err := h.doctorService.GetAllUniqueCabinets()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось получить список кабинетов: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, cabinets)
 }
 
 // GetRegisteredTickets возвращает талоны со статусом "зарегистрирован"
@@ -158,42 +178,57 @@ func (h *DoctorHandler) CompleteAppointment(c *gin.Context) {
 
 // DoctorScreenUpdates - SSE эндпоинт для табло у кабинета врача.
 // @Summary      Получить обновления для табло врача
-// @Description  Отправляет начальное состояние и последующие обновления статуса приема через Server-Sent Events.
+// @Description  Отправляет начальное состояние и последующие обновления статуса приема через Server-Sent Events для конкретного кабинета.
 // @Tags         doctor
 // @Produce      text/event-stream
+// @Param        cabinet_number path int true "Номер кабинета"
 // @Success      200 {object} DoctorScreenResponse "Поток событий"
-// @Router       /api/doctor/screen-updates [get]
+// @Failure      400 {object} map[string]string "Неверный формат номера кабинета"
+// @Router       /api/doctor/screen-updates/{cabinet_number} [get]
 func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
+	cabinetNumberStr := c.Param("cabinet_number")
+	cabinetNumber, err := strconv.Atoi(cabinetNumberStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный номер кабинета"})
+		return
+	}
+
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
-	log := logger.Default().WithField("module", "SSE_DOCTOR")
+	log := logger.Default().WithField("module", "SSE_DOCTOR").WithField("cabinet", cabinetNumber)
 
 	clientChan := h.broker.Subscribe()
 	defer h.broker.Unsubscribe(clientChan)
 
 	// Функция для получения и отправки текущего состояния экрана врача
 	sendCurrentState := func() bool {
-		doctor, ticket, err := h.doctorService.GetCurrentAppointmentScreenState()
-		if err != nil || doctor == nil {
-			log.WithError(err).Error("Cannot get doctor screen state, no active doctor found in DB.")
-			c.SSEvent("error", gin.H{"error": "No active doctor configured."})
-			return false
+		schedule, ticket, err := h.doctorService.GetCurrentAppointmentScreenState(cabinetNumber)
+
+		// Если нет расписания на данный момент
+		if err != nil || schedule == nil || schedule.Doctor.FullName == "" {
+			log.Warn("No active schedule found for this cabinet. Sending 'no reception' message.")
+			response := DoctorScreenResponse{
+				CabinetNumber: cabinetNumber,
+				Message:       fmt.Sprintf("В кабинете %d нет приёма", cabinetNumber),
+				IsWaiting:     true, // Дефолтное значение
+			}
+			c.SSEvent("state_update", response)
+			c.Writer.Flush()
+			return true // Продолжаем слушать, вдруг прием начнется
 		}
 
 		response := DoctorScreenResponse{
-			DoctorName:      doctor.FullName,
-			DoctorSpecialty: doctor.Specialization,
-			OfficeNumber:    1,
+			DoctorName:      schedule.Doctor.FullName,
+			DoctorSpecialty: schedule.Doctor.Specialization,
+			CabinetNumber:   cabinetNumber,
 			IsWaiting:       ticket == nil,
 		}
 		if ticket != nil {
-			// Если есть талон на приеме, обновляем данные в ответе
 			response.TicketNumber = ticket.TicketNumber
-			log.WithFields(logrus.Fields{"ticket": ticket.TicketNumber, "doctor": doctor.FullName}).Info("Sending state: patient is being seen")
+			log.WithFields(logrus.Fields{"ticket": ticket.TicketNumber, "doctor": schedule.Doctor.FullName}).Info("Sending state: patient is being seen")
 		} else {
-			// Если талона на приеме нет
-			log.WithField("doctor", doctor.FullName).Info("Sending state: waiting for patient")
+			log.WithField("doctor", schedule.Doctor.FullName).Info("Sending state: waiting for patient")
 		}
 
 		c.SSEvent("state_update", response)
@@ -201,7 +236,6 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 			f.Flush()
 			return c.Writer.Status() != http.StatusNotFound
 		}
-		// Проверяем, не отсоединился ли клиент во время отправки
 		return c.Writer.Status() < http.StatusInternalServerError
 	}
 
@@ -214,7 +248,6 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 	// Запускаем стрим для отправки обновлений
 	c.Stream(func(w io.Writer) bool {
 		select {
-		// При любом уведомлении от брокера перепроверяем состояние и отправляем его
 		case _, ok := <-clientChan:
 			if !ok {
 				log.Info("Notification channel closed for doctor screen.")
@@ -223,7 +256,6 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 			log.Info("Received ticket update notification, refreshing doctor screen state.")
 			return sendCurrentState()
 
-		// Если клиент отключается
 		case <-c.Request.Context().Done():
 			log.Info("Client disconnected from doctor screen.")
 			return false

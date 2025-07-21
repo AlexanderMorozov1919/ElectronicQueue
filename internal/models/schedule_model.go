@@ -12,6 +12,7 @@ type Schedule struct {
 	StartTime   string    `gorm:"type:time;not null;uniqueIndex:idx_doctor_date_start;column:start_time" json:"start_time"`
 	EndTime     string    `gorm:"type:time;not null;column:end_time" json:"end_time"`
 	IsAvailable bool      `gorm:"default:true;column:is_available" json:"is_available"`
+	Cabinet     *int      `gorm:"column:cabinet" json:"cabinet,omitempty"`
 	Doctor      Doctor    `gorm:"foreignKey:DoctorID" json:"doctor,omitempty"`
 }
 
@@ -23,6 +24,7 @@ type ScheduleResponse struct {
 	StartTime   string    `json:"start_time"`
 	EndTime     string    `json:"end_time"`
 	IsAvailable bool      `json:"is_available"`
+	Cabinet     *int      `json:"cabinet,omitempty"`
 }
 
 // CreateScheduleRequest определяет структуру для создания нового слота в расписании.
@@ -32,6 +34,7 @@ type CreateScheduleRequest struct {
 	StartTime   time.Time `json:"start_time" binding:"required"`
 	EndTime     time.Time `json:"end_time" binding:"required"`
 	IsAvailable *bool     `json:"is_available"`
+	Cabinet     *int      `json:"cabinet"`
 }
 
 // UpdateScheduleRequest определяет структуру для обновления статуса слота (например, блокировка).

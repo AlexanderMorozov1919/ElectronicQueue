@@ -59,14 +59,17 @@ definitions:
     type: object
   handlers.DoctorScreenResponse:
     properties:
+      cabinet_number:
+        type: integer
       doctor_name:
         type: string
       doctor_specialty:
         type: string
       is_waiting:
         type: boolean
-      office_number:
-        type: integer
+      message:
+        description: Поле для сообщений, например, "нет приема"
+        type: string
       ticket_number:
         type: string
     type: object
@@ -240,16 +243,12 @@ definitions:
     type: object
   models.Schedule:
     properties:
+      cabinet:
+        type: integer
       date:
         type: string
       doctor:
-        allOf:
-        - $ref: '#/definitions/models.Doctor'
-        description: |-
-          --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-          Добавляем связь с моделью Doctor.
-          GORM теперь будет знать, что поле DoctorID связано с таблицей doctors.
-          Это позволит `Preload("Schedule.Doctor")` работать корректно.
+        $ref: '#/definitions/models.Doctor'
       doctor_id:
         type: integer
       end_time:
@@ -265,16 +264,12 @@ definitions:
     properties:
       appointment:
         $ref: '#/definitions/models.Appointment'
+      cabinet:
+        type: integer
       date:
         type: string
       doctor:
-        allOf:
-        - $ref: '#/definitions/models.Doctor'
-        description: |-
-          --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-          Добавляем связь с моделью Doctor.
-          GORM теперь будет знать, что поле DoctorID связано с таблицей doctors.
-          Это позволит `Preload("Schedule.Doctor")` работать корректно.
+        $ref: '#/definitions/models.Doctor'
       doctor_id:
         type: integer
       end_time:
@@ -734,6 +729,28 @@ paths:
       summary: Получить список активных врачей
       tags:
       - doctor
+  /api/doctor/cabinets/active:
+    get:
+      description: Возвращает список всех уникальных номеров кабинетов, когда-либо
+        существовавших в расписании.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Массив номеров кабинетов
+          schema:
+            items:
+              type: integer
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить список всех существующих кабинетов
+      tags:
+      - doctor
   /api/doctor/complete-appointment:
     post:
       consumes:
@@ -763,10 +780,16 @@ paths:
       summary: Завершить прием пациента
       tags:
       - doctor
-  /api/doctor/screen-updates:
+  /api/doctor/screen-updates/{cabinet_number}:
     get:
       description: Отправляет начальное состояние и последующие обновления статуса
-        приема через Server-Sent Events.
+        приема через Server-Sent Events для конкретного кабинета.
+      parameters:
+      - description: Номер кабинета
+        in: path
+        name: cabinet_number
+        required: true
+        type: integer
       produces:
       - text/event-stream
       responses:
@@ -774,6 +797,12 @@ paths:
           description: Поток событий
           schema:
             $ref: '#/definitions/handlers.DoctorScreenResponse'
+        "400":
+          description: Неверный формат номера кабинета
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       summary: Получить обновления для табло врача
       tags:
       - doctor
