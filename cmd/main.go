@@ -47,7 +47,6 @@ func main() {
 		return
 	}
 
-	// Инициализация логгера
 	logger.Init(cfg.LogDir)
 	defer func() {
 		if err := logger.Sync(); err != nil {
@@ -56,16 +55,13 @@ func main() {
 	}()
 	log := logger.Default()
 
-	// Подключение к базе данных через GORM
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
 		log.WithError(err).Fatal("Database connection failed")
 	}
 	log.WithField("dbname", cfg.DBName).Info("Database connected successfully")
 
-	// Канал для получения уведомлений из PostgreSQL
 	notificationChannel := make(chan string, 100)
-	// Контекст для управления жизненным циклом листенера
 	listenerCtx, cancelListener := context.WithCancel(context.Background())
 
 	psBroker := pubsub.NewBroker()
@@ -76,15 +72,12 @@ func main() {
 		log.WithError(err).Fatal("Failed to initialize database listener with pgx")
 	}
 
-	// Запускаем единый листенер, который будет отправлять все уведомления в notificationChannel
 	go listenForNotifications(listenerCtx, pool, notificationChannel, log)
 
 	r := setupRouter(psBroker, db, cfg)
 
-	// Swagger endpoint
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Обработка сигналов завершения
 	handleGracefulShutdown(db, pool, cancelListener, log)
 
 	fmt.Printf("Сервер запущен на порту: %s\n", cfg.BackendPort)
@@ -156,30 +149,37 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		logger.Default().WithError(err).Fatal("Failed to initialize JWT Manager")
 	}
 
-	ticketRepo := repository.NewTicketRepository(db)
-	serviceRepo := repository.NewServiceRepository(db)
-	doctorRepo := repository.NewDoctorRepository(db)
-	registrarRepo := repository.NewRegistrarRepository(db)
+	// --- Инициализация всех репозиториев ---
+	repo := repository.NewRepository(db)
 
-	ticketService := services.NewTicketService(ticketRepo, serviceRepo)
-	doctorService := services.NewDoctorService(ticketRepo, doctorRepo)
-	authService := services.NewAuthService(registrarRepo, jwtManager)
+	// --- Инициализация всех сервисов ---
+	ticketService := services.NewTicketService(repo.Ticket, repo.Service)
+	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor)
+	authService := services.NewAuthService(repo.Registrar, jwtManager)
+	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db)) // Для универсального API
+	patientService := services.NewPatientService(repo.Patient)
+	appointmentService := services.NewAppointmentService(repo.Appointment)
 
+	// --- Инициализация всех обработчиков ---
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
 	doctorHandler := handlers.NewDoctorHandler(doctorService, broker)
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
 	authHandler := handlers.NewAuthHandler(authService)
+	databaseHandler := handlers.NewDatabaseHandler(databaseService)
+	audioHandler := handlers.NewAudioHandler()
+	patientHandler := handlers.NewPatientHandler(patientService)
+	appointmentHandler := handlers.NewAppointmentHandler(appointmentService)
 
 	// SSE-эндпоинт для табло очереди регистратуры
 	r.GET("/tickets", sseHandler(broker, "reception_sse"))
 
+	// --- Определение групп маршрутов ---
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/login/registrar", authHandler.LoginRegistrar)
 		auth.POST("/create/registrar", authHandler.CreateRegistrar)
 	}
 
-	// Группа роутов для терминала
 	tickets := r.Group("/api/tickets")
 	{
 		tickets.GET("/start", ticketHandler.StartPage)
@@ -193,6 +193,9 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 
 	doctorGroup := r.Group("/api/doctor")
 	{
+		doctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
+
+		// Маршруты для окна врача
 		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
 		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
 		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
@@ -200,17 +203,21 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		doctorGroup.GET("/screen-updates", doctorHandler.DoctorScreenUpdates)
 	}
 
+	// Группа для регистратора, защищенная JWT токеном
 	registrar := r.Group("/api/registrar").Use(middleware.RequireRole(jwtManager, "registrar"))
 	{
+		// Основные действия регистратора
 		registrar.POST("/call-next", registrarHandler.CallNext)
 		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
 		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
+
+		// Новые маршруты для формы записи на прием
+		registrar.GET("/patients/search", patientHandler.SearchPatients)
+		registrar.POST("/patients", patientHandler.CreatePatient)
+		registrar.GET("/schedules/doctor/:doctor_id", appointmentHandler.GetDoctorSchedule)
+		registrar.POST("/appointments", appointmentHandler.CreateAppointment)
 	}
 
-	// Группа роутов для прямого доступа к БД
-	databaseRepo := repository.NewDatabaseRepository(db)
-	databaseService := services.NewDatabaseService(databaseRepo)
-	databaseHandler := handlers.NewDatabaseHandler(databaseService)
 	dbAPI := r.Group("/api/database").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
 	{
 		dbAPI.POST("/:table/select", databaseHandler.GetData)
@@ -219,7 +226,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
 	}
 
-	audioHandler := handlers.NewAudioHandler()
 	audioGroup := r.Group("/api/audio")
 	{
 		audioGroup.GET("/announce", audioHandler.GenerateAnnouncement)
@@ -233,7 +239,6 @@ type NotificationPayload struct {
 	Data   models.TicketResponse `json:"data"`
 }
 
-// TODO: убрать SSE-хендлер в каталог хендлеров
 // sseHandler подписывает клиента на события от брокера
 func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -242,15 +247,13 @@ func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 		c.Header("Connection", "keep-alive")
 		log := logger.Default().WithField("handler_id", handlerID)
 
-		// Создаем канал для этого конкретного клиента и подписываем его на брокера.
 		clientChan := broker.Subscribe()
-		defer broker.Unsubscribe(clientChan) // Гарантируем отписку при выходе из функции.
+		defer broker.Unsubscribe(clientChan)
 
 		c.Stream(func(w io.Writer) bool {
 			select {
-			// Слушаем сообщения из персонального канала клиента.
 			case payloadStr, ok := <-clientChan:
-				if !ok { // Канал был закрыт брокером
+				if !ok {
 					log.Info("Client channel closed.")
 					return false
 				}
@@ -259,14 +262,12 @@ func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 				var payload NotificationPayload
 				if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
 					log.WithError(err).Error("Failed to unmarshal notification payload")
-					return true // Продолжаем слушать, несмотря на ошибку парсинга.
+					return true
 				}
 
-				// Отправляем событие клиенту.
 				c.SSEvent(payload.Action, payload.Data)
 				return true
 
-			// Клиент отключился.
 			case <-c.Request.Context().Done():
 				log.Info("Client disconnected.")
 				return false
@@ -294,9 +295,12 @@ func handleGracefulShutdown(db *gorm.DB, pool *pgxpool.Pool, cancel context.Canc
 			fmt.Printf("Ошибка синхронизации логов: %v\n", err)
 		}
 
-		if sqlDB, err := db.DB(); err == nil {
+		sqlDB, err := db.DB()
+		if err == nil {
 			if err := sqlDB.Close(); err != nil {
 				fmt.Printf("Ошибка закрытия базы данных: %v\n", err)
+			} else {
+				log.Info("Database connection closed.")
 			}
 		}
 

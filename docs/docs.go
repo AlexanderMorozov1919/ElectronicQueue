@@ -516,6 +516,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/doctor/active": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех врачей, у которых is_active = true. Используется для заполнения выпадающих списков на клиенте.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Получить список активных врачей",
+                "responses": {
+                    "200": {
+                        "description": "Массив моделей врачей",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Doctor"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/doctor/complete-appointment": {
             "post": {
                 "description": "Завершает прием пациента по талону. Статус талона должен быть 'на_приеме'.",
@@ -688,6 +725,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/registrar/appointments": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Создает новую запись на прием для пациента, связывая ее со слотом в расписании и исходным талоном. Обновляет слот как занятый.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Создать новую запись на прием",
+                "parameters": [
+                    {
+                        "description": "Данные для создания записи",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешно созданная запись",
+                        "schema": {
+                            "$ref": "#/definitions/models.Appointment"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный формат запроса",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера (например, слот уже занят)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/registrar/call-next": {
             "post": {
                 "description": "Находит первого пациента в очереди, меняет его статус на \"приглашен\" и присваивает номер окна",
@@ -730,6 +824,180 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Ошибка: очередь пуста",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrar/patients": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Создает новую запись о пациенте в базе данных. Используется, когда пациент не найден через поиск.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Создать нового пациента",
+                "parameters": [
+                    {
+                        "description": "Данные нового пациента",
+                        "name": "patient",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreatePatientRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешно созданный пациент",
+                        "schema": {
+                            "$ref": "#/definitions/models.Patient"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный формат запроса",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrar/patients/search": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Ищет пациентов по частичному совпадению в ФИО, номере полиса ОМС или полному номеру паспорта (серия + номер без пробелов). Возвращает до 10 совпадений.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Поиск пациентов по ФИО, ОМС или паспорту",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Строка для поиска (минимум 2 символа)",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Массив найденных пациентов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Patient"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: отсутствует или слишком короткий параметр поиска",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrar/schedules/doctor/{doctor_id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Возвращает все временные слоты врача на указанную дату, включая информацию о том, кто записан в занятые слоты.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Получить расписание врача с информацией о записях",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID Врача",
+                        "name": "doctor_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата в формате YYYY-MM-DD",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Массив слотов расписания с информацией о записях",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ScheduleWithAppointmentInfo"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный ID или формат даты",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1077,7 +1345,7 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "array",
                                 "items": {
-                                    "$ref": "#/definitions/services.Service"
+                                    "$ref": "#/definitions/models.Service"
                                 }
                             }
                         }
@@ -1328,6 +1596,83 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Appointment": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "patient": {
+                    "$ref": "#/definitions/models.Patient"
+                },
+                "patient_id": {
+                    "type": "integer"
+                },
+                "schedule": {
+                    "$ref": "#/definitions/models.Schedule"
+                },
+                "schedule_id": {
+                    "type": "integer"
+                },
+                "ticket": {
+                    "$ref": "#/definitions/models.Ticket"
+                },
+                "ticket_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.CreateAppointmentRequest": {
+            "type": "object",
+            "required": [
+                "patient_id",
+                "schedule_id"
+            ],
+            "properties": {
+                "patient_id": {
+                    "type": "integer"
+                },
+                "schedule_id": {
+                    "type": "integer"
+                },
+                "ticket_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.CreatePatientRequest": {
+            "type": "object",
+            "required": [
+                "birth_date",
+                "full_name",
+                "oms_number",
+                "passport_number",
+                "passport_series"
+            ],
+            "properties": {
+                "birth_date": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "oms_number": {
+                    "type": "string"
+                },
+                "passport_number": {
+                    "type": "string"
+                },
+                "passport_series": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
         "models.DeleteRequest": {
             "type": "object",
             "required": [
@@ -1336,6 +1681,29 @@ const docTemplate = `{
             "properties": {
                 "filters": {
                     "$ref": "#/definitions/models.Filters"
+                }
+            }
+        },
+        "models.Doctor": {
+            "type": "object",
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Schedule"
+                    }
+                },
+                "specialization": {
+                    "type": "string"
                 }
             }
         },
@@ -1386,6 +1754,150 @@ const docTemplate = `{
             ],
             "properties": {
                 "data": {}
+            }
+        },
+        "models.Patient": {
+            "type": "object",
+            "properties": {
+                "birth_date": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "oms_number": {
+                    "type": "string"
+                },
+                "passport_number": {
+                    "type": "string"
+                },
+                "passport_series": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Schedule": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "doctor": {
+                    "description": "--- ИСПРАВЛЕНИЕ ЗДЕСЬ ---\nДобавляем связь с моделью Doctor.\nGORM теперь будет знать, что поле DoctorID связано с таблицей doctors.\nЭто позволит ` + "`" + `Preload(\"Schedule.Doctor\")` + "`" + ` работать корректно.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Doctor"
+                        }
+                    ]
+                },
+                "doctor_id": {
+                    "type": "integer"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "is_available": {
+                    "type": "boolean"
+                },
+                "schedule_id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ScheduleWithAppointmentInfo": {
+            "type": "object",
+            "properties": {
+                "appointment": {
+                    "$ref": "#/definitions/models.Appointment"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "doctor": {
+                    "description": "--- ИСПРАВЛЕНИЕ ЗДЕСЬ ---\nДобавляем связь с моделью Doctor.\nGORM теперь будет знать, что поле DoctorID связано с таблицей doctors.\nЭто позволит ` + "`" + `Preload(\"Schedule.Doctor\")` + "`" + ` работать корректно.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Doctor"
+                        }
+                    ]
+                },
+                "doctor_id": {
+                    "type": "integer"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "is_available": {
+                    "type": "boolean"
+                },
+                "schedule_id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Service": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "letter": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Ticket": {
+            "description": "Модель талона электронной очереди",
+            "type": "object",
+            "properties": {
+                "called_at": {
+                    "type": "string"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "qr_code": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "service_type": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.TicketStatus"
+                },
+                "ticket_number": {
+                    "type": "string"
+                },
+                "window_number": {
+                    "type": "integer"
+                }
             }
         },
         "models.TicketResponse": {
@@ -1463,20 +1975,6 @@ const docTemplate = `{
                 },
                 "filters": {
                     "$ref": "#/definitions/models.Filters"
-                }
-            }
-        },
-        "services.Service": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "letter": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
                 }
             }
         }
