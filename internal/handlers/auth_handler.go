@@ -21,9 +21,16 @@ type LoginRequest struct {
 }
 
 type CreateRegistrarRequest struct {
-	FullName string `json:"full_name" binding:"required"`
-	Login    string `json:"login" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	WindowNumber int    `json:"window_number" binding:"required"`
+	Login        string `json:"login" binding:"required"`
+	Password     string `json:"password" binding:"required"`
+}
+
+type CreateDoctorRequest struct {
+	FullName       string `json:"full_name" binding:"required"`
+	Specialization string `json:"specialization" binding:"required"`
+	Login          string `json:"login" binding:"required"`
+	Password       string `json:"password" binding:"required"`
 }
 
 // LoginRegistrar обрабатывает аутентификацию регистратора
@@ -60,7 +67,7 @@ func (h *AuthHandler) LoginRegistrar(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        credentials body CreateRegistrarRequest true "Данные нового регистратора"
-// @Success      201 {object} map[string]string "Регистратор успешно создан"
+// @Success      201 {object} map[string]interface{} "Регистратор успешно создан"
 // @Failure      400 {object} map[string]string "Ошибка: неверный запрос"
 // @Failure      409 {object} map[string]string "Ошибка: логин уже занят"
 // @Security     ApiKeyAuth
@@ -72,7 +79,7 @@ func (h *AuthHandler) CreateRegistrar(c *gin.Context) {
 		return
 	}
 
-	registrar, err := h.authService.CreateRegistrar(req.FullName, req.Login, req.Password)
+	registrar, err := h.authService.CreateRegistrar(req.WindowNumber, req.Login, req.Password)
 	if err != nil {
 		// Проверяем, является ли ошибка конфликтом (логин занят)
 		if err.Error() == "логин '"+req.Login+"' уже занят" {
@@ -84,8 +91,77 @@ func (h *AuthHandler) CreateRegistrar(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message":      "Регистратор успешно создан",
-		"registrar_id": registrar.RegistrarID,
-		"login":        registrar.Login,
+		"message":       "Регистратор успешно создан",
+		"registrar_id":  registrar.RegistrarID,
+		"login":         registrar.Login,
+		"window_number": registrar.WindowNumber,
+	})
+}
+
+// LoginDoctor обрабатывает аутентификацию врача
+// @Summary      Аутентификация врача
+// @Description  Принимает логин и пароль, возвращает JWT токен и информацию о враче.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials body LoginRequest true "Учетные данные"
+// @Success      200 {object} map[string]interface{} "Успешный ответ с токеном и данными врача"
+// @Failure      400 {object} map[string]string "Ошибка: неверный запрос"
+// @Failure      401 {object} map[string]string "Ошибка: неверные учетные данные"
+// @Router       /api/auth/login/doctor [post]
+func (h *AuthHandler) LoginDoctor(c *gin.Context) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+		return
+	}
+
+	token, doctor, err := h.authService.AuthenticateDoctor(req.Login, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":  token,
+		"doctor": doctor,
+	})
+}
+
+// CreateDoctor создает нового пользователя-врача.
+// @Summary      Создать нового врача (Админ)
+// @Description  Создает нового пользователя с ролью "врач". Требует INTERNAL_API_KEY.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials body CreateDoctorRequest true "Данные нового врача"
+// @Success      201 {object} map[string]interface{} "Врач успешно создан"
+// @Failure      400 {object} map[string]string "Ошибка: неверный запрос"
+// @Failure      409 {object} map[string]string "Ошибка: логин уже занят"
+// @Security     ApiKeyAuth
+// @Router       /api/auth/create/doctor [post]
+func (h *AuthHandler) CreateDoctor(c *gin.Context) {
+	var req CreateDoctorRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса: " + err.Error()})
+		return
+	}
+
+	doctor, err := h.authService.CreateDoctor(req.FullName, req.Specialization, req.Login, req.Password)
+	if err != nil {
+		if err.Error() == "логин '"+req.Login+"' уже занят" {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":        "Врач успешно создан",
+		"doctor_id":      doctor.ID,
+		"login":          doctor.Login,
+		"full_name":      doctor.FullName,
+		"specialization": doctor.Specialization,
 	})
 }

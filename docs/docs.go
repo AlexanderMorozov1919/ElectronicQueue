@@ -69,6 +69,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/auth/create/doctor": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Создает нового пользователя с ролью \"врач\". Требует INTERNAL_API_KEY.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Создать нового врача (Админ)",
+                "parameters": [
+                    {
+                        "description": "Данные нового врача",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateDoctorRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Врач успешно создан",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный запрос",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Ошибка: логин уже занят",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/create/registrar": {
             "post": {
                 "security": [
@@ -103,9 +161,7 @@ const docTemplate = `{
                         "description": "Регистратор успешно создан",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -119,6 +175,59 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Ошибка: логин уже занят",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/login/doctor": {
+            "post": {
+                "description": "Принимает логин и пароль, возвращает JWT токен и информацию о враче.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Аутентификация врача",
+                "parameters": [
+                    {
+                        "description": "Учетные данные",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ с токеном и данными врача",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный запрос",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка: неверные учетные данные",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1541,12 +1650,13 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.CreateRegistrarRequest": {
+        "handlers.CreateDoctorRequest": {
             "type": "object",
             "required": [
                 "full_name",
                 "login",
-                "password"
+                "password",
+                "specialization"
             ],
             "properties": {
                 "full_name": {
@@ -1557,6 +1667,28 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string"
+                },
+                "specialization": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.CreateRegistrarRequest": {
+            "type": "object",
+            "required": [
+                "login",
+                "password",
+                "window_number"
+            ],
+            "properties": {
+                "login": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "window_number": {
+                    "type": "integer"
                 }
             }
         },
@@ -1748,6 +1880,9 @@ const docTemplate = `{
                 },
                 "is_active": {
                     "type": "boolean"
+                },
+                "login": {
+                    "type": "string"
                 },
                 "schedules": {
                     "type": "array",

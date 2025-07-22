@@ -16,25 +16,28 @@ ON CONFLICT (service_id) DO NOTHING;
 -- -----------------------------------------------------------------
 -- --                         2. ВРАЧИ                            --
 -- -----------------------------------------------------------------
-INSERT INTO doctors (doctor_id, full_name, specialization, is_active) VALUES
-(1, 'Иванов Иван Иванович', 'Терапевт', TRUE),
-(2, 'Петров Петр Петрович', 'Хирург', TRUE),
-(3, 'Смирнова Мария Викторовна', 'Кардиолог', TRUE),
-(4, 'Кузнецова Ольга Дмитриевна', 'Невролог', TRUE)
+INSERT INTO doctors (doctor_id, full_name, specialization, login, password_hash, is_active) VALUES
+(1, 'Иванов Иван Иванович', 'Терапевт', 'doctor1', '$2a$10$Ogm9H9WRItgoSLC7sfDIheQ6ud00GWN0Ndg2w2wPVEu1RxxnyaHdK', TRUE),
+(2, 'Петров Петр Петрович', 'Хирург', 'doctor2', '$2a$10$XHUAWmQiayknMp1dgvBwt.NLjnJoLsWEIClIODRKAvmKU8bJQ1qzK', TRUE),
+(3, 'Смирнова Мария Викторовна', 'Кардиолог', 'doctor3', '$2a$10$U0egnaUCex5RAJZFIi2/Tel841A5/TV.0SAAFryJKBg4BrHQSknTG', TRUE),
+(4, 'Кузнецова Ольга Дмитриевна', 'Невролог', 'doctor4', '$2a$10$IMcnMECCHktv76wW4.gLgePxTyS0pDf3zIp8TgOTeW05XoV2heBHa', TRUE)
 ON CONFLICT (doctor_id) DO UPDATE SET
   full_name = EXCLUDED.full_name,
   specialization = EXCLUDED.specialization,
+  login = EXCLUDED.login,
+  password_hash = EXCLUDED.password_hash,
   is_active = EXCLUDED.is_active;
 
 
 -- -----------------------------------------------------------------
 -- --                      3. РЕГИСТРАТОРЫ                        --
 -- -----------------------------------------------------------------
-INSERT INTO registrars (registrar_id, full_name, login, password_hash, is_active) VALUES
-(1, 'Петрова Анна Сергеевна', 'admin1', '$2a$10$Bpqg4mfUfFNLe09MC6QvveFNcY80VAiLSjpOOSBqAnV7avNJo5eEi', TRUE),
-(2, 'Сидорова Елена Игоревна', 'admin2', '$2a$10$l3Lt5ogEKuQ1.PoSilqWQ.12ymyxTcpWTOBBBKJE6grMJ2emeFPcy', TRUE)
+-- Пароли: 'admin1' и 'admin2'
+INSERT INTO registrars (registrar_id, window_number, login, password_hash, is_active) VALUES
+(1, 2, 'admin1', '$2a$10$Bpqg4mfUfFNLe09MC6QvveFNcY80VAiLSjpOOSBqAnV7avNJo5eEi', TRUE),
+(2, 1, 'admin2', '$2a$10$l3Lt5ogEKuQ1.PoSilqWQ.12ymyxTcpWTOBBBKJE6grMJ2emeFPcy', TRUE)
 ON CONFLICT (registrar_id) DO UPDATE SET
-  full_name = EXCLUDED.full_name,
+  window_number = EXCLUDED.window_number,
   login = EXCLUDED.login,
   password_hash = EXCLUDED.password_hash,
   is_active = EXCLUDED.is_active;
