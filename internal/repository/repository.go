@@ -20,7 +20,6 @@ type DoctorRepository interface {
 // PatientRepository определяет методы для взаимодействия с данными пациентов.
 type PatientRepository interface {
 	Create(patient *models.Patient) (*models.Patient, error)
-	// --- ИЗМЕНЕНИЕ ЗДЕСЬ: FindByName заменен на Search ---
 	Search(query string) ([]models.Patient, error)
 	FindByPassport(series, number string) (*models.Patient, error)
 }
@@ -36,6 +35,7 @@ type TicketRepository interface {
 	GetMaxTicketNumberForPrefix(prefix string) (int, error)
 	Delete(id uint) error
 	FindInProgressTicketForCabinet(cabinetNumber int) (*models.Ticket, error)
+	FindTicketsForCabinetQueue(cabinetNumber int) ([]models.DoctorQueueTicketResponse, error)
 }
 
 // ScheduleRepository определяет методы для взаимодействия с расписанием.
@@ -46,6 +46,7 @@ type ScheduleRepository interface {
 	FindByDoctorAndDate(doctorID uint, date time.Time) ([]models.Schedule, error)
 	FindByCabinetAndCurrentTime(cabinetNumber int) (*models.Schedule, error)
 	GetAllUniqueCabinets() ([]int, error)
+	FindFirstScheduleForCabinetByDay(cabinetNumber int) (*models.Schedule, error)
 }
 
 // AppointmentRepository определяет методы для взаимодействия с записями на прием.

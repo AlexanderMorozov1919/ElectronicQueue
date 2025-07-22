@@ -48,7 +48,6 @@ func (r *scheduleRepo) FindByCabinetAndCurrentTime(cabinetNumber int) (*models.S
 	now := time.Now()
 	currentTime := now.Format("15:04:05")
 
-	// Preload("Doctor") загружает связанные данные о враче одним запросом
 	err := r.db.Preload("Doctor").
 		Where("cabinet = ? AND date = ? AND start_time <= ? AND end_time > ?",
 			cabinetNumber,
@@ -64,8 +63,21 @@ func (r *scheduleRepo) FindByCabinetAndCurrentTime(cabinetNumber int) (*models.S
 	return &schedule, nil
 }
 
-// GetAllUniqueCabinets возвращает отсортированный список всех уникальных номеров кабинетов,
-// когда-либо существовавших в расписании.
+// FindFirstScheduleForCabinetByDay находит первое расписание для кабинета на сегодня.
+// Это нужно, чтобы получить информацию о враче, даже если его смена еще не началась.
+func (r *scheduleRepo) FindFirstScheduleForCabinetByDay(cabinetNumber int) (*models.Schedule, error) {
+	var schedule models.Schedule
+	today := time.Now().Format("2006-01-02")
+
+	err := r.db.Preload("Doctor").
+		Where("cabinet = ? AND date = ?", cabinetNumber, today).
+		Order("start_time asc").
+		First(&schedule).Error
+
+	return &schedule, err
+}
+
+// GetAllUniqueCabinets возвращает отсортированный список всех уникальных номеров кабинетов.
 func (r *scheduleRepo) GetAllUniqueCabinets() ([]int, error) {
 	var cabinets []int
 
