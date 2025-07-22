@@ -154,11 +154,16 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 
 	// --- Инициализация всех сервисов ---
 	ticketService := services.NewTicketService(repo.Ticket, repo.Service)
-	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor)
+	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule)
 	authService := services.NewAuthService(repo.Registrar, repo.Doctor, jwtManager)
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db)) // Для универсального API
 	patientService := services.NewPatientService(repo.Patient)
 	appointmentService := services.NewAppointmentService(repo.Appointment)
+	cleanupService := services.NewCleanupService(repo.Cleanup)
+	tasksTimerService := services.NewTasksTimerService(cleanupService, cfg)
+
+	// Запускаем планировщик задач в фоне
+	go tasksTimerService.Start(context.Background())
 
 	// --- Инициализация всех обработчиков ---
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
@@ -172,6 +177,8 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 
 	// SSE-эндпоинт для табло очереди регистратуры
 	r.GET("/tickets", sseHandler(broker, "reception_sse"))
+
+	r.GET("/api/doctor/screen-updates/:cabinet_number", doctorHandler.DoctorScreenUpdates)
 
 	// --- Определение групп маршрутов ---
 	auth := r.Group("/api/auth")
@@ -196,14 +203,14 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	doctorGroup := r.Group("/api/doctor").Use(middleware.RequireRole(jwtManager, "doctor"))
 	{
 		doctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
+		doctorGroup.GET("/cabinets/active", doctorHandler.GetActiveCabinets) // <-- Добавлен новый роут
 
+		// Маршруты для окна врача
 		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
 		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
 		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
 		doctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
 	}
-	doctorGroup.GET("/api/screen-updates", doctorHandler.DoctorScreenUpdates)
-
 
 	// Группа для регистратора, защищенная JWT токеном
 	registrar := r.Group("/api/registrar").Use(middleware.RequireRole(jwtManager, "registrar"))

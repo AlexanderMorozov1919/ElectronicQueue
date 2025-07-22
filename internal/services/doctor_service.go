@@ -13,15 +13,17 @@ import (
 
 // DoctorService предоставляет методы для работы врача с талонами
 type DoctorService struct {
-	ticketRepo repository.TicketRepository
-	doctorRepo repository.DoctorRepository
+	ticketRepo   repository.TicketRepository
+	doctorRepo   repository.DoctorRepository
+	scheduleRepo repository.ScheduleRepository
 }
 
 // NewDoctorService создает новый экземпляр DoctorService.
-func NewDoctorService(ticketRepo repository.TicketRepository, doctorRepo repository.DoctorRepository) *DoctorService {
+func NewDoctorService(ticketRepo repository.TicketRepository, doctorRepo repository.DoctorRepository, scheduleRepo repository.ScheduleRepository) *DoctorService {
 	return &DoctorService{
-		ticketRepo: ticketRepo,
-		doctorRepo: doctorRepo,
+		ticketRepo:   ticketRepo,
+		doctorRepo:   doctorRepo,
+		scheduleRepo: scheduleRepo,
 	}
 }
 
@@ -108,25 +110,36 @@ func (s *DoctorService) CompleteAppointment(ticketID uint) (*models.Ticket, erro
 	return ticket, nil
 }
 
-// GetCurrentAppointmentScreenState находит талон "на приеме" и врача для табло.
-func (s *DoctorService) GetCurrentAppointmentScreenState() (*models.Doctor, *models.Ticket, error) {
-	doctor, err := s.doctorRepo.GetAnyDoctor()
+// GetCurrentAppointmentScreenState находит талон "на приеме" и врача для табло конкретного кабинета.
+func (s *DoctorService) GetCurrentAppointmentScreenState(cabinetNumber int) (*models.Schedule, *models.Ticket, error) {
+	// Ищем расписание (и врача) по номеру кабинета и текущему времени
+	schedule, err := s.scheduleRepo.FindByCabinetAndCurrentTime(cabinetNumber)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.Default().WithError(err).Error("Ошибка получения врача по умолчанию")
+			logger.Default().WithError(err).Error("Ошибка получения расписания для кабинета")
 		}
-		return nil, nil, fmt.Errorf("в базе данных не найдены активные врачи: %w", err)
+		// Это не ошибка, просто в данный момент в кабинете нет приема по расписанию
+		return nil, nil, fmt.Errorf("в кабинете %d в данный момент нет приема по расписанию", cabinetNumber)
 	}
 
-	ticket, err := s.ticketRepo.FindFirstByStatus(models.StatusInProgress)
+	// Ищем талон со статусом "на приеме" для конкретного кабинета через таблицу appointments
+	ticket, err := s.ticketRepo.FindInProgressTicketForCabinet(cabinetNumber)
 	if err != nil {
-		// "запись не найдена" - это нормальная ситуация, когда нет пациента на приеме
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.Default().WithError(err).Error("Ошибка получения текущего талона в статусе 'на приеме'")
+			logger.Default().WithError(err).WithField("cabinet", cabinetNumber).Error("Ошибка получения текущего талона в статусе 'на приеме' для кабинета")
 		}
-		// Возвращаем врача без талона
-		return doctor, nil, nil
+		// Возвращаем расписание (с врачом) без талона, т.к. в данный момент никого не принимают
+		return schedule, nil, nil
 	}
 
-	return doctor, ticket, nil
+	return schedule, ticket, nil
+}
+
+// GetAllUniqueCabinets возвращает список всех уникальных кабинетов.
+func (s *DoctorService) GetAllUniqueCabinets() ([]int, error) {
+	cabinets, err := s.scheduleRepo.GetAllUniqueCabinets()
+	if err != nil {
+		return nil, fmt.Errorf("ошибка получения списка всех кабинетов: %w", err)
+	}
+	return cabinets, nil
 }
