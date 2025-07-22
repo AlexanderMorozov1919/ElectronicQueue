@@ -200,16 +200,18 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)
 	}
 
-	doctorGroup := r.Group("/api/doctor").Use(middleware.RequireRole(jwtManager, "doctor"))
+	publicDoctorGroup := r.Group("/api/doctor")
 	{
-		doctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
-		doctorGroup.GET("/cabinets/active", doctorHandler.GetActiveCabinets) // <-- Добавлен новый роут
+		publicDoctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
+		publicDoctorGroup.GET("/cabinets/active", doctorHandler.GetActiveCabinets)
+	}
 
-		// Маршруты для окна врача
-		doctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
-		doctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
-		doctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
-		doctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
+	protectedDoctorGroup := r.Group("/api/doctor").Use(middleware.RequireRole(jwtManager, "doctor"))
+	{
+		protectedDoctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
+		protectedDoctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
+		protectedDoctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
+		protectedDoctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
 	}
 
 	// Группа для регистратора, защищенная JWT токеном
