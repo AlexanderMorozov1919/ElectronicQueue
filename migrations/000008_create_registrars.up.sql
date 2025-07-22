@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS registrars (
     registrar_id SERIAL PRIMARY KEY,
-    full_name VARCHAR(100) NOT NULL,
+    window_number INT NOT NULL,
     login VARCHAR(50) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,

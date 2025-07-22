@@ -5,7 +5,6 @@ import (
 	"sync"
 )
 
-// Broker управляет подписками и рассылкой сообщений.
 type Broker struct {
     mu          sync.Mutex
     subscribers map[chan string]bool
