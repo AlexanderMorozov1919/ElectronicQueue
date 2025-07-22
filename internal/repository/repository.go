@@ -36,6 +36,7 @@ type TicketRepository interface {
 	GetMaxTicketNumberForPrefix(prefix string) (int, error)
 	Delete(id uint) error
 	FindInProgressTicketForCabinet(cabinetNumber int) (*models.Ticket, error)
+	FindTicketsForCabinetQueue(cabinetNumber int) ([]models.DoctorQueueTicketResponse, error)
 }
 
 // ScheduleRepository определяет методы для взаимодействия с расписанием.
@@ -46,6 +47,7 @@ type ScheduleRepository interface {
 	FindByDoctorAndDate(doctorID uint, date time.Time) ([]models.Schedule, error)
 	FindByCabinetAndCurrentTime(cabinetNumber int) (*models.Schedule, error)
 	GetAllUniqueCabinets() ([]int, error)
+	FindFirstScheduleForCabinetByDay(cabinetNumber int) (*models.Schedule, error)
 }
 
 // AppointmentRepository определяет методы для взаимодействия с записями на прием.

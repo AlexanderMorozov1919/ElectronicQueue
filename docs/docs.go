@@ -759,7 +759,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Поток событий",
+                        "description": "Поток событий (см. реальную структуру ответа в коде)",
                         "schema": {
                             "$ref": "#/definitions/handlers.DoctorScreenResponse"
                         }
@@ -1704,15 +1704,14 @@ const docTemplate = `{
                 "doctor_specialty": {
                     "type": "string"
                 },
-                "is_waiting": {
-                    "type": "boolean"
-                },
                 "message": {
-                    "description": "Поле для сообщений, например, \"нет приема\"",
                     "type": "string"
                 },
-                "ticket_number": {
-                    "type": "string"
+                "queue": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.DoctorQueueTicketResponse"
+                    }
                 }
             }
         },
@@ -1892,6 +1891,23 @@ const docTemplate = `{
                     }
                 },
                 "specialization": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.DoctorQueueTicketResponse": {
+            "type": "object",
+            "properties": {
+                "patient_full_name": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.TicketStatus"
+                },
+                "ticket_number": {
                     "type": "string"
                 }
             }

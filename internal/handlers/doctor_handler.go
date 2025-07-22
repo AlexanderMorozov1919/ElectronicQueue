@@ -2,15 +2,14 @@ package handlers
 
 import (
 	"ElectronicQueue/internal/logger"
+	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/pubsub"
 	"ElectronicQueue/internal/services"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 // DoctorHandler содержит обработчики HTTP-запросов для работы врача
@@ -40,13 +39,13 @@ type CompleteAppointmentRequest struct {
 }
 
 // DoctorScreenResponse определяет структуру данных для экрана у кабинета врача.
+// @swagger:response DoctorScreenResponse
 type DoctorScreenResponse struct {
-	DoctorName      string `json:"doctor_name,omitempty"`
-	DoctorSpecialty string `json:"doctor_specialty,omitempty"`
-	CabinetNumber   int    `json:"cabinet_number"`
-	TicketNumber    string `json:"ticket_number,omitempty"`
-	IsWaiting       bool   `json:"is_waiting"`
-	Message         string `json:"message,omitempty"` // Поле для сообщений, например, "нет приема"
+	DoctorName      string                             `json:"doctor_name,omitempty"`
+	DoctorSpecialty string                             `json:"doctor_specialty,omitempty"`
+	CabinetNumber   int                                `json:"cabinet_number"`
+	Queue           []models.DoctorQueueTicketResponse `json:"queue,omitempty"`
+	Message         string                             `json:"message,omitempty"`
 }
 
 // GetAllActiveDoctors возвращает список всех активных врачей.
@@ -182,7 +181,7 @@ func (h *DoctorHandler) CompleteAppointment(c *gin.Context) {
 // @Tags         doctor
 // @Produce      text/event-stream
 // @Param        cabinet_number path int true "Номер кабинета"
-// @Success      200 {object} DoctorScreenResponse "Поток событий"
+// @Success      200 {object} DoctorScreenResponse "Поток событий (см. реальную структуру ответа в коде)"
 // @Failure      400 {object} map[string]string "Неверный формат номера кабинета"
 // @Router       /api/doctor/screen-updates/{cabinet_number} [get]
 func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
@@ -203,35 +202,33 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 
 	// Функция для получения и отправки текущего состояния экрана врача
 	sendCurrentState := func() bool {
-		schedule, ticket, err := h.doctorService.GetCurrentAppointmentScreenState(cabinetNumber)
-
-		// Если нет расписания на данный момент
-		if err != nil || schedule == nil || schedule.Doctor.FullName == "" {
-			log.Warn("No active schedule found for this cabinet. Sending 'no reception' message.")
-			response := DoctorScreenResponse{
-				CabinetNumber: cabinetNumber,
-				Message:       fmt.Sprintf("В кабинете %d нет приёма", cabinetNumber),
-				IsWaiting:     true, // Дефолтное значение
-			}
-			c.SSEvent("state_update", response)
-			c.Writer.Flush()
-			return true // Продолжаем слушать, вдруг прием начнется
+		schedule, queue, err := h.doctorService.GetDoctorScreenState(cabinetNumber)
+		if err != nil {
+			// Если произошла критическая ошибка в сервисе, логируем и прекращаем.
+			log.WithError(err).Error("Critical error in GetDoctorScreenState")
+			return false
 		}
 
-		response := DoctorScreenResponse{
-			DoctorName:      schedule.Doctor.FullName,
-			DoctorSpecialty: schedule.Doctor.Specialization,
-			CabinetNumber:   cabinetNumber,
-			IsWaiting:       ticket == nil,
-		}
-		if ticket != nil {
-			response.TicketNumber = ticket.TicketNumber
-			log.WithFields(logrus.Fields{"ticket": ticket.TicketNumber, "doctor": schedule.Doctor.FullName}).Info("Sending state: patient is being seen")
-		} else {
-			log.WithField("doctor", schedule.Doctor.FullName).Info("Sending state: waiting for patient")
+		doctorName := ""
+		doctorSpecialty := ""
+		// Если расписание есть, извлекаем из него данные о враче.
+		if schedule != nil {
+			doctorName = schedule.Doctor.FullName
+			doctorSpecialty = schedule.Doctor.Specialization
 		}
 
+		response := gin.H{
+			"doctor_name":      doctorName,
+			"doctor_specialty": doctorSpecialty,
+			"cabinet_number":   cabinetNumber,
+			"queue":            queue,
+			"message":          "", // Поле message больше не используется для этого сценария.
+		}
+
+		log.WithField("queue_size", len(queue)).Info("Sending doctor screen state update")
 		c.SSEvent("state_update", response)
+
+		// Проверяем, жив ли клиент, и сбрасываем буфер.
 		if f, ok := c.Writer.(http.Flusher); ok {
 			f.Flush()
 			return c.Writer.Status() != http.StatusNotFound

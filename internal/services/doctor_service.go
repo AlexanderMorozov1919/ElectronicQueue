@@ -110,29 +110,29 @@ func (s *DoctorService) CompleteAppointment(ticketID uint) (*models.Ticket, erro
 	return ticket, nil
 }
 
-// GetCurrentAppointmentScreenState находит талон "на приеме" и врача для табло конкретного кабинета.
-func (s *DoctorService) GetCurrentAppointmentScreenState(cabinetNumber int) (*models.Schedule, *models.Ticket, error) {
-	// Ищем расписание (и врача) по номеру кабинета и текущему времени
-	schedule, err := s.scheduleRepo.FindByCabinetAndCurrentTime(cabinetNumber)
-	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.Default().WithError(err).Error("Ошибка получения расписания для кабинета")
-		}
-		// Это не ошибка, просто в данный момент в кабинете нет приема по расписанию
-		return nil, nil, fmt.Errorf("в кабинете %d в данный момент нет приема по расписанию", cabinetNumber)
+// GetDoctorScreenState находит расписание врача и полную очередь к его кабинету.
+// Если расписание на сегодня не найдено, возвращает nil для schedule и пустую очередь, но без ошибки.
+func (s *DoctorService) GetDoctorScreenState(cabinetNumber int) (*models.Schedule, []models.DoctorQueueTicketResponse, error) {
+	schedule, err := s.scheduleRepo.FindFirstScheduleForCabinetByDay(cabinetNumber)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		// Если произошла реальная ошибка БД, а не просто "не найдено", возвращаем её.
+		logger.Default().WithError(err).Error("Ошибка получения расписания для кабинета")
+		return nil, nil, err
 	}
 
-	// Ищем талон со статусом "на приеме" для конкретного кабинета через таблицу appointments
-	ticket, err := s.ticketRepo.FindInProgressTicketForCabinet(cabinetNumber)
-	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.Default().WithError(err).WithField("cabinet", cabinetNumber).Error("Ошибка получения текущего талона в статусе 'на приеме' для кабинета")
+	// Если расписание найдено, ищем очередь.
+	if schedule != nil {
+		queue, err := s.ticketRepo.FindTicketsForCabinetQueue(cabinetNumber)
+		if err != nil {
+			logger.Default().WithError(err).WithField("cabinet", cabinetNumber).Error("Ошибка получения очереди к кабинету")
+			// В случае ошибки получения очереди, возвращаем пустую очередь, но с данными о враче.
+			return schedule, []models.DoctorQueueTicketResponse{}, nil
 		}
-		// Возвращаем расписание (с врачом) без талона, т.к. в данный момент никого не принимают
-		return schedule, nil, nil
+		return schedule, queue, nil
 	}
 
-	return schedule, ticket, nil
+	// Если расписание не найдено (gorm.ErrRecordNotFound), возвращаем nil и пустую очередь.
+	return nil, []models.DoctorQueueTicketResponse{}, nil
 }
 
 // GetAllUniqueCabinets возвращает список всех уникальных кабинетов.
