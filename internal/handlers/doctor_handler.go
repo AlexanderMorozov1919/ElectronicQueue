@@ -79,7 +79,6 @@ type DoctorScreenResponse struct {
 // @Produce      json
 // @Success      200 {array} models.Doctor "Массив моделей врачей"
 // @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
-// @Security     ApiKeyAuth
 // @Router       /api/doctor/active [get]
 func (h *DoctorHandler) GetAllActiveDoctors(c *gin.Context) {
 	doctors, err := h.doctorService.GetAllActiveDoctors()
@@ -150,6 +149,7 @@ func (h *DoctorHandler) GetInProgressTickets(c *gin.Context) {
 // @Param        request body StartAppointmentRequest true "Данные для начала приема"
 // @Success      200 {object} map[string]interface{} "Appointment started successfully"
 // @Failure      400 {object} map[string]string "Неверный запрос или статус талона"
+// @Security     ApiKeyAuth
 // @Router       /api/doctor/start-appointment [post]
 func (h *DoctorHandler) StartAppointment(c *gin.Context) {
 	var req StartAppointmentRequest
@@ -179,6 +179,7 @@ func (h *DoctorHandler) StartAppointment(c *gin.Context) {
 // @Param        request body CompleteAppointmentRequest true "Данные для завершения приема"
 // @Success      200 {object} map[string]interface{} "Appointment completed successfully"
 // @Failure      400 {object} map[string]string "Неверный запрос или статус талона"
+// @Security     ApiKeyAuth
 // @Router       /api/doctor/complete-appointment [post]
 func (h *DoctorHandler) CompleteAppointment(c *gin.Context) {
 	var req CompleteAppointmentRequest
@@ -208,6 +209,7 @@ func (h *DoctorHandler) CompleteAppointment(c *gin.Context) {
 // @Param        request body StartBreakRequest true "Данные для начала перерыва"
 // @Success      200 {object} map[string]string "Break started successfully"
 // @Failure      400 {object} map[string]string "Неверный запрос или статус врача"
+// @Security     ApiKeyAuth
 // @Router       /api/doctor/start-break [post]
 func (h *DoctorHandler) StartBreak(c *gin.Context) {
 	log := logger.Default().WithField("handler", "StartBreak")
@@ -240,6 +242,7 @@ func (h *DoctorHandler) StartBreak(c *gin.Context) {
 // @Param        request body EndBreakRequest true "Данные для завершения перерыва"
 // @Success      200 {object} map[string]string "Break ended successfully"
 // @Failure      400 {object} map[string]string "Неверный запрос или статус врача"
+// @Security     ApiKeyAuth
 // @Router       /api/doctor/end-break [post]
 func (h *DoctorHandler) EndBreak(c *gin.Context) {
 	log := logger.Default().WithField("handler", "EndBreak")
