@@ -49,7 +49,7 @@ func (h *RegistrarHandler) CallNext(c *gin.Context) {
 	}
 
 	if req.WindowNumber <= 0 {
-		req.WindowNumber = 1 
+		req.WindowNumber = 1
 	}
 
 	ticket, err := h.ticketService.CallNextTicket(req.WindowNumber)
@@ -114,17 +114,20 @@ func (h *RegistrarHandler) UpdateStatus(c *gin.Context) {
 }
 
 // DeleteTicket удаляет тикет
-// @Summary      Удалить тикет
-// @Description  Удаляет тикет по ID
-// @Tags         registrar
+// @Summary      Удалить тикет (Админ)
+// @Description  Удаляет тикет по ID. Требует INTERNAL_API_KEY.
+// @Tags         admin
 // @Accept       json
 // @Produce      json
 // @Param        id path int true "ID тикета"
 // @Success      200 {object} map[string]string "Тикет удален"
 // @Failure      400 {object} map[string]string "Ошибка запроса"
+// @Failure      401 {object} map[string]string "Отсутствует ключ API"
+// @Failure      403 {object} map[string]string "Неверный ключ API"
 // @Failure      404 {object} map[string]string "Тикет не найден"
 // @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
-// @Router       /api/registrar/tickets/{id} [delete]
+// @Security     ApiKeyAuth
+// @Router       /api/admin/tickets/{id} [delete]
 func (h *RegistrarHandler) DeleteTicket(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.ticketService.DeleteTicket(id); err != nil {

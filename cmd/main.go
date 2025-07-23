@@ -185,8 +185,15 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	{
 		auth.POST("/login/registrar", authHandler.LoginRegistrar)
 		auth.POST("/login/doctor", authHandler.LoginDoctor)
-		auth.POST("/create/registrar", authHandler.CreateRegistrar)
-		auth.POST("/create/doctor", authHandler.CreateDoctor)
+		// auth.POST("/create/registrar", authHandler.CreateRegistrar)
+		// auth.POST("/create/doctor", authHandler.CreateDoctor)
+	}
+
+	admin := r.Group("/api/admin").Use(middleware.RequireAPIKey(cfg.InternalAPIKey))
+	{
+		admin.POST("/create/doctor", authHandler.CreateDoctor)
+		admin.POST("/create/registrar", authHandler.CreateRegistrar)
+		admin.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 	}
 
 	tickets := r.Group("/api/tickets")
@@ -204,6 +211,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	{
 		publicDoctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
 		publicDoctorGroup.GET("/cabinets/active", doctorHandler.GetActiveCabinets)
+		
 	}
 
 	protectedDoctorGroup := r.Group("/api/doctor").Use(middleware.RequireRole(jwtManager, "doctor"))
@@ -224,7 +232,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		// Основные действия регистратора
 		registrar.POST("/call-next", registrarHandler.CallNext)
 		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
-		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
+		// registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 		registrar.GET("/patients/search", patientHandler.SearchPatients)
 		registrar.POST("/patients", patientHandler.CreatePatient)
 		registrar.GET("/schedules/doctor/:doctor_id", appointmentHandler.GetDoctorSchedule)
