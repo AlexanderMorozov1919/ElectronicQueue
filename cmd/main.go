@@ -154,7 +154,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 
 	// --- Инициализация всех сервисов ---
 	ticketService := services.NewTicketService(repo.Ticket, repo.Service)
-	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule)
+	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
 	authService := services.NewAuthService(repo.Registrar, repo.Doctor, jwtManager)
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db)) // Для универсального API
 	patientService := services.NewPatientService(repo.Patient)

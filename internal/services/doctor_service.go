@@ -3,6 +3,7 @@ package services
 import (
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/models"
+	"ElectronicQueue/internal/pubsub"
 	"ElectronicQueue/internal/repository"
 	"errors"
 	"fmt"
@@ -16,14 +17,16 @@ type DoctorService struct {
 	ticketRepo   repository.TicketRepository
 	doctorRepo   repository.DoctorRepository
 	scheduleRepo repository.ScheduleRepository
+	broker       *pubsub.Broker
 }
 
 // NewDoctorService создает новый экземпляр DoctorService.
-func NewDoctorService(ticketRepo repository.TicketRepository, doctorRepo repository.DoctorRepository, scheduleRepo repository.ScheduleRepository) *DoctorService {
+func NewDoctorService(ticketRepo repository.TicketRepository, doctorRepo repository.DoctorRepository, scheduleRepo repository.ScheduleRepository, broker *pubsub.Broker) *DoctorService {
 	return &DoctorService{
 		ticketRepo:   ticketRepo,
 		doctorRepo:   doctorRepo,
 		scheduleRepo: scheduleRepo,
+		broker:       broker,
 	}
 }
 
@@ -164,6 +167,7 @@ func (s *DoctorService) StartBreak(doctorID uint) error {
 		return fmt.Errorf("не удалось обновить статус врача: %w", err)
 	}
 
+	s.broker.Publish("doctor_status_update")
 	log.Info("Перерыв начат успешно")
 	return nil
 }
@@ -188,6 +192,7 @@ func (s *DoctorService) EndBreak(doctorID uint) error {
 		return fmt.Errorf("не удалось обновить статус врача: %w", err)
 	}
 
+	s.broker.Publish("doctor_status_update")
 	log.Info("Перерыв завершен успешно")
 	return nil
 }
@@ -201,6 +206,7 @@ func (s *DoctorService) SetDoctorActive(doctorID uint) error {
 		return fmt.Errorf("не удалось установить статус активен: %w", err)
 	}
 
+	s.broker.Publish("doctor_status_update")
 	log.Info("Статус врача установлен как активен")
 	return nil
 }
@@ -214,6 +220,7 @@ func (s *DoctorService) SetDoctorInactive(doctorID uint) error {
 		return fmt.Errorf("не удалось установить статус неактивен: %w", err)
 	}
 
+	s.broker.Publish("doctor_status_update")
 	log.Info("Статус врача установлен как неактивен")
 	return nil
 }
