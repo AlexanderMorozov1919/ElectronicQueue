@@ -33,6 +33,7 @@ type CallNextRequest struct {
 // @Failure      400 {object} map[string]string "Ошибка: неверный номер окна"
 // @Failure      404 {object} map[string]string "Ошибка: очередь пуста"
 // @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Security     ApiKeyAuth
 // @Router       /api/registrar/call-next [post]
 func (h *RegistrarHandler) CallNext(c *gin.Context) {
 	var req CallNextRequest
@@ -92,6 +93,7 @@ type UpdateStatusRequest struct {
 // @Failure      400 {object} map[string]string "Ошибка запроса"
 // @Failure      404 {object} map[string]string "Тикет не найден"
 // @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Security     ApiKeyAuth
 // @Router       /api/registrar/tickets/{id}/status [patch]
 func (h *RegistrarHandler) UpdateStatus(c *gin.Context) {
 	id := c.Param("id")

@@ -1270,6 +1270,8 @@ paths:
             additionalProperties:
               type: string
             type: object
+      security:
+      - ApiKeyAuth: []
       summary: Вызвать следующего пациента
       tags:
       - registrar
@@ -1432,6 +1434,8 @@ paths:
             additionalProperties:
               type: string
             type: object
+      security:
+      - ApiKeyAuth: []
       summary: Сменить статус тикета
       tags:
       - registrar
