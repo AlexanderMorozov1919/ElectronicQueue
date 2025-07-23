@@ -16,6 +16,7 @@ type DoctorRepository interface {
 	GetAll(onlyActive bool) ([]models.Doctor, error)
 	GetAnyDoctor() (*models.Doctor, error)
 	FindByLogin(login string) (*models.Doctor, error)
+	UpdateStatus(doctorID uint, status models.DoctorStatus) error
 }
 
 // PatientRepository определяет методы для взаимодействия с данными пациентов.

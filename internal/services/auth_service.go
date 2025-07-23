@@ -108,6 +108,7 @@ func (s *AuthService) CreateDoctor(fullName, specialization, login, password str
 		Specialization: specialization,
 		Login:          login,
 		PasswordHash:   hashedPassword,
+		Status:         models.DoctorStatusActive,
 	}
 
 	if err := s.doctorRepo.Create(newDoctor); err != nil {

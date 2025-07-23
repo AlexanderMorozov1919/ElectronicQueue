@@ -738,6 +738,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/doctor/end-break": {
+            "post": {
+                "description": "Завершает перерыв врача. Статус врача должен быть 'перерыв'.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Завершить перерыв врача",
+                "parameters": [
+                    {
+                        "description": "Данные для завершения перерыва",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.EndBreakRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Break ended successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный запрос или статус врача",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/doctor/screen-updates/{cabinet_number}": {
             "get": {
                 "description": "Отправляет начальное состояние и последующие обновления статуса приема через Server-Sent Events для конкретного кабинета.",
@@ -766,6 +812,98 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Неверный формат номера кабинета",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/set-active": {
+            "post": {
+                "description": "Устанавливает статус врача как активный (при входе в систему).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Установить статус врача как активный",
+                "parameters": [
+                    {
+                        "description": "Данные для установки статуса",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SetActiveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Doctor status set to active",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный запрос",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/set-inactive": {
+            "post": {
+                "description": "Устанавливает статус врача как неактивный (при выходе из системы).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Установить статус врача как неактивный",
+                "parameters": [
+                    {
+                        "description": "Данные для установки статуса",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SetInactiveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Doctor status set to inactive",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный запрос",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -810,6 +948,52 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Неверный запрос или статус талона",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/doctor/start-break": {
+            "post": {
+                "description": "Начинает перерыв врача. Статус врача должен быть 'активен'.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctor"
+                ],
+                "summary": "Начать перерыв врача",
+                "parameters": [
+                    {
+                        "description": "Данные для начала перерыва",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.StartBreakRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Break started successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный запрос или статус врача",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1715,6 +1899,18 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.EndBreakRequest": {
+            "type": "object",
+            "required": [
+                "doctor_id"
+            ],
+            "properties": {
+                "doctor_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
         "handlers.LoginRequest": {
             "type": "object",
             "required": [
@@ -1757,6 +1953,30 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.SetActiveRequest": {
+            "type": "object",
+            "required": [
+                "doctor_id"
+            ],
+            "properties": {
+                "doctor_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "handlers.SetInactiveRequest": {
+            "type": "object",
+            "required": [
+                "doctor_id"
+            ],
+            "properties": {
+                "doctor_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
         "handlers.StartAppointmentRequest": {
             "type": "object",
             "required": [
@@ -1764,6 +1984,18 @@ const docTemplate = `{
             ],
             "properties": {
                 "ticket_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "handlers.StartBreakRequest": {
+            "type": "object",
+            "required": [
+                "doctor_id"
+            ],
+            "properties": {
+                "doctor_id": {
                     "type": "integer",
                     "example": 1
                 }
@@ -1878,9 +2110,6 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "is_active": {
-                    "type": "boolean"
-                },
                 "login": {
                     "type": "string"
                 },
@@ -1892,6 +2121,9 @@ const docTemplate = `{
                 },
                 "specialization": {
                     "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.DoctorStatus"
                 }
             }
         },
@@ -1911,6 +2143,19 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "models.DoctorStatus": {
+            "type": "string",
+            "enum": [
+                "активен",
+                "неактивен",
+                "перерыв"
+            ],
+            "x-enum-varnames": [
+                "DoctorStatusActive",
+                "DoctorStatusInactive",
+                "DoctorStatusOnBreak"
+            ]
         },
         "models.FilterCondition": {
             "type": "object",

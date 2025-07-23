@@ -88,6 +88,14 @@ definitions:
           $ref: '#/definitions/models.DoctorQueueTicketResponse'
         type: array
     type: object
+  handlers.EndBreakRequest:
+    properties:
+      doctor_id:
+        example: 1
+        type: integer
+    required:
+    - doctor_id
+    type: object
   handlers.LoginRequest:
     properties:
       login:
@@ -117,6 +125,22 @@ definitions:
         example: Записаться к врачу
         type: string
     type: object
+  handlers.SetActiveRequest:
+    properties:
+      doctor_id:
+        example: 1
+        type: integer
+    required:
+    - doctor_id
+    type: object
+  handlers.SetInactiveRequest:
+    properties:
+      doctor_id:
+        example: 1
+        type: integer
+    required:
+    - doctor_id
+    type: object
   handlers.StartAppointmentRequest:
     properties:
       ticket_id:
@@ -124,6 +148,14 @@ definitions:
         type: integer
     required:
     - ticket_id
+    type: object
+  handlers.StartBreakRequest:
+    properties:
+      doctor_id:
+        example: 1
+        type: integer
+    required:
+    - doctor_id
     type: object
   handlers.UpdateStatusRequest:
     description: Запрос для смены статуса тикета
@@ -198,8 +230,6 @@ definitions:
         type: string
       id:
         type: integer
-      is_active:
-        type: boolean
       login:
         type: string
       schedules:
@@ -208,6 +238,8 @@ definitions:
         type: array
       specialization:
         type: string
+      status:
+        $ref: '#/definitions/models.DoctorStatus'
     type: object
   models.DoctorQueueTicketResponse:
     properties:
@@ -220,6 +252,16 @@ definitions:
       ticket_number:
         type: string
     type: object
+  models.DoctorStatus:
+    enum:
+    - активен
+    - неактивен
+    - перерыв
+    type: string
+    x-enum-varnames:
+    - DoctorStatusActive
+    - DoctorStatusInactive
+    - DoctorStatusOnBreak
   models.FilterCondition:
     properties:
       field:
@@ -879,6 +921,36 @@ paths:
       summary: Завершить прием пациента
       tags:
       - doctor
+  /api/doctor/end-break:
+    post:
+      consumes:
+      - application/json
+      description: Завершает перерыв врача. Статус врача должен быть 'перерыв'.
+      parameters:
+      - description: Данные для завершения перерыва
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.EndBreakRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Break ended successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный запрос или статус врача
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Завершить перерыв врача
+      tags:
+      - doctor
   /api/doctor/screen-updates/{cabinet_number}:
     get:
       description: Отправляет начальное состояние и последующие обновления статуса
@@ -903,6 +975,66 @@ paths:
               type: string
             type: object
       summary: Получить обновления для табло врача
+      tags:
+      - doctor
+  /api/doctor/set-active:
+    post:
+      consumes:
+      - application/json
+      description: Устанавливает статус врача как активный (при входе в систему).
+      parameters:
+      - description: Данные для установки статуса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SetActiveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Doctor status set to active
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный запрос
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Установить статус врача как активный
+      tags:
+      - doctor
+  /api/doctor/set-inactive:
+    post:
+      consumes:
+      - application/json
+      description: Устанавливает статус врача как неактивный (при выходе из системы).
+      parameters:
+      - description: Данные для установки статуса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SetInactiveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Doctor status set to inactive
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный запрос
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Установить статус врача как неактивный
       tags:
       - doctor
   /api/doctor/start-appointment:
@@ -932,6 +1064,36 @@ paths:
               type: string
             type: object
       summary: Начать прием пациента
+      tags:
+      - doctor
+  /api/doctor/start-break:
+    post:
+      consumes:
+      - application/json
+      description: Начинает перерыв врача. Статус врача должен быть 'активен'.
+      parameters:
+      - description: Данные для начала перерыва
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.StartBreakRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Break started successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный запрос или статус врача
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Начать перерыв врача
       tags:
       - doctor
   /api/doctor/tickets/in-progress:

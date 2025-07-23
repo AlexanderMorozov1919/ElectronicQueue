@@ -212,6 +212,10 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		protectedDoctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
 		protectedDoctorGroup.POST("/start-appointment", doctorHandler.StartAppointment)
 		protectedDoctorGroup.POST("/complete-appointment", doctorHandler.CompleteAppointment)
+		protectedDoctorGroup.POST("/start-break", doctorHandler.StartBreak)
+		protectedDoctorGroup.POST("/end-break", doctorHandler.EndBreak)
+		protectedDoctorGroup.POST("/set-active", doctorHandler.SetDoctorActive)
+		protectedDoctorGroup.POST("/set-inactive", doctorHandler.SetDoctorInactive)
 	}
 
 	// Группа для регистратора, защищенная JWT токеном

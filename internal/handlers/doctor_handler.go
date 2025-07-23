@@ -38,6 +38,30 @@ type CompleteAppointmentRequest struct {
 	TicketID uint `json:"ticket_id" binding:"required" example:"1"`
 }
 
+// StartBreakRequest описывает запрос на начало перерыва
+// swagger:model StartBreakRequest
+type StartBreakRequest struct {
+	DoctorID uint `json:"doctor_id" binding:"required" example:"1"`
+}
+
+// EndBreakRequest описывает запрос на завершение перерыва
+// swagger:model EndBreakRequest
+type EndBreakRequest struct {
+	DoctorID uint `json:"doctor_id" binding:"required" example:"1"`
+}
+
+// SetActiveRequest описывает запрос на установку статуса активный
+// swagger:model SetActiveRequest
+type SetActiveRequest struct {
+	DoctorID uint `json:"doctor_id" binding:"required" example:"1"`
+}
+
+// SetInactiveRequest описывает запрос на установку статуса неактивный
+// swagger:model SetInactiveRequest
+type SetInactiveRequest struct {
+	DoctorID uint `json:"doctor_id" binding:"required" example:"1"`
+}
+
 // DoctorScreenResponse определяет структуру данных для экрана у кабинета врача.
 // @swagger:response DoctorScreenResponse
 type DoctorScreenResponse struct {
@@ -175,6 +199,134 @@ func (h *DoctorHandler) CompleteAppointment(c *gin.Context) {
 	})
 }
 
+// StartBreak обрабатывает запрос на начало перерыва врача
+// @Summary      Начать перерыв врача
+// @Description  Начинает перерыв врача. Статус врача должен быть 'активен'.
+// @Tags         doctor
+// @Accept       json
+// @Produce      json
+// @Param        request body StartBreakRequest true "Данные для начала перерыва"
+// @Success      200 {object} map[string]string "Break started successfully"
+// @Failure      400 {object} map[string]string "Неверный запрос или статус врача"
+// @Router       /api/doctor/start-break [post]
+func (h *DoctorHandler) StartBreak(c *gin.Context) {
+	log := logger.Default().WithField("handler", "StartBreak")
+
+	var req StartBreakRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.WithError(err).Error("Неверный формат запроса")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "doctor_id обязателен"})
+		return
+	}
+
+	log.WithField("doctor_id", req.DoctorID).Info("Начало перерыва для врача")
+
+	if err := h.doctorService.StartBreak(req.DoctorID); err != nil {
+		log.WithError(err).WithField("doctor_id", req.DoctorID).Error("Ошибка начала перерыва")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.WithField("doctor_id", req.DoctorID).Info("Перерыв начат успешно")
+	c.JSON(http.StatusOK, gin.H{"message": "Перерыв начат успешно"})
+}
+
+// EndBreak обрабатывает запрос на завершение перерыва врача
+// @Summary      Завершить перерыв врача
+// @Description  Завершает перерыв врача. Статус врача должен быть 'перерыв'.
+// @Tags         doctor
+// @Accept       json
+// @Produce      json
+// @Param        request body EndBreakRequest true "Данные для завершения перерыва"
+// @Success      200 {object} map[string]string "Break ended successfully"
+// @Failure      400 {object} map[string]string "Неверный запрос или статус врача"
+// @Router       /api/doctor/end-break [post]
+func (h *DoctorHandler) EndBreak(c *gin.Context) {
+	log := logger.Default().WithField("handler", "EndBreak")
+
+	var req EndBreakRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.WithError(err).Error("Неверный формат запроса")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "doctor_id обязателен"})
+		return
+	}
+
+	log.WithField("doctor_id", req.DoctorID).Info("Завершение перерыва для врача")
+
+	if err := h.doctorService.EndBreak(req.DoctorID); err != nil {
+		log.WithError(err).WithField("doctor_id", req.DoctorID).Error("Ошибка завершения перерыва")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.WithField("doctor_id", req.DoctorID).Info("Перерыв завершен успешно")
+	c.JSON(http.StatusOK, gin.H{"message": "Перерыв завершен успешно"})
+}
+
+// SetDoctorActive обрабатывает запрос на установку статуса врача как активный
+// @Summary      Установить статус врача как активный
+// @Description  Устанавливает статус врача как активный (при входе в систему).
+// @Tags         doctor
+// @Accept       json
+// @Produce      json
+// @Param        request body SetActiveRequest true "Данные для установки статуса"
+// @Success      200 {object} map[string]string "Doctor status set to active"
+// @Failure      400 {object} map[string]string "Неверный запрос"
+// @Router       /api/doctor/set-active [post]
+func (h *DoctorHandler) SetDoctorActive(c *gin.Context) {
+	log := logger.Default().WithField("handler", "SetDoctorActive")
+
+	var req SetActiveRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.WithError(err).Error("Неверный формат запроса")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "doctor_id обязателен"})
+		return
+	}
+
+	log.WithField("doctor_id", req.DoctorID).Info("Установка статуса активен для врача")
+
+	if err := h.doctorService.SetDoctorActive(req.DoctorID); err != nil {
+		log.WithError(err).WithField("doctor_id", req.DoctorID).Error("Ошибка установки статуса активен")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.WithField("doctor_id", req.DoctorID).Info("Статус активен установлен успешно")
+	c.JSON(http.StatusOK, gin.H{"message": "Статус активен установлен успешно"})
+}
+
+// SetDoctorInactive обрабатывает запрос на установку статуса врача как неактивный
+// @Summary      Установить статус врача как неактивный
+// @Description  Устанавливает статус врача как неактивный (при выходе из системы).
+// @Tags         doctor
+// @Accept       json
+// @Produce      json
+// @Param        request body SetInactiveRequest true "Данные для установки статуса"
+// @Success      200 {object} map[string]string "Doctor status set to inactive"
+// @Failure      400 {object} map[string]string "Неверный запрос"
+// @Router       /api/doctor/set-inactive [post]
+func (h *DoctorHandler) SetDoctorInactive(c *gin.Context) {
+	log := logger.Default().WithField("handler", "SetDoctorInactive")
+
+	var req SetInactiveRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.WithError(err).Error("Неверный формат запроса")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "doctor_id обязателен"})
+		return
+	}
+
+	log.WithField("doctor_id", req.DoctorID).Info("Установка статуса неактивен для врача")
+
+	if err := h.doctorService.SetDoctorInactive(req.DoctorID); err != nil {
+		log.WithError(err).WithField("doctor_id", req.DoctorID).Error("Ошибка установки статуса неактивен")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.WithField("doctor_id", req.DoctorID).Info("Статус неактивен установлен успешно")
+	c.JSON(http.StatusOK, gin.H{"message": "Статус неактивен установлен успешно"})
+}
+
 // DoctorScreenUpdates - SSE эндпоинт для табло у кабинета врача.
 // @Summary      Получить обновления для табло врача
 // @Description  Отправляет начальное состояние и последующие обновления статуса приема через Server-Sent Events для конкретного кабинета.
@@ -205,7 +357,7 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 		schedule, queue, err := h.doctorService.GetDoctorScreenState(cabinetNumber)
 		if err != nil {
 			// Если произошла критическая ошибка в сервисе, логируем и прекращаем.
-			log.WithError(err).Error("Critical error in GetDoctorScreenState")
+			log.WithError(err).Error("Критическая ошибка в GetDoctorScreenState")
 			return false
 		}
 
@@ -225,7 +377,7 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 			"message":          "", // Поле message больше не используется для этого сценария.
 		}
 
-		log.WithField("queue_size", len(queue)).Info("Sending doctor screen state update")
+		log.WithField("queue_size", len(queue)).Info("Отправка обновления состояния экрана врача")
 		c.SSEvent("state_update", response)
 
 		// Проверяем, жив ли клиент, и сбрасываем буфер.
@@ -238,7 +390,7 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 
 	// Отправляем начальное состояние сразу после подключения
 	if !sendCurrentState() {
-		log.Info("Client disconnected immediately after initial state send.")
+		log.Info("Клиент отключился сразу после отправки начального состояния.")
 		return
 	}
 
@@ -247,14 +399,14 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 		select {
 		case _, ok := <-clientChan:
 			if !ok {
-				log.Info("Notification channel closed for doctor screen.")
+				log.Info("Канал уведомления закрыт для экрана врача.")
 				return false
 			}
-			log.Info("Received ticket update notification, refreshing doctor screen state.")
+			log.Info("Получено уведомление об обновлении талона, обновление состояния экрана врача.")
 			return sendCurrentState()
 
 		case <-c.Request.Context().Done():
-			log.Info("Client disconnected from doctor screen.")
+			log.Info("Клиент отключился от экрана врача.")
 			return false
 		}
 	})
