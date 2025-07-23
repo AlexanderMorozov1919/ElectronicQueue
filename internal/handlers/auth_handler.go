@@ -63,7 +63,7 @@ func (h *AuthHandler) LoginRegistrar(c *gin.Context) {
 // CreateRegistrar создает нового пользователя-регистратора.
 // @Summary      Создать нового регистратора (Админ)
 // @Description  Создает нового пользователя с ролью "регистратор". Требует INTERNAL_API_KEY.
-// @Tags         auth
+// @Tags         admin
 // @Accept       json
 // @Produce      json
 // @Param        credentials body CreateRegistrarRequest true "Данные нового регистратора"
@@ -71,7 +71,7 @@ func (h *AuthHandler) LoginRegistrar(c *gin.Context) {
 // @Failure      400 {object} map[string]string "Ошибка: неверный запрос"
 // @Failure      409 {object} map[string]string "Ошибка: логин уже занят"
 // @Security     ApiKeyAuth
-// @Router       /api/auth/create/registrar [post]
+// @Router       /api/admin/create/registrar [post]
 func (h *AuthHandler) CreateRegistrar(c *gin.Context) {
 	var req CreateRegistrarRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -131,7 +131,7 @@ func (h *AuthHandler) LoginDoctor(c *gin.Context) {
 // CreateDoctor создает нового пользователя-врача.
 // @Summary      Создать нового врача (Админ)
 // @Description  Создает нового пользователя с ролью "врач". Требует INTERNAL_API_KEY.
-// @Tags         auth
+// @Tags         admin
 // @Accept       json
 // @Produce      json
 // @Param        credentials body CreateDoctorRequest true "Данные нового врача"
@@ -139,7 +139,7 @@ func (h *AuthHandler) LoginDoctor(c *gin.Context) {
 // @Failure      400 {object} map[string]string "Ошибка: неверный запрос"
 // @Failure      409 {object} map[string]string "Ошибка: логин уже занят"
 // @Security     ApiKeyAuth
-// @Router       /api/auth/create/doctor [post]
+// @Router       /api/admin/create/doctor [post]
 func (h *AuthHandler) CreateDoctor(c *gin.Context) {
 	var req CreateDoctorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
