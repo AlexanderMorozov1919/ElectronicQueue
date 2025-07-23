@@ -23,13 +23,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 
 	_ "ElectronicQueue/docs"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-
-	"gorm.io/gorm"
 )
 
 // @title Electronic Queue API
@@ -71,16 +70,19 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("Failed to initialize database listener with pgx")
 	}
+	defer pool.Close()
 
 	go listenForNotifications(listenerCtx, pool, notificationChannel, log)
 
 	r := setupRouter(psBroker, db, cfg)
 
+	// Swagger endpoint
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	handleGracefulShutdown(db, pool, cancelListener, log)
+	// Graceful shutdown handler
+	handleGracefulShutdown(db, cancelListener, log)
 
-	fmt.Printf("Сервер запущен на порту: %s\n", cfg.BackendPort)
+	log.Info(fmt.Sprintf("Сервер запущен на порту: %s", cfg.BackendPort))
 	if err := r.Run(":" + cfg.BackendPort); err != nil {
 		log.WithError(err).Fatal("Failed to start server")
 	}
@@ -92,12 +94,10 @@ func initPgxPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error)
 		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBSSLMode,
 	)
-
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}
-
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("unable to ping database: %w", err)
@@ -149,14 +149,14 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		logger.Default().WithError(err).Fatal("Failed to initialize JWT Manager")
 	}
 
-	// --- Инициализация всех репозиториев ---
+	// --- Инициализация репозиториев ---
 	repo := repository.NewRepository(db)
 
-	// --- Инициализация всех сервисов ---
+	// --- Инициализация сервисов ---
 	ticketService := services.NewTicketService(repo.Ticket, repo.Service)
-	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule)
+	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
 	authService := services.NewAuthService(repo.Registrar, repo.Doctor, jwtManager)
-	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db)) // Для универсального API
+	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db))
 	patientService := services.NewPatientService(repo.Patient)
 	appointmentService := services.NewAppointmentService(repo.Appointment)
 	cleanupService := services.NewCleanupService(repo.Cleanup)
@@ -166,7 +166,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	// Запускаем планировщик задач в фоне
 	go tasksTimerService.Start(context.Background())
 
-	// --- Инициализация всех обработчиков ---
+	// --- Инициализация обработчиков ---
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
 	doctorHandler := handlers.NewDoctorHandler(doctorService, broker)
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
@@ -180,15 +180,14 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	// SSE-эндпоинт для табло очереди регистратуры
 	r.GET("/tickets", sseHandler(broker, "reception_sse"))
 
+	// SSE-эндпоинт для экрана у кабинета врача
 	r.GET("/api/doctor/screen-updates/:cabinet_number", doctorHandler.DoctorScreenUpdates)
 
-	// --- Определение групп маршрутов ---
+	// Группа для аутентификации и создания пользователей
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/login/registrar", authHandler.LoginRegistrar)
 		auth.POST("/login/doctor", authHandler.LoginDoctor)
-		
-
 	}
 
 	admin := r.Group("/api/admin").Use(middleware.RequireAPIKey(cfg.InternalAPIKey))
@@ -200,6 +199,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		admin.DELETE("/schedules/:id", scheduleHandler.DeleteSchedule)
 	}
 
+	// Группа для терминала (получение талонов)
 	tickets := r.Group("/api/tickets")
 	{
 		tickets.GET("/start", ticketHandler.StartPage)
@@ -211,13 +211,31 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)
 	}
 
+	// Публичная группа для информации о врачах и расписании
 	publicDoctorGroup := r.Group("/api/doctor")
 	{
 		publicDoctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
 		publicDoctorGroup.GET("/cabinets/active", doctorHandler.GetActiveCabinets)
-		
+		publicDoctorGroup.GET("/schedule/:doctor_id", appointmentHandler.GetDoctorSchedule)
+
 	}
 
+	// Группа для генерации аудио
+	audioGroup := r.Group("/api/audio")
+	{
+		audioGroup.GET("/announce", audioHandler.GenerateAnnouncement)
+	}
+
+	// API для работы с базой данных (защищено статическим API-ключом)
+	dbAPI := r.Group("/api/database").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
+	{
+		dbAPI.POST("/:table/select", databaseHandler.GetData)
+		dbAPI.POST("/:table/insert", databaseHandler.InsertData)
+		dbAPI.PATCH("/:table/update", databaseHandler.UpdateData)
+		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
+	}
+
+	// Действия, доступные только врачу
 	protectedDoctorGroup := r.Group("/api/doctor").Use(middleware.RequireRole(jwtManager, "doctor"))
 	{
 		protectedDoctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
@@ -230,29 +248,14 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		protectedDoctorGroup.POST("/set-inactive", doctorHandler.SetDoctorInactive)
 	}
 
-	// Группа для регистратора, защищенная JWT токеном
+	// Действия, доступные только регистратору
 	registrar := r.Group("/api/registrar").Use(middleware.RequireRole(jwtManager, "registrar"))
 	{
-		// Основные действия регистратора
 		registrar.POST("/call-next", registrarHandler.CallNext)
 		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
 		registrar.GET("/patients/search", patientHandler.SearchPatients)
 		registrar.POST("/patients", patientHandler.CreatePatient)
-		registrar.GET("/schedules/doctor/:doctor_id", appointmentHandler.GetDoctorSchedule)
 		registrar.POST("/appointments", appointmentHandler.CreateAppointment)
-	}
-
-	dbAPI := r.Group("/api/database").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
-	{
-		dbAPI.POST("/:table/select", databaseHandler.GetData)
-		dbAPI.POST("/:table/insert", databaseHandler.InsertData)
-		dbAPI.PATCH("/:table/update", databaseHandler.UpdateData)
-		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
-	}
-
-	audioGroup := r.Group("/api/audio")
-	{
-		audioGroup.GET("/announce", audioHandler.GenerateAnnouncement)
 	}
 
 	return r
@@ -282,7 +285,6 @@ func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 					return false
 				}
 
-				log.WithField("payload", payloadStr).Info("SSE Handler: Sending message to client")
 				var payload NotificationPayload
 				if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
 					log.WithError(err).Error("Failed to unmarshal notification payload")
@@ -300,32 +302,28 @@ func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 	}
 }
 
-func handleGracefulShutdown(db *gorm.DB, pool *pgxpool.Pool, cancel context.CancelFunc, log *logger.AsyncLogger) {
+// handleGracefulShutdown корректно завершает работу приложения
+func handleGracefulShutdown(db *gorm.DB, cancel context.CancelFunc, log *logger.AsyncLogger) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		<-sigChan
-		log.Info("Received shutdown signal, closing...")
+		log.Info("Получен сигнал завершения, закрываю соединения...")
 
 		cancel()
-
-		if pool != nil {
-			pool.Close()
-			log.Info("pgx listener pool closed.")
-		}
-
-		if err := logger.Sync(); err != nil {
-			fmt.Printf("Ошибка синхронизации логов: %v\n", err)
-		}
 
 		sqlDB, err := db.DB()
 		if err == nil {
 			if err := sqlDB.Close(); err != nil {
-				fmt.Printf("Ошибка закрытия базы данных: %v\n", err)
+				log.WithError(err).Error("Ошибка при закрытии соединения с БД")
 			} else {
-				log.Info("Database connection closed.")
+				log.Info("Соединение с базой данных закрыто.")
 			}
+		}
+
+		if err := logger.Sync(); err != nil {
+			fmt.Printf("Ошибка синхронизации логов: %v\n", err)
 		}
 
 		os.Exit(0)
