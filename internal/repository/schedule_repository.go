@@ -92,3 +92,7 @@ func (r *scheduleRepo) GetAllUniqueCabinets() ([]int, error) {
 	}
 	return cabinets, nil
 }
+
+func (r *scheduleRepo) Delete(id uint) error {
+	return r.db.Delete(&models.Schedule{}, id).Error
+}

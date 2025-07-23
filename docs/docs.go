@@ -131,6 +131,163 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/admin/schedules": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Создает новый временной слот для врача. Требует INTERNAL_API_KEY.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Создать слот в расписании (Админ)",
+                "parameters": [
+                    {
+                        "description": "Данные для создания слота",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateScheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешно созданный слот",
+                        "schema": {
+                            "$ref": "#/definitions/models.Schedule"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный формат запроса",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Отсутствует ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Неверный ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/schedules/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Удаляет временной слот из расписания по его ID. Требует INTERNAL_API_KEY.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Удалить слот из расписания (Админ)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID слота расписания",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Слот успешно удален",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Отсутствует ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Неверный ключ API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Слот не найден",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/admin/tickets/{id}": {
             "delete": {
                 "security": [
@@ -712,11 +869,6 @@ const docTemplate = `{
         },
         "/api/doctor/active": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
                 "description": "Возвращает список всех врачей, у которых is_active = true. Используется для заполнения выпадающих списков на клиенте.",
                 "produces": [
                     "application/json"
@@ -781,6 +933,11 @@ const docTemplate = `{
         },
         "/api/doctor/complete-appointment": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Завершает прием пациента по талону. Статус талона должен быть 'на_приеме'.",
                 "consumes": [
                     "application/json"
@@ -825,6 +982,11 @@ const docTemplate = `{
         },
         "/api/doctor/end-break": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Завершает перерыв врача. Статус врача должен быть 'перерыв'.",
                 "consumes": [
                     "application/json"
@@ -1001,6 +1163,11 @@ const docTemplate = `{
         },
         "/api/doctor/start-appointment": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Начинает прием пациента по талону. Статус талона должен быть 'зарегистрирован'.",
                 "consumes": [
                     "application/json"
@@ -1045,6 +1212,11 @@ const docTemplate = `{
         },
         "/api/doctor/start-break": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Начинает перерыв врача. Статус врача должен быть 'активен'.",
                 "consumes": [
                     "application/json"
@@ -1212,6 +1384,11 @@ const docTemplate = `{
         },
         "/api/registrar/call-next": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Находит первого пациента в очереди, меняет его статус на \"приглашен\" и присваивает номер окна",
                 "consumes": [
                     "application/json"
@@ -1447,6 +1624,11 @@ const docTemplate = `{
         },
         "/api/registrar/tickets/{id}/status": {
             "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Изменяет статус тикета по ID",
                 "consumes": [
                     "application/json"
@@ -2110,6 +2292,41 @@ const docTemplate = `{
                 },
                 "phone": {
                     "type": "string"
+                }
+            }
+        },
+        "models.CreateScheduleRequest": {
+            "type": "object",
+            "required": [
+                "date",
+                "doctor_id",
+                "end_time",
+                "start_time"
+            ],
+            "properties": {
+                "cabinet": {
+                    "type": "integer",
+                    "example": 101
+                },
+                "date": {
+                    "type": "string",
+                    "example": "2025-07-20T00:00:00Z"
+                },
+                "doctor_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "end_time": {
+                    "type": "string",
+                    "example": "2025-01-01T10:00:00Z"
+                },
+                "is_available": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "start_time": {
+                    "type": "string",
+                    "example": "2025-01-01T09:00:00Z"
                 }
             }
         },

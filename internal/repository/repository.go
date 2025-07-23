@@ -44,6 +44,7 @@ type TicketRepository interface {
 type ScheduleRepository interface {
 	Create(schedule *models.Schedule) error
 	Update(schedule *models.Schedule) error
+	Delete(id uint) error
 	GetByID(id uint) (*models.Schedule, error)
 	FindByDoctorAndDate(doctorID uint, date time.Time) ([]models.Schedule, error)
 	FindByCabinetAndCurrentTime(cabinetNumber int) (*models.Schedule, error)
