@@ -448,6 +448,135 @@ info:
   title: Electronic Queue API
   version: "1.0"
 paths:
+  /api/admin/create/doctor:
+    post:
+      consumes:
+      - application/json
+      description: Создает нового пользователя с ролью "врач". Требует INTERNAL_API_KEY.
+      parameters:
+      - description: Данные нового врача
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateDoctorRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Врач успешно создан
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: 'Ошибка: логин уже занят'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Создать нового врача (Админ)
+      tags:
+      - admin
+  /api/admin/create/registrar:
+    post:
+      consumes:
+      - application/json
+      description: Создает нового пользователя с ролью "регистратор". Требует INTERNAL_API_KEY.
+      parameters:
+      - description: Данные нового регистратора
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateRegistrarRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Регистратор успешно создан
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: 'Ошибка: логин уже занят'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Создать нового регистратора (Админ)
+      tags:
+      - admin
+  /api/admin/tickets/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет тикет по ID. Требует INTERNAL_API_KEY.
+      parameters:
+      - description: ID тикета
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Тикет удален
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Ошибка запроса
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Отсутствует ключ API
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Неверный ключ API
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Тикет не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Удалить тикет (Админ)
+      tags:
+      - admin
   /api/audio/announce:
     get:
       description: Создает и возвращает WAV файл с озвучкой номера талона и окна.
@@ -484,80 +613,6 @@ paths:
       summary: Сгенерировать звуковое оповещение
       tags:
       - audio
-  /api/auth/create/doctor:
-    post:
-      consumes:
-      - application/json
-      description: Создает нового пользователя с ролью "врач". Требует INTERNAL_API_KEY.
-      parameters:
-      - description: Данные нового врача
-        in: body
-        name: credentials
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.CreateDoctorRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Врач успешно создан
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: 'Ошибка: неверный запрос'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "409":
-          description: 'Ошибка: логин уже занят'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Создать нового врача (Админ)
-      tags:
-      - auth
-  /api/auth/create/registrar:
-    post:
-      consumes:
-      - application/json
-      description: Создает нового пользователя с ролью "регистратор". Требует INTERNAL_API_KEY.
-      parameters:
-      - description: Данные нового регистратора
-        in: body
-        name: credentials
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.CreateRegistrarRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Регистратор успешно создан
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: 'Ошибка: неверный запрос'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "409":
-          description: 'Ошибка: логин уже занят'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Создать нового регистратора (Админ)
-      tags:
-      - auth
   /api/auth/login/doctor:
     post:
       consumes:
@@ -1331,47 +1386,6 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Получить расписание врача с информацией о записях
-      tags:
-      - registrar
-  /api/registrar/tickets/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Удаляет тикет по ID
-      parameters:
-      - description: ID тикета
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Тикет удален
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Ошибка запроса
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Тикет не найден
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Удалить тикет
       tags:
       - registrar
   /api/registrar/tickets/{id}/status:

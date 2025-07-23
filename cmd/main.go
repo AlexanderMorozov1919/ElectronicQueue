@@ -154,7 +154,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 
 	// --- Инициализация сервисов ---
 	ticketService := services.NewTicketService(repo.Ticket, repo.Service)
-	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule)
+	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
 	authService := services.NewAuthService(repo.Registrar, repo.Doctor, jwtManager)
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db))
 	patientService := services.NewPatientService(repo.Patient)
@@ -186,8 +186,13 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	{
 		auth.POST("/login/registrar", authHandler.LoginRegistrar)
 		auth.POST("/login/doctor", authHandler.LoginDoctor)
-		auth.POST("/create/registrar", authHandler.CreateRegistrar)
-		auth.POST("/create/doctor", authHandler.CreateDoctor)
+	}
+
+	admin := r.Group("/api/admin").Use(middleware.RequireAPIKey(cfg.InternalAPIKey))
+	{
+		admin.POST("/create/doctor", authHandler.CreateDoctor)
+		admin.POST("/create/registrar", authHandler.CreateRegistrar)
+		admin.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 	}
 
 	// Группа для терминала (получение талонов)
@@ -208,6 +213,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		publicDoctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
 		publicDoctorGroup.GET("/cabinets/active", doctorHandler.GetActiveCabinets)
 		publicDoctorGroup.GET("/schedule/:doctor_id", appointmentHandler.GetDoctorSchedule)
+
 	}
 
 	// Группа для генерации аудио
@@ -243,7 +249,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	{
 		registrar.POST("/call-next", registrarHandler.CallNext)
 		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
-		registrar.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 		registrar.GET("/patients/search", patientHandler.SearchPatients)
 		registrar.POST("/patients", patientHandler.CreatePatient)
 		registrar.POST("/appointments", appointmentHandler.CreateAppointment)
