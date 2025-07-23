@@ -29,12 +29,12 @@ type ScheduleResponse struct {
 
 // CreateScheduleRequest определяет структуру для создания нового слота в расписании.
 type CreateScheduleRequest struct {
-	DoctorID    uint      `json:"doctor_id" binding:"required"`
-	Date        time.Time `json:"date" binding:"required"`
-	StartTime   time.Time `json:"start_time" binding:"required"`
-	EndTime     time.Time `json:"end_time" binding:"required"`
-	IsAvailable *bool     `json:"is_available"`
-	Cabinet     *int      `json:"cabinet"`
+	DoctorID    uint      `json:"doctor_id" binding:"required" example:"1"`
+	Date        time.Time `json:"date" binding:"required" example:"2025-07-20T00:00:00Z"`
+	StartTime   time.Time `json:"start_time" binding:"required" example:"2025-01-01T09:00:00Z"`
+	EndTime     time.Time `json:"end_time" binding:"required" example:"2025-01-01T10:00:00Z"`
+	IsAvailable *bool     `json:"is_available" example:"true"`
+	Cabinet     *int      `json:"cabinet" example:"101"`
 }
 
 // UpdateScheduleRequest определяет структуру для обновления статуса слота (например, блокировка).

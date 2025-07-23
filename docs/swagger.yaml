@@ -217,6 +217,32 @@ definitions:
     - passport_number
     - passport_series
     type: object
+  models.CreateScheduleRequest:
+    properties:
+      cabinet:
+        example: 101
+        type: integer
+      date:
+        example: "2025-07-20T00:00:00Z"
+        type: string
+      doctor_id:
+        example: 1
+        type: integer
+      end_time:
+        example: "2025-01-01T10:00:00Z"
+        type: string
+      is_available:
+        example: true
+        type: boolean
+      start_time:
+        example: "2025-01-01T09:00:00Z"
+        type: string
+    required:
+    - date
+    - doctor_id
+    - end_time
+    - start_time
+    type: object
   models.DeleteRequest:
     properties:
       filters:
@@ -520,6 +546,107 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Создать нового регистратора (Админ)
+      tags:
+      - admin
+  /api/admin/schedules:
+    post:
+      consumes:
+      - application/json
+      description: Создает новый временной слот для врача. Требует INTERNAL_API_KEY.
+      parameters:
+      - description: Данные для создания слота
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешно созданный слот
+          schema:
+            $ref: '#/definitions/models.Schedule'
+        "400":
+          description: 'Ошибка: неверный формат запроса'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Отсутствует ключ API
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Неверный ключ API
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Создать слот в расписании (Админ)
+      tags:
+      - admin
+  /api/admin/schedules/{id}:
+    delete:
+      description: Удаляет временной слот из расписания по его ID. Требует INTERNAL_API_KEY.
+      parameters:
+      - description: ID слота расписания
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Слот успешно удален
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'Ошибка: неверный ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Отсутствует ключ API
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Неверный ключ API
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Слот не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Удалить слот из расписания (Админ)
       tags:
       - admin
   /api/admin/tickets/{id}:
@@ -920,8 +1047,6 @@ paths:
             additionalProperties:
               type: string
             type: object
-      security:
-      - ApiKeyAuth: []
       summary: Получить список активных врачей
       tags:
       - doctor
@@ -973,6 +1098,8 @@ paths:
             additionalProperties:
               type: string
             type: object
+      security:
+      - ApiKeyAuth: []
       summary: Завершить прием пациента
       tags:
       - doctor
@@ -1003,6 +1130,8 @@ paths:
             additionalProperties:
               type: string
             type: object
+      security:
+      - ApiKeyAuth: []
       summary: Завершить перерыв врача
       tags:
       - doctor
@@ -1118,6 +1247,8 @@ paths:
             additionalProperties:
               type: string
             type: object
+      security:
+      - ApiKeyAuth: []
       summary: Начать прием пациента
       tags:
       - doctor
@@ -1148,6 +1279,8 @@ paths:
             additionalProperties:
               type: string
             type: object
+      security:
+      - ApiKeyAuth: []
       summary: Начать перерыв врача
       tags:
       - doctor

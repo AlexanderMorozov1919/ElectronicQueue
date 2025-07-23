@@ -161,6 +161,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	appointmentService := services.NewAppointmentService(repo.Appointment)
 	cleanupService := services.NewCleanupService(repo.Cleanup)
 	tasksTimerService := services.NewTasksTimerService(cleanupService, cfg)
+	scheduleService := services.NewScheduleService(repo.Schedule, repo.Doctor)
 
 	// Запускаем планировщик задач в фоне
 	go tasksTimerService.Start(context.Background())
@@ -174,6 +175,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	audioHandler := handlers.NewAudioHandler()
 	patientHandler := handlers.NewPatientHandler(patientService)
 	appointmentHandler := handlers.NewAppointmentHandler(appointmentService)
+	scheduleHandler := handlers.NewScheduleHandler(scheduleService)
 
 	// SSE-эндпоинт для табло очереди регистратуры
 	r.GET("/tickets", sseHandler(broker, "reception_sse"))
@@ -194,6 +196,8 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		admin.POST("/create/doctor", authHandler.CreateDoctor)
 		admin.POST("/create/registrar", authHandler.CreateRegistrar)
 		admin.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
+		admin.POST("/schedules", scheduleHandler.CreateSchedule)
+		admin.DELETE("/schedules/:id", scheduleHandler.DeleteSchedule)
 	}
 
 	tickets := r.Group("/api/tickets")
@@ -211,7 +215,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	{
 		publicDoctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
 		publicDoctorGroup.GET("/cabinets/active", doctorHandler.GetActiveCabinets)
-		
+
 	}
 
 	protectedDoctorGroup := r.Group("/api/doctor").Use(middleware.RequireRole(jwtManager, "doctor"))
