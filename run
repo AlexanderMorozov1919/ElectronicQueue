@@ -145,7 +145,7 @@ fi
 # Run Flutter frontend
 if [[ "$RUN_FLUTTER" == "true" ]]; then
   cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
-  if flutter pub get --no-example; then
+  if flutter pub get; then
     echo "Flutter setup complete."
   else
     echo "Failed to fetch packages."

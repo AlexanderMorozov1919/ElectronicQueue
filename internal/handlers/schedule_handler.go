@@ -3,19 +3,24 @@ package handlers
 import (
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/models"
+	"ElectronicQueue/internal/pubsub"
 	"ElectronicQueue/internal/services"
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ScheduleHandler struct {
 	service *services.ScheduleService
+	broker  *pubsub.Broker
 }
 
-func NewScheduleHandler(service *services.ScheduleService) *ScheduleHandler {
-	return &ScheduleHandler{service: service}
+func NewScheduleHandler(service *services.ScheduleService, broker *pubsub.Broker) *ScheduleHandler {
+	return &ScheduleHandler{service: service, broker: broker}
 }
 
 // CreateSchedule godoc
@@ -87,4 +92,77 @@ func (h *ScheduleHandler) DeleteSchedule(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Слот расписания успешно удален"})
+}
+
+// GetTodayScheduleUpdates godoc
+// @Summary      Получить обновления расписания на сегодня
+// @Description  Отправляет начальное состояние расписания (`event: schedule_initial`) и последующие изменения (`event: schedule_update`) через Server-Sent Events.
+// @Tags         schedule
+// @Produce      text/event-stream
+// @Success      200 {object} services.TodayScheduleResponse "Поток событий с состоянием расписания"
+// @Router       /api/schedules/today/updates [get]
+func (h *ScheduleHandler) GetTodayScheduleUpdates(c *gin.Context) {
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	log := logger.Default().WithField("module", "SSE_SCHEDULE")
+
+	clientChan := h.broker.Subscribe()
+	defer h.broker.Unsubscribe(clientChan)
+
+	// --- 1. Отправка начального состояния ---
+	initialState, err := h.service.GetTodayScheduleState()
+	if err != nil {
+		log.WithError(err).Error("Критическая ошибка в GetTodayScheduleState")
+		c.SSEvent("error", gin.H{"error": err.Error()})
+		if f, ok := c.Writer.(http.Flusher); ok {
+			f.Flush()
+		}
+		return
+	}
+
+	log.Info("Отправка начального состояния расписания")
+	c.SSEvent("schedule_initial", initialState)
+	if f, ok := c.Writer.(http.Flusher); ok {
+		f.Flush()
+		_, err := c.Writer.Write([]byte{})
+		if err != nil {
+			log.WithError(err).Info("Клиент отключился сразу после отправки начального состояния.")
+			return
+		}
+	}
+
+	// --- 2. Ожидание и отправка обновлений ---
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case msg, ok := <-clientChan:
+			if !ok {
+				log.Info("Канал уведомлений закрыт для расписания.")
+				return false
+			}
+
+			if !strings.Contains(msg, "\"operation\"") {
+				return true
+			}
+
+			log.WithField("payload", msg).Info("Получено уведомление, отправка обновления клиенту.")
+
+			var rawData json.RawMessage
+			if err := json.Unmarshal([]byte(msg), &rawData); err != nil {
+				log.WithError(err).Warn("Получено невалидное JSON-уведомление от PostgreSQL, пропуск.")
+				return true
+			}
+
+			c.SSEvent("schedule_update", rawData)
+
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
+			return true
+
+		case <-c.Request.Context().Done():
+			log.Info("Клиент отключился от расписания.")
+			return false
+		}
+	})
 }
