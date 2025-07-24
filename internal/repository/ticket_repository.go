@@ -117,7 +117,7 @@ func (r *ticketRepo) FindByStatusAndDoctor(status models.TicketStatus, doctorID 
 	err := r.db.Joins("JOIN appointments ON appointments.ticket_id = tickets.ticket_id").
 		Joins("JOIN schedules ON schedules.schedule_id = appointments.schedule_id").
 		Where("tickets.status = ? AND schedules.doctor_id = ?", status, doctorID).
-		Order("tickets.created_at asc").
+		Order("schedules.start_time asc").
 		Find(&tickets).Error
 	return tickets, err
 }
