@@ -1682,6 +1682,26 @@
                 }
             }
         },
+        "/api/schedules/today/updates": {
+            "get": {
+                "description": "Отправляет начальное состояние расписания (`event: schedule_initial`) и последующие изменения (`event: schedule_update`) через Server-Sent Events.",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "schedule"
+                ],
+                "summary": "Получить обновления расписания на сегодня",
+                "responses": {
+                    "200": {
+                        "description": "Поток событий с состоянием расписания",
+                        "schema": {
+                            "$ref": "#/definitions/services.TodayScheduleResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/tickets/active": {
             "get": {
                 "description": "Возвращает список всех талонов в статусе 'ожидает' и 'приглашен' для первоначальной загрузки табло.",
@@ -2645,6 +2665,63 @@
                 },
                 "filters": {
                     "$ref": "#/definitions/models.Filters"
+                }
+            }
+        },
+        "services.DoctorScheduleModel": {
+            "type": "object",
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "slots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.TimeSlotModel"
+                    }
+                },
+                "specialization": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.TimeSlotModel": {
+            "type": "object",
+            "properties": {
+                "cabinet": {
+                    "type": "integer"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "is_available": {
+                    "type": "boolean"
+                },
+                "start_time": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.TodayScheduleResponse": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "doctors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.DoctorScheduleModel"
+                    }
+                },
+                "max_end_time": {
+                    "type": "string"
+                },
+                "min_start_time": {
+                    "type": "string"
                 }
             }
         }

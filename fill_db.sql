@@ -69,17 +69,17 @@ DELETE FROM schedules WHERE doctor_id IN (1, 2, 3, 4) AND date_trunc('month', da
 -- Расписание для Врача №1: Иванов Иван Иванович (Терапевт) -> Кабинет 101
 INSERT INTO schedules (doctor_id, cabinet, date, start_time, end_time, is_available)
 SELECT
-    1 AS doctor_id, 101 AS cabinet, day::date, ts::time AS start_time, (ts + '1 hour'::interval)::time AS end_time, true AS is_available
+    1 AS doctor_id, 101 AS cabinet, day::date, ts::time AS start_time, (ts + '30 minutes'::interval)::time AS end_time, true AS is_available
 FROM generate_series('2025-07-01'::timestamp, '2025-07-31'::timestamp, '1 day'::interval) AS day
-CROSS JOIN generate_series('2025-01-01 08:00'::timestamp, '2025-01-01 15:00'::timestamp, '1 hour'::interval) AS ts
+CROSS JOIN generate_series('2025-01-01 08:00'::timestamp, '2025-01-01 15:30'::timestamp, '30 minutes'::interval) AS ts
 WHERE EXTRACT(isodow FROM day) BETWEEN 1 AND 5;
 
 -- Расписание для Врача №2: Петров Петр Петрович (Хирург) -> Кабинет 102
 INSERT INTO schedules (doctor_id, cabinet, date, start_time, end_time, is_available)
 SELECT
-    2 AS doctor_id, 102 AS cabinet, day::date, ts::time AS start_time, (ts + '1 hour'::interval)::time AS end_time, true AS is_available
+    2 AS doctor_id, 102 AS cabinet, day::date, ts::time AS start_time, (ts + '30 minutes'::interval)::time AS end_time, true AS is_available
 FROM (SELECT day, ROW_NUMBER() OVER (ORDER BY day) as rn FROM generate_series('2025-07-01'::timestamp, '2025-07-31'::timestamp, '1 day'::interval) AS day) AS numbered_days
-CROSS JOIN generate_series('2025-01-01 09:00'::timestamp, '2025-01-01 17:00'::timestamp, '1 hour'::interval) AS ts
+CROSS JOIN generate_series('2025-01-01 09:00'::timestamp, '2025-01-01 17:30'::timestamp, '30 minutes'::interval) AS ts
 WHERE floor((rn - 1) / 2)::int % 2 = 0;
 
 -- Расписание для Врача №3: Смирнова Мария Викторовна (Кардиолог) -> Кабинет 201
@@ -93,14 +93,14 @@ WHERE EXTRACT(isodow FROM day) IN (1, 3, 5);
 -- Расписание для Врача №4: Кузнецова Ольга Дмитриевна (Невролог) -> Кабинет 202
 INSERT INTO schedules (doctor_id, cabinet, date, start_time, end_time, is_available)
 SELECT
-    4 AS doctor_id, 202 AS cabinet, day::date, ts::time AS start_time, (ts + '1 hour'::interval)::time AS end_time, true AS is_available
+    4 AS doctor_id, 202 AS cabinet, day::date, ts::time AS start_time, (ts + '30 minutes'::interval)::time AS end_time, true AS is_available
 FROM generate_series('2025-07-01'::timestamp, '2025-07-31'::timestamp, '1 day'::interval) AS day
-CROSS JOIN generate_series('2025-01-01 10:00'::timestamp, '2025-01-01 16:00'::timestamp, '1 hour'::interval) AS ts
+CROSS JOIN generate_series('2025-01-01 10:00'::timestamp, '2025-01-01 16:30'::timestamp, '30 minutes'::interval) AS ts
 WHERE EXTRACT(isodow FROM day) IN (2, 4);
 
 INSERT INTO schedules (doctor_id, cabinet, date, start_time, end_time, is_available)
 SELECT
-    4 AS doctor_id, 202 AS cabinet, day::date, ts::time AS start_time, (ts + '1 hour'::interval)::time AS end_time, true AS is_available
+    4 AS doctor_id, 202 AS cabinet, day::date, ts::time AS start_time, (ts + '30 minutes'::interval)::time AS end_time, true AS is_available
 FROM generate_series('2025-07-01'::timestamp, '2025-07-31'::timestamp, '1 day'::interval) AS day
-CROSS JOIN generate_series('2025-01-01 09:00'::timestamp, '2025-01-01 11:00'::timestamp, '1 hour'::interval) AS ts
+CROSS JOIN generate_series('2025-01-01 09:00'::timestamp, '2025-01-01 11:30'::timestamp, '30 minutes'::interval) AS ts
 WHERE EXTRACT(isodow FROM day) = 6;
