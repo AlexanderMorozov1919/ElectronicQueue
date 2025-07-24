@@ -467,6 +467,43 @@ definitions:
     - data
     - filters
     type: object
+  services.DoctorScheduleModel:
+    properties:
+      full_name:
+        type: string
+      id:
+        type: integer
+      slots:
+        items:
+          $ref: '#/definitions/services.TimeSlotModel'
+        type: array
+      specialization:
+        type: string
+    type: object
+  services.TimeSlotModel:
+    properties:
+      cabinet:
+        type: integer
+      end_time:
+        type: string
+      is_available:
+        type: boolean
+      start_time:
+        type: string
+    type: object
+  services.TodayScheduleResponse:
+    properties:
+      date:
+        type: string
+      doctors:
+        items:
+          $ref: '#/definitions/services.DoctorScheduleModel'
+        type: array
+      max_end_time:
+        type: string
+      min_start_time:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -1572,6 +1609,20 @@ paths:
       summary: Сменить статус тикета
       tags:
       - registrar
+  /api/schedules/today/updates:
+    get:
+      description: 'Отправляет начальное состояние расписания (`event: schedule_initial`)
+        и последующие изменения (`event: schedule_update`) через Server-Sent Events.'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Поток событий с состоянием расписания
+          schema:
+            $ref: '#/definitions/services.TodayScheduleResponse'
+      summary: Получить обновления расписания на сегодня
+      tags:
+      - schedule
   /api/tickets/active:
     get:
       description: Возвращает список всех талонов в статусе 'ожидает' и 'приглашен'
