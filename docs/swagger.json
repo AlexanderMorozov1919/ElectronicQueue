@@ -1376,6 +1376,134 @@
                 }
             }
         },
+        "/api/registrar/appointments/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Удаляет запись на прием и освобождает связанный с ней слот в расписании.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Удалить будущую запись",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID Записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Запись успешно удалена",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Запись не найдена",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrar/appointments/{id}/confirm": {
+            "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Привязывает существующую запись к новому талону, который пациент получил сегодня, и меняет статус талона на 'зарегистрирован', отправляя пациента в очередь к врачу.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Подтвердить явку по записи",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID Записи для подтверждения",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "ID нового талона",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ConfirmAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Обновленная запись с привязанным талоном",
+                        "schema": {
+                            "$ref": "#/definitions/models.Appointment"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный формат запроса",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера (запись или талон не найдены, или запись уже подтверждена)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/registrar/call-next": {
             "post": {
                 "security": [
@@ -1535,6 +1663,61 @@
                     },
                     "400": {
                         "description": "Ошибка: отсутствует или слишком короткий параметр поиска",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrar/patients/{patient_id}/appointments": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Возвращает все прошлые и будущие записи для указанного пациента.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Получить историю записей пациента",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID Пациента",
+                        "name": "patient_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Массив записей пациента",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/services.AppointmentDetailsResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный ID пациента",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2010,6 +2193,17 @@
                 "ticket_id": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "handlers.ConfirmAppointmentRequest": {
+            "type": "object",
+            "required": [
+                "ticket_id"
+            ],
+            "properties": {
+                "ticket_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -2544,6 +2738,9 @@
                 },
                 "start_time": {
                     "type": "string"
+                },
+                "ticket_number": {
+                    "type": "string"
                 }
             }
         },
@@ -2675,6 +2872,38 @@
                 },
                 "filters": {
                     "$ref": "#/definitions/models.Filters"
+                }
+            }
+        },
+        "services.AppointmentDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "appointment_id": {
+                    "type": "integer"
+                },
+                "cabinet": {
+                    "type": "integer"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "doctor_name": {
+                    "type": "string"
+                },
+                "doctor_specialization": {
+                    "type": "string"
+                },
+                "is_future": {
+                    "type": "boolean"
+                },
+                "patient_name": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "ticket_number": {
+                    "type": "string"
                 }
             }
         },

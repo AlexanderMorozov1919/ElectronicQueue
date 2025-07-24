@@ -58,6 +58,10 @@ type ScheduleRepository interface {
 type AppointmentRepository interface {
 	CreateAppointmentInTransaction(req *models.CreateAppointmentRequest) (*models.Appointment, error)
 	FindScheduleAndAppointmentsByDoctorAndDate(doctorID uint, date time.Time) ([]models.ScheduleWithAppointmentInfo, error)
+	FindByID(id uint) (*models.Appointment, error)
+	FindByPatientID(patientID uint) ([]models.Appointment, error)
+	Update(appointment *models.Appointment) error
+	DeleteAppointmentAndFreeSlot(appointmentID uint) error
 }
 
 // RegistrarRepository определяет методы для аутентификации регистраторов.
