@@ -13,7 +13,7 @@ import (
 // ScheduleService предоставляет методы для управления расписаниями.
 type ScheduleService struct {
 	scheduleRepo repository.ScheduleRepository
-	doctorRepo   repository.DoctorRepository // Для проверки существования врача
+	doctorRepo   repository.DoctorRepository
 }
 
 // NewScheduleService создает новый экземпляр ScheduleService.

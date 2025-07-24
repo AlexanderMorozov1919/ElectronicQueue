@@ -158,10 +158,8 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		logger.Default().WithError(err).Fatal("Failed to initialize JWT Manager")
 	}
 
-	// --- Инициализация всех репозиториев ---
 	repo := repository.NewRepository(db)
 
-	// --- Инициализация всех сервисов ---
 	ticketService := services.NewTicketService(repo.Ticket, repo.Service)
 	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
 	authService := services.NewAuthService(repo.Registrar, repo.Doctor, jwtManager)
@@ -175,7 +173,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	// Запускаем планировщик задач в фоне
 	go tasksTimerService.Start(context.Background())
 
-	// --- Инициализация всех обработчиков ---
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
 	doctorHandler := handlers.NewDoctorHandler(doctorService, broker)
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
@@ -191,7 +188,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 
 	r.GET("/api/doctor/screen-updates/:cabinet_number", doctorHandler.DoctorScreenUpdates)
 
-	// --- Определение групп маршрутов ---
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/login/registrar", authHandler.LoginRegistrar)
@@ -237,7 +233,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		protectedDoctorGroup.POST("/set-inactive", doctorHandler.SetDoctorInactive)
 	}
 
-	// Группа для регистратора, защищенная JWT токеном
 	registrar := r.Group("/api/registrar").Use(middleware.RequireRole(jwtManager, "registrar"))
 	{
 		registrar.POST("/call-next", registrarHandler.CallNext)
@@ -264,7 +259,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		audioGroup.GET("/announce", audioHandler.GenerateAnnouncement)
 	}
 
-	// Группа для расписаний
 	scheduleGroup := r.Group("/api/schedules")
 	{
 		scheduleGroup.GET("/today/updates", scheduleHandler.GetTodayScheduleUpdates)

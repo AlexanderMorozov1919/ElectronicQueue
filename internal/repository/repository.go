@@ -38,6 +38,7 @@ type TicketRepository interface {
 	Delete(id uint) error
 	FindInProgressTicketForCabinet(cabinetNumber int) (*models.Ticket, error)
 	FindTicketsForCabinetQueue(cabinetNumber int) ([]models.DoctorQueueTicketResponse, error)
+	FindByStatusAndDoctor(status models.TicketStatus, doctorID uint) ([]models.Ticket, error)
 }
 
 // ScheduleRepository определяет методы для взаимодействия с расписанием.

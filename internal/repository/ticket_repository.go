@@ -109,3 +109,15 @@ func (r *ticketRepo) FindTicketsForCabinetQueue(cabinetNumber int) ([]models.Doc
 	}
 	return results, nil
 }
+
+// Найтиьалоны конкретного врача по статусу
+// связь : талон - запись - расписание - врач
+func (r *ticketRepo) FindByStatusAndDoctor(status models.TicketStatus, doctorID uint) ([]models.Ticket, error) {
+	var tickets []models.Ticket
+	err := r.db.Joins("JOIN appointments ON appointments.ticket_id = tickets.ticket_id").
+		Joins("JOIN schedules ON schedules.schedule_id = appointments.schedule_id").
+		Where("tickets.status = ? AND schedules.doctor_id = ?", status, doctorID).
+		Order("schedules.start_time asc").
+		Find(&tickets).Error
+	return tickets, err
+}
