@@ -6,8 +6,6 @@
 -- -----------------------------------------------------------------
 -- --                     0. ОЧИСТКА ДАННЫХ                       --
 -- -----------------------------------------------------------------
--- Очищаем все таблицы и сбрасываем счетчики автоинкремента.
--- CASCADE обеспечивает удаление зависимых записей.
 TRUNCATE TABLE 
     appointments, 
     tickets, 
@@ -18,7 +16,6 @@ TRUNCATE TABLE
     patients 
 RESTART IDENTITY CASCADE;
 
-
 -- -----------------------------------------------------------------
 -- --                        1. УСЛУГИ                            --
 -- -----------------------------------------------------------------
@@ -28,11 +25,10 @@ INSERT INTO services (service_id, name, letter) VALUES
   ('lab_tests', 'Сдать анализы', 'C'),
   ('documents', 'Другой вопрос', 'D');
 
-
 -- -----------------------------------------------------------------
 -- --                      2. РЕГИСТРАТОРЫ                        --
 -- -----------------------------------------------------------------
--- Пароли: 'pass1' - 'pass7' (хэш для каждого)
+-- Пароли: 'pass1' - 'pass7'
 INSERT INTO registrars (window_number, login, password_hash) VALUES
 (1, 'admin1', '$2a$10$g3C8q/gOeSAT2uVgFXz8M.Xs4OELKH7gD24P3nciXTfbm4RePxWqG'),
 (2, 'admin2', '$2a$10$fnLMINfO.s4.zMr6MooIHuoxiLy1CcFCGajzmH8VlxGw0BvnMB75C'),
@@ -42,20 +38,18 @@ INSERT INTO registrars (window_number, login, password_hash) VALUES
 (6, 'admin6', '$2a$10$Ud9Hwrm4vawrae6WpIsRWe1A1wAWkAqdlX65/R5LuFkRJ1w17Qxri'),
 (7, 'admin7', '$2a$10$hllZlVYZ0R.kEvq0il3e2eXyctV/3X0li0OT7DeKfJrY9QTQZwTbO');
 
-
 -- -----------------------------------------------------------------
 -- --                         3. ВРАЧИ                            --
 -- -----------------------------------------------------------------
--- Пароли: 'pass1' - 'pass7' (хэш для каждого)
+-- Пароли: 'pass1' - 'pass7'
 INSERT INTO doctors (full_name, specialization, login, password_hash, status) VALUES
 ('Иванов Иван Иванович', 'Терапевт', 'doctor1', '$2a$10$9S2D6Vr.2Cv2wSest1EwPe2x/wZKW0raBzZ4CyX906iq7vB2cJ8Za', 'активен'),
 ('Петров Петр Петрович', 'Хирург', 'doctor2', '$2a$10$80G/wVQ/dwtI8TZpHwhKfOMX36bL3y5dPBbLcBdeLEiDNA8Ogg9FC', 'активен'),
 ('Смирнова Мария Викторовна', 'Кардиолог', 'doctor3', '$2a$10$Otd/PbC3Dhvxo7rVsyHrHerP460E.t4XiWHMkHvStcU4ijG5A6Ap.', 'перерыв'),
-('Кузнецова Ольга Дмитриевна', 'Невролог', 'doctor4', '$2a$10$1yAN3/hB8O93vSZjPw/B4O0R0NgWuddnAPy.tDiCTNxWW6rQyzOqW	', 'активен'),
+('Кузнецова Ольга Дмитриевна', 'Невролог', 'doctor4', '$2a$10$1yAN3/hB8O93vSZjPw/B4O0R0NgWuddnAPy.tDiCTNxWW6rQyzOqW', 'активен'),
 ('Михайлов Михаил Михайлович', 'Офтальмолог', 'doctor5', '$2a$10$n68/soTxF/YVkR1olmR16u3FwyFoHLxj5IDrscjy.DeGl7pK9w1x.', 'неактивен'),
 ('Васильева Елена Сергеевна', 'Педиатр', 'doctor6', '$2a$10$ZmSQHlwqr/25oZdSg3Zod.hvvSdcLg0M.8K0b.D5hZBK9BqXLga..', 'активен'),
 ('Соколов Сергей Александрович', 'ЛОР', 'doctor7', '$2a$10$9dSK.8zXoR0lCfatQ4mBn.2l./3g.JYNbZCUEMZauwD.nFrJ115he', 'активен');
-
 
 -- -----------------------------------------------------------------
 -- --                        4. ПАЦИЕНТЫ                          --
@@ -77,24 +71,24 @@ INSERT INTO patients (passport_series, passport_number, oms_number, full_name, b
 ('4523', '252627', '1515151515151515', 'Романова Раиса Романовна', '1968-02-28', '+79811112233'),
 ('4524', '282930', '1616161616161616', 'Сергеев Станислав Сергеевич', '1977-11-07', '+79822223344');
 
-
 -- -----------------------------------------------------------------
--- --                 5. РАСПИСАНИЕ ВРАЧЕЙ НА СЕГОДНЯ             --
+-- --        5. РАСПИСАНИЕ ВРАЧЕЙ (СЕГОДНЯ + 6 ДНЕЙ ВПЕРЕД)       --
 -- -----------------------------------------------------------------
 INSERT INTO schedules (doctor_id, cabinet, date, start_time, end_time)
 SELECT
     d.doctor_id,
     (100 + d.doctor_id) AS cabinet, -- Кабинеты 101-107
-    CURRENT_DATE AS date,
+    d.day::date,
     s.start_time::time,
     (s.start_time + '30 minutes'::interval)::time AS end_time
-FROM doctors d
+FROM 
+    (SELECT doctor_id, generate_series(CURRENT_DATE, CURRENT_DATE + interval '6 days', '1 day') as day FROM doctors) d
 CROSS JOIN generate_series(
+    -- ИСПРАВЛЕНИЕ ЗДЕСЬ: Используем `timestamp` для `generate_series`
     CURRENT_DATE + '08:00'::time,
     CURRENT_DATE + '19:30'::time,
     '30 minutes'::interval
 ) AS s(start_time);
-
 
 -- -----------------------------------------------------------------
 -- --                6. ТАЛОНЫ И ЗАПИСИ НА ПРИЕМ                  --
@@ -122,67 +116,57 @@ INSERT INTO tickets (ticket_number, status, service_type, created_at) VALUES
 ('D003', 'ожидает', 'documents', NOW() - INTERVAL '10 minutes'),
 ('B003', 'ожидает', 'confirm_appointment', NOW() - INTERVAL '5 minutes');
 
--- 6.4 Талоны и записи, связанные с врачами
+-- 6.4 Талоны и записи, связанные с врачами (ТОЛЬКО НА СЕГОДНЯ)
 DO $$
 DECLARE
-    -- Запись к Терапевту (Иванов, ID=1), он сейчас ведет прием
-    -- Пациент: Андреев (ID=1)
-    v_schedule_id_1 INT;
-    v_ticket_id_1 INT;
-    
-    -- Запись к Хирургу (Петров, ID=2), этот пациент следующий
-    -- Пациент: Борисова (ID=2)
-    v_schedule_id_2 INT;
-    v_ticket_id_2 INT;
-    
-    -- Запись к Кардиологу (Смирнова, ID=3), этот пациент ожидает, но врач на перерыве
-    -- Пациент: Васильев (ID=3)
-    v_schedule_id_3 INT;
-    v_ticket_id_3 INT;
-    
+    v_schedule_id INT;
+    v_ticket_id INT;
 BEGIN
     -- --- ЗАПИСЬ №1: НА ПРИЕМЕ ---
-    -- Находим свободный слот у врача ID=1 около 11:30
-    SELECT schedule_id INTO v_schedule_id_1 FROM schedules WHERE doctor_id = 1 AND date = CURRENT_DATE AND start_time = '11:30:00' LIMIT 1;
-    -- Создаем талон
-    INSERT INTO tickets (ticket_number, status, service_type, created_at, started_at) VALUES ('B010', 'на_приеме', 'confirm_appointment', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '5 minutes') RETURNING ticket_id INTO v_ticket_id_1;
-    -- Создаем запись и связываем с талоном
-    INSERT INTO appointments (schedule_id, patient_id, ticket_id) VALUES (v_schedule_id_1, 1, v_ticket_id_1);
-    -- Обновляем статус слота
-    UPDATE schedules SET is_available = FALSE WHERE schedule_id = v_schedule_id_1;
+    SELECT schedule_id INTO v_schedule_id FROM schedules WHERE doctor_id = 1 AND date = CURRENT_DATE AND start_time = '11:30:00' LIMIT 1;
+    INSERT INTO tickets (ticket_number, status, service_type, created_at, started_at) VALUES ('B010', 'на_приеме', 'confirm_appointment', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '5 minutes') RETURNING ticket_id INTO v_ticket_id;
+    INSERT INTO appointments (schedule_id, patient_id, ticket_id) VALUES (v_schedule_id, 1, v_ticket_id);
+    UPDATE schedules SET is_available = FALSE WHERE schedule_id = v_schedule_id;
     
     -- --- ЗАПИСЬ №2: ЗАРЕГИСТРИРОВАН (СЛЕДУЮЩИЙ) ---
-    -- Находим свободный слот у врача ID=2 около 12:00
-    SELECT schedule_id INTO v_schedule_id_2 FROM schedules WHERE doctor_id = 2 AND date = CURRENT_DATE AND start_time = '12:00:00' LIMIT 1;
-    -- Создаем талон
-    INSERT INTO tickets (ticket_number, status, service_type, created_at) VALUES ('B011', 'зарегистрирован', 'confirm_appointment', NOW() - INTERVAL '45 minutes') RETURNING ticket_id INTO v_ticket_id_2;
-    -- Создаем запись и связываем с талоном
-    INSERT INTO appointments (schedule_id, patient_id, ticket_id) VALUES (v_schedule_id_2, 2, v_ticket_id_2);
-    -- Обновляем статус слота
-    UPDATE schedules SET is_available = FALSE WHERE schedule_id = v_schedule_id_2;
+    SELECT schedule_id INTO v_schedule_id FROM schedules WHERE doctor_id = 2 AND date = CURRENT_DATE AND start_time = '12:00:00' LIMIT 1;
+    INSERT INTO tickets (ticket_number, status, service_type, created_at) VALUES ('B011', 'зарегистрирован', 'confirm_appointment', NOW() - INTERVAL '45 minutes') RETURNING ticket_id INTO v_ticket_id;
+    INSERT INTO appointments (schedule_id, patient_id, ticket_id) VALUES (v_schedule_id, 2, v_ticket_id);
+    UPDATE schedules SET is_available = FALSE WHERE schedule_id = v_schedule_id;
     
     -- --- ЗАПИСЬ №3: ЗАРЕГИСТРИРОВАН (ВРАЧ НА ПЕРЕРЫВЕ) ---
-    -- Находим свободный слот у врача ID=3 около 12:30
-    SELECT schedule_id INTO v_schedule_id_3 FROM schedules WHERE doctor_id = 3 AND date = CURRENT_DATE AND start_time = '12:30:00' LIMIT 1;
-    -- Создаем талон
-    INSERT INTO tickets (ticket_number, status, service_type, created_at) VALUES ('B012', 'зарегистрирован', 'confirm_appointment', NOW() - INTERVAL '35 minutes') RETURNING ticket_id INTO v_ticket_id_3;
-    -- Создаем запись и связываем с талоном
-    INSERT INTO appointments (schedule_id, patient_id, ticket_id) VALUES (v_schedule_id_3, 3, v_ticket_id_3);
-    -- Обновляем статус слота
-    UPDATE schedules SET is_available = FALSE WHERE schedule_id = v_schedule_id_3;
+    SELECT schedule_id INTO v_schedule_id FROM schedules WHERE doctor_id = 3 AND date = CURRENT_DATE AND start_time = '12:30:00' LIMIT 1;
+    INSERT INTO tickets (ticket_number, status, service_type, created_at) VALUES ('B012', 'зарегистрирован', 'confirm_appointment', NOW() - INTERVAL '35 minutes') RETURNING ticket_id INTO v_ticket_id;
+    INSERT INTO appointments (schedule_id, patient_id, ticket_id) VALUES (v_schedule_id, 3, v_ticket_id);
+    UPDATE schedules SET is_available = FALSE WHERE schedule_id = v_schedule_id;
+END $$;
 
-    -- --- ЕЩЕ НЕСКОЛЬКО ПРОСТО ЗАБРОНИРОВАННЫХ СЛОТОВ БЕЗ ТАЛОНОВ ---
-    UPDATE schedules SET is_available = FALSE WHERE schedule_id IN (
-        SELECT schedule_id FROM schedules WHERE doctor_id = 4 AND date = CURRENT_DATE AND start_time = '13:00:00' LIMIT 1
-    );
-    INSERT INTO appointments (schedule_id, patient_id) VALUES (
-        (SELECT schedule_id FROM schedules WHERE doctor_id = 4 AND date = CURRENT_DATE AND start_time = '13:00:00' LIMIT 1), 4
-    );
-    
-    UPDATE schedules SET is_available = FALSE WHERE schedule_id IN (
-        SELECT schedule_id FROM schedules WHERE doctor_id = 1 AND date = CURRENT_DATE AND start_time = '14:00:00' LIMIT 1
-    );
-    INSERT INTO appointments (schedule_id, patient_id) VALUES (
-        (SELECT schedule_id FROM schedules WHERE doctor_id = 1 AND date = CURRENT_DATE AND start_time = '14:00:00' LIMIT 1), 5
-    );
+-- 6.5 Создание будущих записей на прием (без талонов) на 7 дней вперед
+DO $$
+DECLARE
+    d_id INT;
+    p_id INT;
+    s_id INT;
+    day_offset INT;
+BEGIN
+    FOR d_id IN 1..7 LOOP -- Для каждого врача
+        FOR day_offset IN 0..6 LOOP -- На каждый из 7 дней
+            FOR i IN 1..4 LOOP -- Создаем по 4 случайные записи на день
+                -- Выбираем случайного пациента
+                p_id := floor(random() * 15 + 1)::INT;
+                -- Выбираем случайный временной слот, который еще не занят
+                SELECT schedule_id INTO s_id FROM schedules
+                WHERE doctor_id = d_id AND date = (CURRENT_DATE + day_offset * INTERVAL '1 day')
+                AND is_available = TRUE
+                ORDER BY random()
+                LIMIT 1;
+                
+                -- Если свободный слот найден, создаем запись
+                IF s_id IS NOT NULL THEN
+                    INSERT INTO appointments (schedule_id, patient_id) VALUES (s_id, p_id);
+                    UPDATE schedules SET is_available = FALSE WHERE schedule_id = s_id;
+                END IF;
+            END LOOP;
+        END LOOP;
+    END LOOP;
 END $$;
