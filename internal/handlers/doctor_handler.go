@@ -72,9 +72,9 @@ type DoctorScreenResponse struct {
 	Message         string                             `json:"message,omitempty"`
 }
 
-// GetAllActiveDoctors возвращает список всех активных врачей.
-// @Summary      Получить список активных врачей
-// @Description  Возвращает список всех врачей, у которых is_active = true. Используется для заполнения выпадающих списков на клиенте.
+// GetAllActiveDoctors возвращает список всех врачей.
+// @Summary      Получить список всех врачей
+// @Description  Возвращает список всех врачей в системе. Используется для заполнения выпадающих списков на клиенте.
 // @Tags         doctor
 // @Produce      json
 // @Success      200 {array} models.Doctor "Массив моделей врачей"

@@ -30,11 +30,12 @@ func NewDoctorService(ticketRepo repository.TicketRepository, doctorRepo reposit
 	}
 }
 
-// GetAllActiveDoctors возвращает всех врачей со статусом is_active = true.
+// GetAllActiveDoctors возвращает всех врачей для использования в выпадающих списках.
 func (s *DoctorService) GetAllActiveDoctors() ([]models.Doctor, error) {
-	doctors, err := s.doctorRepo.GetAll(true)
+	// Установлено в false, чтобы получать всех врачей, а не только активных.
+	doctors, err := s.doctorRepo.GetAll(false)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка получения активных врачей из репозитория: %w", err)
+		return nil, fmt.Errorf("ошибка получения списка врачей из репозитория: %w", err)
 	}
 	return doctors, nil
 }

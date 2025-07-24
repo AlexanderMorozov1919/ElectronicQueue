@@ -1030,8 +1030,8 @@ paths:
       - database
   /api/doctor/active:
     get:
-      description: Возвращает список всех врачей, у которых is_active = true. Используется
-        для заполнения выпадающих списков на клиенте.
+      description: Возвращает список всех врачей в системе. Используется для заполнения
+        выпадающих списков на клиенте.
       produces:
       - application/json
       responses:
@@ -1047,7 +1047,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Получить список активных врачей
+      summary: Получить список всех врачей
       tags:
       - doctor
   /api/doctor/cabinets/active:
