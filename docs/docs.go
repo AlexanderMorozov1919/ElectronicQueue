@@ -1384,6 +1384,11 @@ const docTemplate = `{
         },
         "/api/registrar/call-next": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Находит первого пациента в очереди, меняет его статус на \"приглашен\" и присваивает номер окна",
                 "consumes": [
                     "application/json"
@@ -1619,6 +1624,11 @@ const docTemplate = `{
         },
         "/api/registrar/tickets/{id}/status": {
             "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Изменяет статус тикета по ID",
                 "consumes": [
                     "application/json"
