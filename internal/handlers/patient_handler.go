@@ -9,12 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// PatientHandler обрабатывает HTTP-запросы, связанные с пациентами.
 type PatientHandler struct {
 	service *services.PatientService
 }
 
-// NewPatientHandler создает новый экземпляр PatientHandler.
 func NewPatientHandler(service *services.PatientService) *PatientHandler {
 	return &PatientHandler{service: service}
 }
