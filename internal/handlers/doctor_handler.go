@@ -72,9 +72,9 @@ type DoctorScreenResponse struct {
 	Message         string                             `json:"message,omitempty"`
 }
 
-// GetAllActiveDoctors возвращает список всех активных врачей.
-// @Summary      Получить список активных врачей
-// @Description  Возвращает список всех врачей, у которых is_active = true. Используется для заполнения выпадающих списков на клиенте.
+// GetAllActiveDoctors возвращает список всех врачей.
+// @Summary      Получить список всех врачей
+// @Description  Возвращает список всех врачей в системе. Используется для заполнения выпадающих списков на клиенте.
 // @Tags         doctor
 // @Produce      json
 // @Success      200 {array} models.Doctor "Массив моделей врачей"
@@ -366,10 +366,11 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 
 		doctorName := ""
 		doctorSpecialty := ""
-		// Если расписание есть, извлекаем из него данные о враче.
+		doctorStatus := models.DoctorStatusInactive
 		if schedule != nil {
 			doctorName = schedule.Doctor.FullName
 			doctorSpecialty = schedule.Doctor.Specialization
+			doctorStatus = schedule.Doctor.Status
 		}
 
 		response := gin.H{
@@ -377,7 +378,8 @@ func (h *DoctorHandler) DoctorScreenUpdates(c *gin.Context) {
 			"doctor_specialty": doctorSpecialty,
 			"cabinet_number":   cabinetNumber,
 			"queue":            queue,
-			"message":          "", // Поле message больше не используется для этого сценария.
+			"message":          "",
+			"doctor_status":    doctorStatus,
 		}
 
 		log.WithField("queue_size", len(queue)).Info("Отправка обновления состояния экрана врача")
