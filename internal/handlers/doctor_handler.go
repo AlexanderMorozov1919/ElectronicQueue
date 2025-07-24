@@ -115,7 +115,21 @@ func (h *DoctorHandler) GetActiveCabinets(c *gin.Context) {
 // @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
 // @Router       /api/doctor/tickets/registered [get]
 func (h *DoctorHandler) GetRegisteredTickets(c *gin.Context) {
-	tickets, err := h.doctorService.GetRegisteredTickets()
+	// Получаем ID врача из JWT токена
+	doctorID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "ID врача не найден в токене"})
+		return
+	}
+
+	doctorIDUint, ok := doctorID.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Неверный формат ID врача"})
+		return
+	}
+
+	// Получить только талоны этого врача
+	tickets, err := h.doctorService.GetRegisteredTicketsForDoctor(doctorIDUint)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -132,7 +146,21 @@ func (h *DoctorHandler) GetRegisteredTickets(c *gin.Context) {
 // @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
 // @Router       /api/doctor/tickets/in-progress [get]
 func (h *DoctorHandler) GetInProgressTickets(c *gin.Context) {
-	tickets, err := h.doctorService.GetInProgressTickets()
+	// ID врача из JWT токена
+	doctorID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "ID врача не найден в токене"})
+		return
+	}
+
+	doctorIDUint, ok := doctorID.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Неверный формат ID врача"})
+		return
+	}
+
+	// Получить только талоны этого врача
+	tickets, err := h.doctorService.GetInProgressTicketsForDoctor(doctorIDUint)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

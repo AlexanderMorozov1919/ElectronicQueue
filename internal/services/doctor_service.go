@@ -55,9 +55,39 @@ func (s *DoctorService) GetRegisteredTickets() ([]models.TicketResponse, error) 
 	return response, nil
 }
 
+// Получить очередь к врачу (только его талоны)
+func (s *DoctorService) GetRegisteredTicketsForDoctor(doctorID uint) ([]models.TicketResponse, error) {
+	tickets, err := s.ticketRepo.FindByStatusAndDoctor(models.StatusRegistered, doctorID)
+	if err != nil {
+		return nil, err
+	}
+
+	var response []models.TicketResponse
+	for _, ticket := range tickets {
+		response = append(response, ticket.ToResponse())
+	}
+
+	return response, nil
+}
+
 // GetInProgressTickets возвращает талоны со статусом "на_приеме"
 func (s *DoctorService) GetInProgressTickets() ([]models.TicketResponse, error) {
 	tickets, err := s.ticketRepo.FindByStatus(models.StatusInProgress)
+	if err != nil {
+		return nil, err
+	}
+
+	var response []models.TicketResponse
+	for _, ticket := range tickets {
+		response = append(response, ticket.ToResponse())
+	}
+
+	return response, nil
+}
+
+// Получить талоны на приеме у врача
+func (s *DoctorService) GetInProgressTicketsForDoctor(doctorID uint) ([]models.TicketResponse, error) {
+	tickets, err := s.ticketRepo.FindByStatusAndDoctor(models.StatusInProgress, doctorID)
 	if err != nil {
 		return nil, err
 	}
