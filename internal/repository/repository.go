@@ -50,6 +50,8 @@ type ScheduleRepository interface {
 	FindByCabinetAndCurrentTime(cabinetNumber int) (*models.Schedule, error)
 	GetAllUniqueCabinets() ([]int, error)
 	FindFirstScheduleForCabinetByDay(cabinetNumber int) (*models.Schedule, error)
+	FindAllSchedulesForDate(date time.Time) ([]models.Schedule, error)
+	FindMinMaxTimesForDate(date time.Time) (time.Time, time.Time, error)
 }
 
 // AppointmentRepository определяет методы для взаимодействия с записями на прием.

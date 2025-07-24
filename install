@@ -225,7 +225,7 @@ if [[ "$FLUTTER_MODE" == "true" ]]; then
   echo "EXTERNAL_API_KEY=${EXTERNAL_API_KEY}" >> "$FLUTTER_ENV_FILE"
   echo ".env file for Flutter frontend generated."
   echo "Getting Flutter packages..."
-  if flutter pub get --no-example; then
+  if flutter pub get; then
     echo "Flutter setup complete."
   else
     echo "Failed to fetch packages."

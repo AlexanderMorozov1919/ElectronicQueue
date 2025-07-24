@@ -96,3 +96,55 @@ func (r *scheduleRepo) GetAllUniqueCabinets() ([]int, error) {
 func (r *scheduleRepo) Delete(id uint) error {
 	return r.db.Delete(&models.Schedule{}, id).Error
 }
+
+// FindAllSchedulesForDate fetches all schedules for a given date, preloading doctor info.
+func (r *scheduleRepo) FindAllSchedulesForDate(date time.Time) ([]models.Schedule, error) {
+	var schedules []models.Schedule
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	err := r.db.Preload("Doctor").
+		Where("date >= ? AND date < ?", startOfDay, endOfDay).
+		Order("doctor_id asc, start_time asc").
+		Find(&schedules).Error
+
+	return schedules, err
+}
+
+// FindMinMaxTimesForDate finds the earliest start time and latest end time for all schedules on a given date.
+func (r *scheduleRepo) FindMinMaxTimesForDate(date time.Time) (time.Time, time.Time, error) {
+	var result struct {
+		MinStartTime string
+		MaxEndTime   string
+	}
+
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	err := r.db.Table("schedules").
+		Select("MIN(start_time) as min_start_time, MAX(end_time) as max_end_time").
+		Where("date >= ? AND date < ?", startOfDay, endOfDay).
+		Scan(&result).Error
+
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	// Handle case where no schedules are found
+	if result.MinStartTime == "" || result.MaxEndTime == "" {
+		return time.Time{}, time.Time{}, gorm.ErrRecordNotFound
+	}
+
+	layout := "15:04:05"
+	minTime, err := time.Parse(layout, result.MinStartTime)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	maxTime, err := time.Parse(layout, result.MaxEndTime)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	return minTime, maxTime, nil
+}

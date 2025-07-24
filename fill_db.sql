@@ -74,21 +74,31 @@ INSERT INTO patients (passport_series, passport_number, oms_number, full_name, b
 -- -----------------------------------------------------------------
 -- --        5. РАСПИСАНИЕ ВРАЧЕЙ (СЕГОДНЯ + 6 ДНЕЙ ВПЕРЕД)       --
 -- -----------------------------------------------------------------
+-- Индивидуальные временные границы для каждого врача
+WITH doctor_times AS (
+    SELECT 1 AS doctor_id, '08:00'::time AS start_time, '19:30'::time AS end_time UNION ALL
+    SELECT 2, '09:00', '18:00' UNION ALL
+    SELECT 3, '10:00', '17:00' UNION ALL
+    SELECT 4, '08:30', '16:30' UNION ALL
+    SELECT 5, '12:00', '19:30' UNION ALL
+    SELECT 6, '08:00', '15:00' UNION ALL
+    SELECT 7, '11:00', '19:00'
+)
 INSERT INTO schedules (doctor_id, cabinet, date, start_time, end_time)
 SELECT
     d.doctor_id,
-    (100 + d.doctor_id) AS cabinet, -- Кабинеты 101-107
+    (100 + d.doctor_id) AS cabinet,
     d.day::date,
     s.start_time::time,
     (s.start_time + '30 minutes'::interval)::time AS end_time
 FROM 
     (SELECT doctor_id, generate_series(CURRENT_DATE, CURRENT_DATE + interval '6 days', '1 day') as day FROM doctors) d
-CROSS JOIN generate_series(
-    -- ИСПРАВЛЕНИЕ ЗДЕСЬ: Используем `timestamp` для `generate_series`
-    CURRENT_DATE + '08:00'::time,
-    CURRENT_DATE + '19:30'::time,
-    '30 minutes'::interval
-) AS s(start_time);
+    JOIN doctor_times dt ON d.doctor_id = dt.doctor_id
+    CROSS JOIN LATERAL generate_series(
+        (CURRENT_DATE + dt.start_time::time),
+        (CURRENT_DATE + dt.end_time::time),
+        '30 minutes'::interval
+    ) AS s(start_time);
 
 -- -----------------------------------------------------------------
 -- --                6. ТАЛОНЫ И ЗАПИСИ НА ПРИЕМ                  --

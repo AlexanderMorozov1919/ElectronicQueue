@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -116,10 +117,17 @@ func listenForNotifications(ctx context.Context, pool *pgxpool.Pool, notificatio
 
 	_, err = conn.Exec(ctx, "LISTEN ticket_update")
 	if err != nil {
-		log.WithError(err).Error("Listener: Failed to execute LISTEN command")
+		log.WithError(err).Error("Listener: Failed to execute LISTEN command for ticket_update")
 		return
 	}
 	log.Info("Listener: Listening to 'ticket_update' channel")
+
+	_, err = conn.Exec(ctx, "LISTEN schedule_update")
+	if err != nil {
+		log.WithError(err).Error("Listener: Failed to execute LISTEN command for schedule_update")
+		return
+	}
+	log.Info("Listener: Listening to 'schedule_update' channel")
 
 	for {
 		notification, err := conn.Conn().WaitForNotification(ctx)
@@ -132,6 +140,7 @@ func listenForNotifications(ctx context.Context, pool *pgxpool.Pool, notificatio
 			time.Sleep(5 * time.Second)
 			continue
 		}
+		log.WithField("channel", notification.Channel).Info("Listener: Received notification")
 		notifications <- notification.Payload
 	}
 }
@@ -175,7 +184,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	audioHandler := handlers.NewAudioHandler()
 	patientHandler := handlers.NewPatientHandler(patientService)
 	appointmentHandler := handlers.NewAppointmentHandler(appointmentService)
-	scheduleHandler := handlers.NewScheduleHandler(scheduleService)
+	scheduleHandler := handlers.NewScheduleHandler(scheduleService, broker)
 
 	// SSE-эндпоинт для табло очереди регистратуры
 	r.GET("/tickets", sseHandler(broker, "reception_sse"))
@@ -187,7 +196,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	{
 		auth.POST("/login/registrar", authHandler.LoginRegistrar)
 		auth.POST("/login/doctor", authHandler.LoginDoctor)
-		
 
 	}
 
@@ -233,7 +241,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	// Группа для регистратора, защищенная JWT токеном
 	registrar := r.Group("/api/registrar").Use(middleware.RequireRole(jwtManager, "registrar"))
 	{
-		// Основные действия регистратора
 		registrar.POST("/call-next", registrarHandler.CallNext)
 		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
 		registrar.GET("/patients/search", patientHandler.SearchPatients)
@@ -253,6 +260,12 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	audioGroup := r.Group("/api/audio")
 	{
 		audioGroup.GET("/announce", audioHandler.GenerateAnnouncement)
+	}
+
+	// Группа для расписаний
+	scheduleGroup := r.Group("/api/schedules")
+	{
+		scheduleGroup.GET("/today/updates", scheduleHandler.GetTodayScheduleUpdates)
 	}
 
 	return r
@@ -282,10 +295,15 @@ func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 					return false
 				}
 
+				// Игнорируем уведомления, не связанные с талонами
+				if !strings.Contains(payloadStr, "ticket_number") {
+					return true
+				}
+
 				log.WithField("payload", payloadStr).Info("SSE Handler: Sending message to client")
 				var payload NotificationPayload
 				if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
-					log.WithError(err).Error("Failed to unmarshal notification payload")
+					log.WithError(err).Warn("Failed to unmarshal notification payload, skipping.")
 					return true
 				}
 
