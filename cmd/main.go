@@ -196,11 +196,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	{
 		auth.POST("/login/registrar", authHandler.LoginRegistrar)
 		auth.POST("/login/doctor", authHandler.LoginDoctor)
-<<<<<<< HEAD
-=======
-		
 
->>>>>>> d76b24890a8c9372582d2090782fb3dc7ebc2920
 	}
 
 	admin := r.Group("/api/admin").Use(middleware.RequireAPIKey(cfg.InternalAPIKey))
