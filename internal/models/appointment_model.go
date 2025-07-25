@@ -39,5 +39,6 @@ type UpdateAppointmentRequest struct {
 // Используется для отображения журнала-планировщика.
 type ScheduleWithAppointmentInfo struct {
 	Schedule
-	Appointment *Appointment `json:"appointment,omitempty"`
+	Appointment  *Appointment `json:"appointment,omitempty"`
+	TicketNumber *string      `json:"ticket_number,omitempty"`
 }

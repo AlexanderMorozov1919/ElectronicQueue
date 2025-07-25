@@ -15,6 +15,13 @@ definitions:
     required:
     - ticket_id
     type: object
+  handlers.ConfirmAppointmentRequest:
+    properties:
+      ticket_id:
+        type: integer
+    required:
+    - ticket_id
+    type: object
   handlers.ConfirmationRequest:
     description: Запрос подтверждения действия (печать талона или получение электронного)
     properties:
@@ -376,6 +383,8 @@ definitions:
         type: integer
       start_time:
         type: string
+      ticket_number:
+        type: string
     type: object
   models.Service:
     properties:
@@ -466,6 +475,27 @@ definitions:
     required:
     - data
     - filters
+    type: object
+  services.AppointmentDetailsResponse:
+    properties:
+      appointment_id:
+        type: integer
+      cabinet:
+        type: integer
+      date:
+        type: string
+      doctor_name:
+        type: string
+      doctor_specialization:
+        type: string
+      is_future:
+        type: boolean
+      patient_name:
+        type: string
+      start_time:
+        type: string
+      ticket_number:
+        type: string
     type: object
   services.DoctorScheduleModel:
     properties:
@@ -1402,6 +1432,91 @@ paths:
       summary: Создать новую запись на прием
       tags:
       - registrar
+  /api/registrar/appointments/{id}:
+    delete:
+      description: Удаляет запись на прием и освобождает связанный с ней слот в расписании.
+      parameters:
+      - description: ID Записи
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Запись успешно удалена
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'Ошибка: неверный ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Запись не найдена
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Удалить будущую запись
+      tags:
+      - registrar
+  /api/registrar/appointments/{id}/confirm:
+    patch:
+      consumes:
+      - application/json
+      description: Привязывает существующую запись к новому талону, который пациент
+        получил сегодня, и меняет статус талона на 'зарегистрирован', отправляя пациента
+        в очередь к врачу.
+      parameters:
+      - description: ID Записи для подтверждения
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID нового талона
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ConfirmAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Обновленная запись с привязанным талоном
+          schema:
+            $ref: '#/definitions/models.Appointment'
+        "400":
+          description: 'Ошибка: неверный формат запроса'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка сервера (запись или талон не найдены, или запись уже
+            подтверждена)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Подтвердить явку по записи
+      tags:
+      - registrar
   /api/registrar/call-next:
     post:
       consumes:
@@ -1480,6 +1595,41 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Создать нового пациента
+      tags:
+      - registrar
+  /api/registrar/patients/{patient_id}/appointments:
+    get:
+      description: Возвращает все прошлые и будущие записи для указанного пациента.
+      parameters:
+      - description: ID Пациента
+        in: path
+        name: patient_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Массив записей пациента
+          schema:
+            items:
+              $ref: '#/definitions/services.AppointmentDetailsResponse'
+            type: array
+        "400":
+          description: 'Ошибка: неверный ID пациента'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить историю записей пациента
       tags:
       - registrar
   /api/registrar/patients/search:

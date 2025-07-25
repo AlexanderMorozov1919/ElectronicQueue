@@ -163,9 +163,9 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	ticketService := services.NewTicketService(repo.Ticket, repo.Service)
 	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
 	authService := services.NewAuthService(repo.Registrar, repo.Doctor, jwtManager)
-	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db)) // Для универсального API
+	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db))
 	patientService := services.NewPatientService(repo.Patient)
-	appointmentService := services.NewAppointmentService(repo.Appointment)
+	appointmentService := services.NewAppointmentService(repo.Appointment, repo.Ticket)
 	cleanupService := services.NewCleanupService(repo.Cleanup)
 	tasksTimerService := services.NewTasksTimerService(cleanupService, cfg)
 	scheduleService := services.NewScheduleService(repo.Schedule, repo.Doctor)
@@ -219,7 +219,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	{
 		publicDoctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
 		publicDoctorGroup.GET("/cabinets/active", doctorHandler.GetActiveCabinets)
-
 	}
 
 	protectedDoctorGroup := r.Group("/api/doctor").Use(middleware.RequireRole(jwtManager, "doctor"))
@@ -242,6 +241,9 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		registrar.POST("/patients", patientHandler.CreatePatient)
 		registrar.GET("/schedules/doctor/:doctor_id", appointmentHandler.GetDoctorSchedule)
 		registrar.POST("/appointments", appointmentHandler.CreateAppointment)
+		registrar.GET("/patients/:patient_id/appointments", appointmentHandler.GetPatientAppointments)
+		registrar.DELETE("/appointments/:id", appointmentHandler.DeleteAppointment)
+		registrar.PATCH("/appointments/:id/confirm", appointmentHandler.ConfirmAppointment)
 	}
 
 	dbAPI := r.Group("/api/database").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
