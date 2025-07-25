@@ -17,9 +17,9 @@ import (
 
 // TicketHandler содержит реализует обработчики HTTP-запросов, связанных с талонами
 // @Description Обработчики HTTP-запросов для работы с талонами электронной очереди
-// @Tags tickets
-// @Accept json
-// @Produce json
+// @Tags         tickets
+// @Accept       json
+// @Produce      json
 type TicketHandler struct {
 	service *services.TicketService
 	config  *config.Config
@@ -80,7 +80,7 @@ func (h *TicketHandler) StartPage(c *gin.Context) {
 // @Tags         tickets
 // @Accept       json
 // @Produce      json
-// @Success      200 {object} map[string][]services.Service "Список услуг"
+// @Success      200 {object} map[string][]models.Service "Список услуг"
 // @Router       /api/tickets/services [get]
 func (h *TicketHandler) Services(c *gin.Context) {
 	services, err := h.service.GetAllServices()
@@ -293,7 +293,6 @@ func (h *TicketHandler) GetAllActive(c *gin.Context) {
 		return
 	}
 
-	// Конвертируем []models.Ticket в []models.TicketResponse
 	var response []models.TicketResponse
 	for _, t := range tickets {
 		response = append(response, t.ToResponse())
@@ -301,3 +300,4 @@ func (h *TicketHandler) GetAllActive(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+

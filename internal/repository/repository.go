@@ -15,13 +15,14 @@ type DoctorRepository interface {
 	GetByID(id uint) (*models.Doctor, error)
 	GetAll(onlyActive bool) ([]models.Doctor, error)
 	GetAnyDoctor() (*models.Doctor, error)
+	FindByLogin(login string) (*models.Doctor, error)
+	UpdateStatus(doctorID uint, status models.DoctorStatus) error
 }
 
 // PatientRepository определяет методы для взаимодействия с данными пациентов.
 type PatientRepository interface {
-	Create(patient *models.Patient) error
-	Update(patient *models.Patient) error
-	GetByID(id uint) (*models.Patient, error)
+	Create(patient *models.Patient) (*models.Patient, error)
+	Search(query string) ([]models.Patient, error)
 	FindByPassport(series, number string) (*models.Patient, error)
 }
 
@@ -35,22 +36,56 @@ type TicketRepository interface {
 	GetNextWaitingTicket() (*models.Ticket, error)
 	GetMaxTicketNumberForPrefix(prefix string) (int, error)
 	Delete(id uint) error
-	FindFirstByStatus(status models.TicketStatus) (*models.Ticket, error)
+	FindInProgressTicketForCabinet(cabinetNumber int) (*models.Ticket, error)
+	FindTicketsForCabinetQueue(cabinetNumber int) ([]models.DoctorQueueTicketResponse, error)
+	FindByStatusAndDoctor(status models.TicketStatus, doctorID uint) ([]models.Ticket, error)
 }
 
 // ScheduleRepository определяет методы для взаимодействия с расписанием.
 type ScheduleRepository interface {
 	Create(schedule *models.Schedule) error
 	Update(schedule *models.Schedule) error
+	Delete(id uint) error
 	GetByID(id uint) (*models.Schedule, error)
 	FindByDoctorAndDate(doctorID uint, date time.Time) ([]models.Schedule, error)
+	FindByCabinetAndCurrentTime(cabinetNumber int) (*models.Schedule, error)
+	GetAllUniqueCabinets() ([]int, error)
+	FindFirstScheduleForCabinetByDay(cabinetNumber int) (*models.Schedule, error)
+	FindAllSchedulesForDate(date time.Time) ([]models.Schedule, error)
+	FindMinMaxTimesForDate(date time.Time) (time.Time, time.Time, error)
 }
 
 // AppointmentRepository определяет методы для взаимодействия с записями на прием.
 type AppointmentRepository interface {
-	Create(appointment *models.Appointment) error
+	CreateAppointmentInTransaction(req *models.CreateAppointmentRequest) (*models.Appointment, error)
+	FindScheduleAndAppointmentsByDoctorAndDate(doctorID uint, date time.Time) ([]models.ScheduleWithAppointmentInfo, error)
+	FindByID(id uint) (*models.Appointment, error)
+	FindByPatientID(patientID uint) ([]models.Appointment, error)
 	Update(appointment *models.Appointment) error
-	GetByID(id uint) (*models.Appointment, error)
+	DeleteAppointmentAndFreeSlot(appointmentID uint) error
+}
+
+// RegistrarRepository определяет методы для аутентификации регистраторов.
+type RegistrarRepository interface {
+	FindByLogin(login string) (*models.Registrar, error)
+	Create(registrar *models.Registrar) error
+}
+
+// ServiceRepository определяет методы для работы с услугами терминала.
+type ServiceRepository interface {
+	GetAll() ([]models.Service, error)
+	GetByID(id uint) (*models.Service, error)
+	GetByServiceID(serviceID string) (*models.Service, error)
+	Create(service *models.Service) error
+	Update(service *models.Service) error
+	Delete(id uint) error
+}
+
+// CleanupRepository определяет методы для очистки данных.
+type CleanupRepository interface {
+	TruncateTickets() error
+	GetTicketsCount() (int64, error)
+	GetOrphanedAppointmentsCount() (int64, error)
 }
 
 // Repository содержит все репозитории приложения.
@@ -61,6 +96,8 @@ type Repository struct {
 	Schedule    ScheduleRepository
 	Appointment AppointmentRepository
 	Service     ServiceRepository
+	Registrar   RegistrarRepository
+	Cleanup     CleanupRepository
 }
 
 // NewRepository создает новый экземпляр главного репозитория.
@@ -72,5 +109,7 @@ func NewRepository(db *gorm.DB) *Repository {
 		Schedule:    NewScheduleRepository(db),
 		Appointment: NewAppointmentRepository(db),
 		Service:     NewServiceRepository(db),
+		Registrar:   NewRegistrarRepository(db),
+		Cleanup:     NewCleanupRepository(db),
 	}
 }

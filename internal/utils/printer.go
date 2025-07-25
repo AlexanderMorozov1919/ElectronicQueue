@@ -9,13 +9,28 @@ import (
 func PrintFile(printerName, filePath string) error {
 	var cmd *exec.Cmd
 
+	// Проверка доступности принтера
+	var checkCmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		checkCmd = exec.Command("powershell", "-Command", fmt.Sprintf("Get-Printer -Name '%s'", printerName))
+	case "linux", "darwin":
+		checkCmd = exec.Command("lpstat", "-p", printerName)
+	default:
+		return fmt.Errorf("неподдерживаемая операционная система: %s", runtime.GOOS)
+	}
+
+	checkOutput, checkErr := checkCmd.CombinedOutput()
+	if checkErr != nil {
+		return fmt.Errorf("принтер '%s' недоступен или не найден: %v\nВывод команды: %s", printerName, checkErr, string(checkOutput))
+	}
+
+	// Печать файла
 	switch runtime.GOOS {
 	case "windows":
 		cmd = exec.Command("mspaint", "/pt", filePath, printerName)
 	case "linux", "darwin":
 		cmd = exec.Command("lp", "-d", printerName, filePath)
-	default:
-		return fmt.Errorf("неподдерживаемая операционная система: %s", runtime.GOOS)
 	}
 
 	output, err := cmd.CombinedOutput()

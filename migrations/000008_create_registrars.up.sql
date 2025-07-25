@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS registrars (
+    registrar_id SERIAL PRIMARY KEY,
+    window_number INT NOT NULL,
+    login VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

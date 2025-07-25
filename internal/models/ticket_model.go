@@ -41,7 +41,7 @@ type Ticket struct {
 // @Description Ответ API с данными талона
 // @Name TicketResponse
 // @swagger:model
-// @Schema// TicketResponse определяет данные, возвращаемые API.
+// @Schema
 type TicketResponse struct {
 	ID           uint         `json:"id"`
 	TicketNumber string       `json:"ticket_number"`
@@ -53,6 +53,14 @@ type TicketResponse struct {
 	CalledAt     *time.Time   `json:"called_at,omitempty"`
 	StartedAt    *time.Time   `json:"started_at,omitempty"`
 	CompletedAt  *time.Time   `json:"completed_at,omitempty"`
+}
+
+// DoctorQueueTicketResponse определяет структуру для одного элемента в очереди к врачу.
+type DoctorQueueTicketResponse struct {
+	StartTime       string       `gorm:"column:start_time" json:"start_time"`
+	TicketNumber    string       `gorm:"column:ticket_number" json:"ticket_number"`
+	PatientFullName string       `gorm:"column:full_name" json:"patient_full_name"`
+	Status          TicketStatus `gorm:"column:status" json:"status"`
 }
 
 // ToResponse преобразует модель Ticket в объект ответа TicketResponse (DTO)

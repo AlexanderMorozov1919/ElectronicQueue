@@ -145,7 +145,7 @@ fi
 # Run Flutter frontend
 if [[ "$RUN_FLUTTER" == "true" ]]; then
   cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
-  if flutter pub get --no-example; then
+  if flutter pub get; then
     echo "Flutter setup complete."
   else
     echo "Failed to fetch packages."
@@ -158,7 +158,7 @@ if [[ "$RUN_FLUTTER" == "true" ]]; then
   PORT=$FRONTEND_PORT
   for MAIN_FILE in "${FLUTTER_MAIN_FILES[@]}"; do
     echo "Starting Flutter frontend: $MAIN_FILE on port $PORT..."
-    flutter run -t "lib/$MAIN_FILE" -d chrome --web-port=$PORT &
+    flutter run -t "lib/$MAIN_FILE" -d ${BROWSER:-chrome} --web-port=$PORT &
     PORT=$((PORT+1))
   done
   echo "All Flutter frontends started."
