@@ -110,7 +110,7 @@ func (r *ticketRepo) FindTicketsForCabinetQueue(cabinetNumber int) ([]models.Doc
 	return results, nil
 }
 
-// Найтиьалоны конкретного врача по статусу
+// Найти талоны конкретного врача по статусу
 // связь : талон - запись - расписание - врач
 func (r *ticketRepo) FindByStatusAndDoctor(status models.TicketStatus, doctorID uint) ([]models.Ticket, error) {
 	var tickets []models.Ticket
