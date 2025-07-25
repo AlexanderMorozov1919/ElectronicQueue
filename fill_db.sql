@@ -133,42 +133,35 @@ END $$;
 DO $$
 DECLARE
     d_id INT;
-    p_id_start INT := 2; -- Начинаем с пациента ID=2
+    p_id_start INT := 2;
     v_schedule_id INT;
     v_ticket_id INT;
     ticket_num INT := 11;
 BEGIN
-    FOR d_id IN 1..7 LOOP -- Для каждого врача
-        -- Пропускаем врача, который на перерыве, чтобы у него не было очереди "на прием"
+    FOR d_id IN 1..7 LOOP
         CONTINUE WHEN (SELECT status FROM doctors WHERE doctor_id = d_id) = 'перерыв';
-
-        FOR i IN 1..4 LOOP -- Создаем по 4 записи
-            -- Выбираем следующий свободный слот для врача на сегодня
+        FOR i IN 1..4 LOOP
             SELECT schedule_id INTO v_schedule_id FROM schedules
             WHERE doctor_id = d_id AND date = CURRENT_DATE AND is_available = TRUE
             ORDER BY start_time
             LIMIT 1;
 
             IF v_schedule_id IS NOT NULL THEN
-                -- Создаем талон
                 INSERT INTO tickets (ticket_number, status, service_type, window_number, created_at) 
                 VALUES ('B0' || ticket_num::text, 'зарегистрирован', 'confirm_appointment', floor(random() * 7 + 1)::INT, NOW() - (random() * 60 + 5) * INTERVAL '1 minute') 
                 RETURNING ticket_id INTO v_ticket_id;
                 
-                -- Создаем запись и связываем с талоном
                 INSERT INTO appointments (schedule_id, patient_id, ticket_id) VALUES (v_schedule_id, p_id_start, v_ticket_id);
                 
-                -- Обновляем статус слота
                 UPDATE schedules SET is_available = FALSE WHERE schedule_id = v_schedule_id;
 
                 p_id_start := p_id_start + 1;
                 ticket_num := ticket_num + 1;
-                IF p_id_start > 15 THEN p_id_start := 2; END IF; -- Циклически используем пациентов
+                IF p_id_start > 15 THEN p_id_start := 2; END IF;
             END IF;
         END LOOP;
     END LOOP;
 END $$;
-
 
 -- 6.6 Создание будущих записей на прием (без талонов) на 6 дней вперед
 DO $$
@@ -178,9 +171,9 @@ DECLARE
     s_id INT;
     day_offset INT;
 BEGIN
-    FOR d_id IN 1..7 LOOP -- Для каждого врача
-        FOR day_offset IN 1..6 LOOP -- На следующие 6 дней
-            FOR i IN 1..4 LOOP -- Создаем по 4 случайные записи на день
+    FOR d_id IN 1..7 LOOP
+        FOR day_offset IN 1..6 LOOP
+            FOR i IN 1..4 LOOP
                 p_id := floor(random() * 15 + 1)::INT;
                 
                 SELECT schedule_id INTO s_id FROM schedules
@@ -190,6 +183,37 @@ BEGIN
                 LIMIT 1;
                 
                 IF s_id IS NOT NULL THEN
+                    INSERT INTO appointments (schedule_id, patient_id) VALUES (s_id, p_id);
+                    UPDATE schedules SET is_available = FALSE WHERE schedule_id = s_id;
+                END IF;
+            END LOOP;
+        END LOOP;
+    END LOOP;
+END $$;
+
+-- 6.7 Добавляем "заочные" записи (без талонов) на сегодня и завтра
+DO $$
+DECLARE
+    d_id INT;
+    p_id INT;
+    s_id INT;
+    day_offset INT;
+BEGIN
+    FOR d_id IN 1..7 LOOP -- Для каждого врача
+        FOR day_offset IN 0..1 LOOP -- На сегодня (0) и завтра (1)
+            FOR i IN 1..3 LOOP -- Создаем по 3 случайные записи
+                p_id := floor(random() * 15 + 1)::INT;
+                
+                SELECT schedule_id INTO s_id FROM schedules
+                WHERE doctor_id = d_id AND date = (CURRENT_DATE + day_offset * INTERVAL '1 day')
+                AND is_available = TRUE
+                -- Выбираем слоты после 14:00 для сегодняшнего дня, чтобы не пересекаться с активной очередью
+                AND (CASE WHEN day_offset = 0 THEN start_time >= '14:00:00' ELSE TRUE END)
+                ORDER BY random()
+                LIMIT 1;
+                
+                IF s_id IS NOT NULL THEN
+                    -- Создаем запись БЕЗ талона
                     INSERT INTO appointments (schedule_id, patient_id) VALUES (s_id, p_id);
                     UPDATE schedules SET is_available = FALSE WHERE schedule_id = s_id;
                 END IF;
