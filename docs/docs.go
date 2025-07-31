@@ -2855,7 +2855,11 @@ const docTemplate = `{
                 "StatusInvited": "Пациент вызван к окну"
             },
             "x-enum-descriptions": [
-                "Пациент вызван к окну"
+                "",
+                "Пациент вызван к окну",
+                "",
+                "",
+                ""
             ],
             "x-enum-varnames": [
                 "StatusWaiting",
