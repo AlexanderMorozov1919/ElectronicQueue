@@ -250,6 +250,23 @@ definitions:
     - end_time
     - start_time
     type: object
+  models.DailyReportRow:
+    properties:
+      appointment_time:
+        type: string
+      cabinet_number:
+        type: integer
+      doctor_full_name:
+        type: string
+      doctor_specialization:
+        type: string
+      patient_full_name:
+        type: string
+      status:
+        $ref: '#/definitions/models.TicketStatus'
+      ticket_number:
+        type: string
+    type: object
   models.DeleteRequest:
     properties:
       filters:
@@ -1671,6 +1688,30 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Поиск пациентов по ФИО, ОМС или паспорту
+      tags:
+      - registrar
+  /api/registrar/reports/daily:
+    get:
+      description: Возвращает список всех талонов, созданных сегодня, с детальной
+        информацией.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Массив строк отчета
+          schema:
+            items:
+              $ref: '#/definitions/models.DailyReportRow'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить отчет по талонам за текущий день
       tags:
       - registrar
   /api/registrar/schedules/doctor/{doctor_id}:

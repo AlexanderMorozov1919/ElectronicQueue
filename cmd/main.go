@@ -244,6 +244,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		registrar.GET("/patients/:patient_id/appointments", appointmentHandler.GetPatientAppointments)
 		registrar.DELETE("/appointments/:id", appointmentHandler.DeleteAppointment)
 		registrar.PATCH("/appointments/:id/confirm", appointmentHandler.ConfirmAppointment)
+		registrar.GET("/reports/daily", registrarHandler.GetDailyReport)
 	}
 
 	dbAPI := r.Group("/api/database").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))

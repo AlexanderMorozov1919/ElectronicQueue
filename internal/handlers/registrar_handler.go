@@ -138,3 +138,24 @@ func (h *RegistrarHandler) DeleteTicket(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "ticket deleted"})
 }
+
+// GetDailyReport godoc
+// @Summary      Получить отчет по талонам за текущий день
+// @Description  Возвращает список всех талонов, созданных сегодня, с детальной информацией.
+// @Tags         registrar
+// @Produce      json
+// @Success      200 {array} models.DailyReportRow "Массив строк отчета"
+// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Security     ApiKeyAuth
+// @Router       /api/registrar/reports/daily [get]
+func (h *RegistrarHandler) GetDailyReport(c *gin.Context) {
+	log := logger.Default()
+	reportData, err := h.ticketService.GetDailyReport()
+	if err != nil {
+		log.WithError(err).Error("GetDailyReport: Failed to get daily report from service")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось получить дневной отчет"})
+		return
+	}
+
+	c.JSON(http.StatusOK, reportData)
+}
