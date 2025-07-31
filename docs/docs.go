@@ -1743,6 +1743,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/registrar/reports/daily": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех талонов, созданных сегодня, с детальной информацией.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Получить отчет по талонам за текущий день",
+                "responses": {
+                    "200": {
+                        "description": "Массив строк отчета",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.DailyReportRow"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/registrar/schedules/doctor/{doctor_id}": {
             "get": {
                 "security": [
@@ -2541,6 +2578,32 @@ const docTemplate = `{
                 "start_time": {
                     "type": "string",
                     "example": "2025-01-01T09:00:00Z"
+                }
+            }
+        },
+        "models.DailyReportRow": {
+            "type": "object",
+            "properties": {
+                "appointment_time": {
+                    "type": "string"
+                },
+                "cabinet_number": {
+                    "type": "integer"
+                },
+                "doctor_full_name": {
+                    "type": "string"
+                },
+                "doctor_specialization": {
+                    "type": "string"
+                },
+                "patient_full_name": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.TicketStatus"
+                },
+                "ticket_number": {
+                    "type": "string"
                 }
             }
         },

@@ -126,6 +126,17 @@ func (s *TicketService) CallNextTicket(windowNumber int) (*models.Ticket, error)
 	return ticket, nil
 }
 
+// НОВЫЙ МЕТОД
+func (s *TicketService) GetDailyReport() ([]models.DailyReportRow, error) {
+	today := time.Now()
+	report, err := s.repo.GetDailyReport(today)
+	if err != nil {
+		logger.Default().WithError(err).Error("GetDailyReport: service error")
+		return nil, fmt.Errorf("ошибка получения данных для отчета: %w", err)
+	}
+	return report, nil
+}
+
 func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
 	service, err := s.serviceRepo.GetByServiceID(serviceID)
 	if err != nil {

@@ -300,4 +300,3 @@ func (h *TicketHandler) GetAllActive(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
-

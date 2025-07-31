@@ -121,3 +121,36 @@ func (r *ticketRepo) FindByStatusAndDoctor(status models.TicketStatus, doctorID 
 		Find(&tickets).Error
 	return tickets, err
 }
+
+// GetDailyReport собирает данные для ежедневного отчета.
+// Используем LEFT JOIN, чтобы включить талоны, которые еще не привязаны к записи.
+func (r *ticketRepo) GetDailyReport(date time.Time) ([]models.DailyReportRow, error) {
+	var results []models.DailyReportRow
+
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	err := r.db.Table("tickets as t").
+		Select(`
+            t.ticket_number,
+            p.full_name as patient_full_name,
+            d.full_name as doctor_full_name,
+            d.specialization as doctor_specialization,
+            s.cabinet as cabinet_number,
+            to_char(s.start_time, 'HH24:MI') as appointment_time,
+            t.status
+        `).
+		Joins("LEFT JOIN appointments as a ON t.ticket_id = a.ticket_id").
+		Joins("LEFT JOIN patients as p ON a.patient_id = p.patient_id").
+		Joins("LEFT JOIN schedules as s ON a.schedule_id = s.schedule_id").
+		Joins("LEFT JOIN doctors as d ON s.doctor_id = d.doctor_id").
+		Where("t.created_at >= ? AND t.created_at < ?", startOfDay, endOfDay).
+		Order("t.created_at ASC").
+		Scan(&results).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
