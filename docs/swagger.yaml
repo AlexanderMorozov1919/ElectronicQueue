@@ -555,7 +555,6 @@ definitions:
       min_start_time:
         type: string
     type: object
-host: localhost:8080
 info:
   contact: {}
   description: API для системы электронной очереди
