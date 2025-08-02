@@ -20,7 +20,7 @@ usage() {
   echo "Usage: $0 [local] [docker] [go] [go-docker] [flutter] [flutter-docker] [database] [fill] [rewrite]"
   echo
   echo "Key descriptions:"
-  echo "  go               - Build and setup Go backend (includes DB migration)"
+  echo "  go               - Build and setup Go backend for Linux, Windows, macOS (includes DB migration)"
   echo "  go-docker        - Build and setup Go backend in Docker"
   echo "  flutter          - Build and setup Flutter frontend"
   echo "  flutter-docker   - Build and setup Flutter frontend in Docker"
@@ -236,70 +236,94 @@ if [[ "$GO_MODE" == "true" ]]; then
     exit 1
   fi
 
-  # Собираем программу
-  echo "Building Go application..."
-  if go build -o main.exe cmd/main.go; then
-    echo "Build successful. Binary: ./main.exe"
+  # Создаем чистую директорию для сборок
+  echo "Creating build directory..."
+  rm -rf ./build
+  mkdir -p ./build
+
+  # Целевые платформы для кросс-компиляции
+  TARGET_PLATFORMS="linux/amd64 windows/amd64 darwin/amd64"
+
+  echo "Building Go application for Linux, Windows, and macOS..."
+
+  for target in $TARGET_PLATFORMS; do
+    GOOS=${target%/*}
+    GOARCH=${target#*/}
     
-    echo "Archiving the Go build..."
-    GO_ARCHIVE_NAME="go_build.zip"
-    
-    if [ ! -f ".env.example" ]; then
-        echo "Error: .env.example not found. Cannot create archive."
-        exit 1
+    BINARY_NAME="main-${GOOS}-${GOARCH}"
+    if [[ "$GOOS" == "windows" ]]; then
+      BINARY_NAME+=".exe"
     fi
+    OUTPUT_PATH="./build/$BINARY_NAME"
 
-    # Создаем временную папку для файлов архива
-    BUILD_DIR="go_build_temp"
-    rm -rf "$BUILD_DIR"
-    mkdir "$BUILD_DIR"
+    echo "--- Building for $GOOS/$GOARCH ---"
+    
+    if ! CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -o "$OUTPUT_PATH" cmd/main.go; then
+      echo "Build for $GOOS/$GOARCH failed."
+      exit 1
+    else
+      echo "Build successful. Binary: $OUTPUT_PATH"
+    fi
+  done
 
-    # Копируем необходимые файлы
-    cp main.exe "$BUILD_DIR/"
-    cp -r docs "$BUILD_DIR/"
-    cp .env.example "$BUILD_DIR/.env"
+  echo "-------------------------------------"
+  echo "All Go builds completed successfully."
 
-    # Удаляем старый архив
-    rm -f "$GO_ARCHIVE_NAME"
+  # --- Общая архивация ---
+  echo "Archiving all builds into a single archive..."
+  GO_ARCHIVE_NAME="backend_build.zip"
+  
+  if [ ! -f ".env.example" ]; then
+      echo "Error: .env.example not found. Cannot create archive."
+      exit 1
+  fi
 
-    # Определяем ОС и используем соответствующую команду для архивации
-    OS_TYPE="$(uname -s)"
-    case "$OS_TYPE" in
-      Linux*|Darwin*)
-        echo "Using 'zip' command for Linux/macOS..."
-        if (cd "$BUILD_DIR" && zip -r "../$GO_ARCHIVE_NAME" .); then
-          echo "Go build successfully archived to '$GO_ARCHIVE_NAME'."
-        else
-          echo "Failed to archive the Go build using 'zip'."
-          rm -rf "$BUILD_DIR"
-          exit 1
-        fi
-        ;;
-      CYGWIN*|MINGW*|MSYS*|Windows_NT)
-        echo "Using 'PowerShell' for Windows..."
-        # Указываем PowerShell архивировать содержимое папки
-        if powershell.exe -Command "Compress-Archive -Path '$BUILD_DIR\*' -DestinationPath '$GO_ARCHIVE_NAME' -Force"; then
-          echo "Go build successfully archived to '$GO_ARCHIVE_NAME'."
-        else
-          echo "Failed to archive the Go build using PowerShell."
-          rm -rf "$BUILD_DIR"
-          exit 1
-        fi
-        ;;
-      *)
-        echo "Unsupported OS: $OS_TYPE. Cannot create archive."
+  # Создаем временную папку для файлов архива
+  BUILD_DIR="backend_build_temp"
+  rm -rf "$BUILD_DIR"
+  mkdir "$BUILD_DIR"
+
+  # Копируем необходимые файлы
+  cp ./build/* "$BUILD_DIR/"
+  cp -r docs "$BUILD_DIR/"
+  cp .env.example "$BUILD_DIR/.env"
+
+  # Удаляем старый архив
+  rm -f "$GO_ARCHIVE_NAME"
+
+  # Определяем ОС и используем соответствующую команду для архивации
+  OS_TYPE="$(uname -s)"
+  case "$OS_TYPE" in
+    Linux*|Darwin*)
+      echo "Using 'zip' command for Linux/macOS..."
+      if (cd "$BUILD_DIR" && zip -r "../$GO_ARCHIVE_NAME" .); then
+        echo "Go builds successfully archived to '$GO_ARCHIVE_NAME'."
+      else
+        echo "Failed to archive the Go builds using 'zip'."
         rm -rf "$BUILD_DIR"
         exit 1
-        ;;
-    esac
+      fi
+      ;;
+    CYGWIN*|MINGW*|MSYS*|Windows_NT)
+      echo "Using 'PowerShell' for Windows..."
+      if powershell.exe -Command "Compress-Archive -Path '$BUILD_DIR\*' -DestinationPath '$GO_ARCHIVE_NAME' -Force"; then
+        echo "Go builds successfully archived to '$GO_ARCHIVE_NAME'."
+      else
+        echo "Failed to archive the Go builds using PowerShell."
+        rm -rf "$BUILD_DIR"
+        exit 1
+      fi
+      ;;
+    *)
+      echo "Unsupported OS for archiving: $OS_TYPE. Cannot create archive."
+      rm -rf "$BUILD_DIR"
+      exit 1
+      ;;
+  esac
 
-    # Удаляем временную папку
-    rm -rf "$BUILD_DIR"
-
-  else
-    echo "Build failed."
-    exit 1
-  fi
+  # Удаляем временную папку и папку сборок
+  rm -rf "$BUILD_DIR"
+  rm -rf "./build"
 
   echo "Go setup complete."
 fi
