@@ -250,7 +250,7 @@ if [[ "$GO_MODE" == "true" ]]; then
     GOOS=${target%/*}
     GOARCH=${target#*/}
     
-    BINARY_NAME="main-${GOOS}-${GOARCH}"
+    BINARY_NAME="${GOOS}-${GOARCH}"
     if [[ "$GOOS" == "windows" ]]; then
       BINARY_NAME+=".exe"
     fi
@@ -258,18 +258,27 @@ if [[ "$GO_MODE" == "true" ]]; then
 
     echo "--- Building for $GOOS/$GOARCH ---"
     
-    if ! CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -o "$OUTPUT_PATH" cmd/main.go; then
+    if CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -o "$OUTPUT_PATH" cmd/main.go; then
+      echo "Build successful. Binary: $OUTPUT_PATH"
+      
+      # Даем права на исполнение для Linux и macOS
+      if [[ "$GOOS" == "linux" || "$GOOS" == "darwin" ]]; then
+        echo "Making the binary executable..."
+        if ! chmod +x "$OUTPUT_PATH"; then
+          echo "Failed to make binary executable."
+          exit 1
+        fi
+      fi
+    else
       echo "Build for $GOOS/$GOARCH failed."
       exit 1
-    else
-      echo "Build successful. Binary: $OUTPUT_PATH"
     fi
   done
 
   echo "-------------------------------------"
   echo "All Go builds completed successfully."
 
-  # --- Общая архивация ---
+  # --- архивация ---
   echo "Archiving all builds into a single archive..."
   GO_ARCHIVE_NAME="backend_build.zip"
   
@@ -279,7 +288,7 @@ if [[ "$GO_MODE" == "true" ]]; then
   fi
 
   # Создаем временную папку для файлов архива
-  BUILD_DIR="backend_build_temp"
+  BUILD_DIR="backend_build"
   rm -rf "$BUILD_DIR"
   mkdir "$BUILD_DIR"
 
