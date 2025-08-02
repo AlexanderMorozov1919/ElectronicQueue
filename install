@@ -17,17 +17,18 @@ rm -f migrations/fill_db.sql
 
 # --- Аргументы ---
 usage() {
-  echo "Usage: $0 [local] [docker] [go] [go-docker] [flutter] [flutter-docker] [fill] [rewrite]"
+  echo "Usage: $0 [local] [docker] [go] [go-docker] [flutter] [flutter-docker] [database] [fill] [rewrite]"
   echo
   echo "Key descriptions:"
-  echo "  go               - Build and setup Go backend"
+  echo "  go               - Build and setup Go backend (includes DB migration)"
   echo "  go-docker        - Build and setup Go backend in Docker"
   echo "  flutter          - Build and setup Flutter frontend"
   echo "  flutter-docker   - Build and setup Flutter frontend in Docker"
   echo "  local            - Local build of Go and Flutter"
   echo "  docker           - Build Go and Flutter in Docker"
-  echo "  fill             - Fill the database with test data"
-  echo "  rewrite          - Recreate the database"
+  echo "  database         - Manage database using psql"
+  echo "  fill             - Fill the database with test data (used with 'go' or 'database')"
+  echo "  rewrite          - Recreate the database (used with 'go' or 'database')"
   exit 1
 }
 
@@ -38,6 +39,7 @@ GO_MODE=""
 FLUTTER_MODE=""
 FLUTTER_DOCKER_MODE=""
 GO_DOCKER_MODE=""
+DATABASE_MODE=""
 FILL=""
 REWRITE=""
 for arg in "$@"; do
@@ -53,6 +55,9 @@ for arg in "$@"; do
       ;;
     flutter-docker)
       FLUTTER_DOCKER_MODE="true"
+      ;;
+    database)
+      DATABASE_MODE="true"
       ;;
     fill)
       FILL="true"
@@ -73,6 +78,72 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+if [[ "$DATABASE_MODE" == "true" ]]; then
+    echo "--- Database Setup using psql ---"
+    export PGPASSWORD="$DB_PASSWORD"
+    export PGCLIENTENCODING="UTF8"
+    if [[ "$REWRITE" == "true" ]]; then
+      # Удаляем базу данных, если указан флаг rewrite
+      echo "Dropping database '$DB_NAME' due to 'rewrite' flag..."
+      if PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "postgres" -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"; then
+          echo "Database '$DB_NAME' dropped successfully."
+      else
+          echo "Failed to drop database '$DB_NAME'."
+          exit 1
+      fi
+    fi
+
+    # Проверяем, существует ли база данных
+    echo "Checking if database '$DB_NAME' exists..."
+    if PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
+        echo "Database '$DB_NAME' already exists."
+    else
+        # Создаем базу данных, если она не существует
+        echo "Database '$DB_NAME' does not exist. Creating..."
+        if PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "postgres" -c "CREATE DATABASE \"$DB_NAME\""; then
+            echo "Database '$DB_NAME' created successfully."
+        else
+            echo "Failed to create database '$DB_NAME'."
+            exit 1
+        fi
+    fi
+
+    # Применяем все .up.sql миграции
+    echo "Applying all .up.sql migrations using psql..."
+    MIGRATION_FILES=$(find ./migrations -name '*.up.sql' | sort)
+    if [ -z "$MIGRATION_FILES" ]; then
+        echo "No .up.sql migration files found."
+    else
+        for file in $MIGRATION_FILES; do
+            echo "Applying migration '$file'..."
+            if ! PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -p "$DB_PORT" -f "$file"; then
+                echo "Failed to apply migration '$file'."
+                exit 1
+            fi
+        done
+        echo "All migrations applied successfully."
+    fi
+
+    # Заполняем базу тестовыми данными, если указан флаг `fill`
+    if [[ "$FILL" == "true" ]]; then
+        if [ -f "fill_db.sql" ]; then
+            echo "Filling database with test data from fill_db.sql..."
+            # Устанавливаем переменные окружения для psql
+            if ! psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -p "$DB_PORT" -f "fill_db.sql"; then
+                echo "Failed to fill database from fill_db.sql."
+                exit 1
+            else
+                echo "Database filled successfully."
+            fi
+        else
+            echo "Warning: 'fill_db.sql' not found, skipping data filling."
+        fi
+    fi
+
+    echo "--- psql Database Setup Complete ---"
+fi
+
 
 if [[ "$GO_MODE" == "true" ]]; then
   if [[ "$REWRITE" == "true" ]]; then
@@ -169,6 +240,62 @@ if [[ "$GO_MODE" == "true" ]]; then
   echo "Building Go application..."
   if go build -o main.exe cmd/main.go; then
     echo "Build successful. Binary: ./main.exe"
+    
+    echo "Archiving the Go build..."
+    GO_ARCHIVE_NAME="go_build.zip"
+    
+    if [ ! -f ".env.example" ]; then
+        echo "Error: .env.example not found. Cannot create archive."
+        exit 1
+    fi
+
+    # Создаем временную папку для файлов архива
+    BUILD_DIR="go_build_temp"
+    rm -rf "$BUILD_DIR"
+    mkdir "$BUILD_DIR"
+
+    # Копируем необходимые файлы
+    cp main.exe "$BUILD_DIR/"
+    cp -r docs "$BUILD_DIR/"
+    cp .env.example "$BUILD_DIR/.env"
+
+    # Удаляем старый архив
+    rm -f "$GO_ARCHIVE_NAME"
+
+    # Определяем ОС и используем соответствующую команду для архивации
+    OS_TYPE="$(uname -s)"
+    case "$OS_TYPE" in
+      Linux*|Darwin*)
+        echo "Using 'zip' command for Linux/macOS..."
+        if (cd "$BUILD_DIR" && zip -r "../$GO_ARCHIVE_NAME" .); then
+          echo "Go build successfully archived to '$GO_ARCHIVE_NAME'."
+        else
+          echo "Failed to archive the Go build using 'zip'."
+          rm -rf "$BUILD_DIR"
+          exit 1
+        fi
+        ;;
+      CYGWIN*|MINGW*|MSYS*|Windows_NT)
+        echo "Using 'PowerShell' for Windows..."
+        # Указываем PowerShell архивировать содержимое папки
+        if powershell.exe -Command "Compress-Archive -Path '$BUILD_DIR\*' -DestinationPath '$GO_ARCHIVE_NAME' -Force"; then
+          echo "Go build successfully archived to '$GO_ARCHIVE_NAME'."
+        else
+          echo "Failed to archive the Go build using PowerShell."
+          rm -rf "$BUILD_DIR"
+          exit 1
+        fi
+        ;;
+      *)
+        echo "Unsupported OS: $OS_TYPE. Cannot create archive."
+        rm -rf "$BUILD_DIR"
+        exit 1
+        ;;
+    esac
+
+    # Удаляем временную папку
+    rm -rf "$BUILD_DIR"
+
   else
     echo "Build failed."
     exit 1
@@ -218,6 +345,7 @@ fi
 
 if [[ "$FLUTTER_MODE" == "true" ]]; then
   cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
+  
   # Generate .env for Flutter frontend
   FLUTTER_ENV_FILE=".env"
   API_BASE_URL="http://localhost:${BACKEND_PORT}"
@@ -225,12 +353,67 @@ if [[ "$FLUTTER_MODE" == "true" ]]; then
   echo "EXTERNAL_API_KEY=${EXTERNAL_API_KEY}" >> "$FLUTTER_ENV_FILE"
   echo ".env file for Flutter frontend generated."
   echo "Getting Flutter packages..."
-  if flutter pub get; then
-    echo "Flutter setup complete."
-  else
+  if ! flutter pub get; then
     echo "Failed to fetch packages."
     exit 1
   fi
+
+  if [ -z "$FRONTEND_PORT" ]; then
+    echo "FRONTEND_PORT is not set in .env! Please set it to a starting port, e.g., 8080."
+    exit 1
+  fi
+
+  mapfile -t FLUTTER_MAIN_FILES < <(find ./lib -maxdepth 2 -type f -name '*main*.dart' | sed 's|^\./lib/||')
+  echo "Found ${#FLUTTER_MAIN_FILES[@]} main files to build and run."
+
+  for MAIN_FILE in "${FLUTTER_MAIN_FILES[@]}"; do
+    SERVICE_NAME=$(basename "$MAIN_FILE" .dart)
+    OUTPUT_DIR="build/web/$SERVICE_NAME"
+    echo "--- Building application '$SERVICE_NAME' from 'lib/$MAIN_FILE' ---"
+    if ! flutter build web --release -t "lib/$MAIN_FILE" --output "$OUTPUT_DIR"; then
+      echo "Failed to build '$SERVICE_NAME'."
+      exit 1
+    fi
+    echo "Build successful. Output is in '$OUTPUT_DIR'."
+  done
+
+  echo "----------------------------------------------------"
+  echo "Archiving the build..."
+  ARCHIVE_NAME="frontend_build.zip"
+  # Путь к архиву в папке фронтенда
+  ARCHIVE_PATH="./$ARCHIVE_NAME"
+
+  # Удаляем старый архив
+  rm -f "$ARCHIVE_PATH"
+
+  # Определяем ОС и используем соответствующую команду
+  OS_TYPE="$(uname -s)"
+  case "$OS_TYPE" in
+    Linux*|Darwin*)
+      echo "Using 'zip' command for Linux/macOS..."
+      if zip -r "$ARCHIVE_PATH" build/web; then
+        echo "Build successfully archived to '$ARCHIVE_NAME' in the project root."
+      else
+        echo "Failed to archive the build using 'zip'."
+        exit 1
+      fi
+      ;;
+    CYGWIN*|MINGW*|MSYS*|Windows_NT)
+      echo "Using 'PowerShell' for Windows..."
+      # PowerShell требует относительные пути в определенном формате
+      if powershell.exe -Command "Compress-Archive -Path 'build/web' -DestinationPath '$ARCHIVE_PATH' -Force"; then
+        echo "Build successfully archived to '$ARCHIVE_NAME' in the project root."
+      else
+        echo "Failed to archive the build using PowerShell. Make sure PowerShell is available."
+        exit 1
+      fi
+      ;;
+    *)
+      echo "Unsupported OS: $OS_TYPE. Cannot create archive."
+      exit 1
+      ;;
+  esac
+
   cd - > /dev/null
 fi
 
@@ -244,7 +427,6 @@ if [[ "$FLUTTER_DOCKER_MODE" == "true" ]]; then
   cd "$(dirname "$0")/../electronicqueue-frontend/lib" || { echo "lib directory not found!"; exit 1; }
   mapfile -t FLUTTER_MAIN_FILES < <(find . -maxdepth 2 -mindepth 2 -type f -name '*main*.dart' | sed 's|^./||')
   cd - > /dev/null 2>&1
-  # Generate .env for Flutter frontend
   FLUTTER_ENV_FILE=".env"
   API_BASE_URL="http://localhost:${BACKEND_PORT}"
   echo "API_BASE_URL=${API_BASE_URL}" > "$FLUTTER_ENV_FILE"
@@ -260,7 +442,7 @@ RUN flutter pub get
 COPY . .
 
 ARG TARGET_MAIN
-RUN flutter build web -t lib/\${TARGET_MAIN}
+RUN flutter build web --release -t lib/\${TARGET_MAIN}
 
 FROM nginx:alpine
 COPY --from=build /app/build/web /usr/share/nginx/html
