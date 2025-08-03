@@ -381,7 +381,6 @@ if [[ "$FLUTTER_MODE" == "true" ]]; then
   
   # Generate .env for Flutter frontend
   FLUTTER_ENV_FILE=".env"
-  API_BASE_URL="http://localhost:${BACKEND_PORT}"
   echo "API_BASE_URL=${API_BASE_URL}" > "$FLUTTER_ENV_FILE"
   echo "EXTERNAL_API_KEY=${EXTERNAL_API_KEY}" >> "$FLUTTER_ENV_FILE"
   echo ".env file for Flutter frontend generated."
@@ -398,34 +397,36 @@ if [[ "$FLUTTER_MODE" == "true" ]]; then
 
   mapfile -t FLUTTER_MAIN_FILES < <(find ./lib -maxdepth 2 -type f -name '*main*.dart' | sed 's|^\./lib/||')
   echo "Found ${#FLUTTER_MAIN_FILES[@]} main files to build and run."
+  rm -rf "build/web/"
 
   for MAIN_FILE in "${FLUTTER_MAIN_FILES[@]}"; do
-    SERVICE_NAME=$(basename "$MAIN_FILE" .dart)
-    OUTPUT_DIR="build/web/$SERVICE_NAME"
-    echo "--- Building application '$SERVICE_NAME' from 'lib/$MAIN_FILE' ---"
-    if ! flutter build web --release -t "lib/$MAIN_FILE" --output "$OUTPUT_DIR"; then
-      echo "Failed to build '$SERVICE_NAME'."
+    BASE_HREF_PATH=$(basename "$MAIN_FILE" .dart | sed 's/^main_//')
+    BASE_HREF_VALUE="/${BASE_HREF_PATH}/"
+    OUTPUT_DIR="build/web/$BASE_HREF_PATH"
+
+    echo "--- Building application '$BASE_HREF_PATH' from 'lib/$MAIN_FILE' ---"
+    echo "    Using base href: '$BASE_HREF_VALUE'"
+    echo "    Output directory: '$OUTPUT_DIR'"
+    
+    if ! MSYS_NO_PATHCONV=1 flutter build web --release -t "lib/$MAIN_FILE" --output "$OUTPUT_DIR" --base-href="$BASE_HREF_VALUE"; then
+      echo "Failed to build '$BASE_HREF_PATH'."
       exit 1
     fi
-    echo "Build successful. Output is in '$OUTPUT_DIR'."
+    echo "Build for '$BASE_HREF_PATH' successful."
   done
 
   echo "----------------------------------------------------"
   echo "Archiving the build..."
   ARCHIVE_NAME="frontend_build.zip"
-  # Путь к архиву в папке фронтенда
   ARCHIVE_PATH="./$ARCHIVE_NAME"
-
-  # Удаляем старый архив
   rm -f "$ARCHIVE_PATH"
 
-  # Определяем ОС и используем соответствующую команду
   OS_TYPE="$(uname -s)"
   case "$OS_TYPE" in
     Linux*|Darwin*)
       echo "Using 'zip' command for Linux/macOS..."
-      if zip -r "$ARCHIVE_PATH" build/web; then
-        echo "Build successfully archived to '$ARCHIVE_NAME' in the project root."
+      if (cd build/web && zip -r "../../$ARCHIVE_NAME" .); then
+        echo "Build successfully archived to '$ARCHIVE_NAME' in the frontend root."
       else
         echo "Failed to archive the build using 'zip'."
         exit 1
@@ -433,9 +434,8 @@ if [[ "$FLUTTER_MODE" == "true" ]]; then
       ;;
     CYGWIN*|MINGW*|MSYS*|Windows_NT)
       echo "Using 'PowerShell' for Windows..."
-      # PowerShell требует относительные пути в определенном формате
-      if powershell.exe -Command "Compress-Archive -Path 'build/web' -DestinationPath '$ARCHIVE_PATH' -Force"; then
-        echo "Build successfully archived to '$ARCHIVE_NAME' in the project root."
+      if powershell.exe -Command "Compress-Archive -Path 'build/web\*' -DestinationPath '$ARCHIVE_PATH' -Force"; then
+        echo "Build successfully archived to '$ARCHIVE_NAME' in the frontend root."
       else
         echo "Failed to archive the build using PowerShell. Make sure PowerShell is available."
         exit 1
@@ -475,7 +475,8 @@ RUN flutter pub get
 COPY . .
 
 ARG TARGET_MAIN
-RUN flutter build web --release -t lib/\${TARGET_MAIN}
+ARG BASE_HREF_VALUE # Добавляем аргумент для base_href
+RUN flutter build web --release -t lib/\${TARGET_MAIN} --base-href=\${BASE_HREF_VALUE}
 
 FROM nginx:alpine
 COPY --from=build /app/build/web /usr/share/nginx/html
@@ -492,6 +493,8 @@ EOF
   INDEX=0
   for MAIN_FILE in "${FLUTTER_MAIN_FILES[@]}"; do
     SERVICE_NAME=$(basename "$MAIN_FILE" .dart | tr '[:upper:]' '[:lower:]')
+    BASE_HREF_PATH=$(basename "$MAIN_FILE" .dart | sed 's/^main_//')
+    BASE_HREF_VALUE="/${BASE_HREF_PATH}/"
     PORT=$((FRONTEND_PORT + INDEX))
     CONTAINER_NAME="electronicqueue_${SERVICE_NAME}"
     echo "  $SERVICE_NAME:" >> $COMPOSE_FILE
@@ -499,6 +502,7 @@ EOF
     echo "      context: ." >> $COMPOSE_FILE
     echo "      args:" >> $COMPOSE_FILE
     echo "        TARGET_MAIN: $MAIN_FILE" >> $COMPOSE_FILE
+    echo "        BASE_HREF_VALUE: $BASE_HREF_VALUE"
     echo "    ports:" >> $COMPOSE_FILE
     echo "      - \"${PORT}:80\"" >> $COMPOSE_FILE
     echo "    env_file:" >> $COMPOSE_FILE
