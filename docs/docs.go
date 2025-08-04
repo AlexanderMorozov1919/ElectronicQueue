@@ -2981,10 +2981,19 @@ const docTemplate = `{
                 "cabinet_number": {
                     "type": "integer"
                 },
+                "called_at": {
+                    "type": "string"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
                 "doctor_full_name": {
                     "type": "string"
                 },
                 "doctor_specialization": {
+                    "type": "string"
+                },
+                "duration": {
                     "type": "string"
                 },
                 "patient_full_name": {

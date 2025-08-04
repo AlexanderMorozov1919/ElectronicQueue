@@ -165,7 +165,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 
 	repo := repository.NewRepository(db)
 
-	ticketService := services.NewTicketService(repo.Ticket, repo.Service)
+	ticketService := services.NewTicketService(repo.Ticket, repo.Service, repo.ReceptionLog)
 	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
 	authService := services.NewAuthService(repo.Registrar, repo.Doctor, repo.Administrator, jwtManager)
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db))
