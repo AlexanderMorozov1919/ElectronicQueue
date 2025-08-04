@@ -63,9 +63,15 @@ func (r *ticketRepo) FindByStatus(status models.TicketStatus) ([]models.Ticket, 
 	return tickets, nil
 }
 
-func (r *ticketRepo) GetNextWaitingTicket() (*models.Ticket, error) {
+func (r *ticketRepo) GetNextWaitingTicket(categoryPrefix string) (*models.Ticket, error) {
 	var ticket models.Ticket
-	err := r.db.Where("status = ?", models.StatusWaiting).Order("created_at asc").First(&ticket).Error
+	query := r.db.Where("status = ?", models.StatusWaiting)
+
+	if categoryPrefix != "" {
+		query = query.Where("ticket_number LIKE ?", categoryPrefix+"%")
+	}
+
+	err := query.Order("created_at asc").First(&ticket).Error
 	if err != nil {
 		return nil, err
 	}

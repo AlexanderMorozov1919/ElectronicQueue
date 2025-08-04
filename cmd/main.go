@@ -257,6 +257,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		Use(middleware.CheckBusinessProcess(processService, "registry"))
 	{
 		registrar.POST("/call-next", registrarHandler.CallNext)
+		registrar.POST("/call-specific", registrarHandler.CallSpecific)
 		registrar.GET("/tickets", registrarHandler.GetTickets)
 		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
 		registrar.GET("/patients/search", patientHandler.SearchPatients)
