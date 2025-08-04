@@ -51,6 +51,19 @@ definitions:
         example: 10
         type: integer
     type: object
+  handlers.CreateAdministratorRequest:
+    properties:
+      full_name:
+        type: string
+      login:
+        type: string
+      password:
+        type: string
+    required:
+    - full_name
+    - login
+    - password
+    type: object
   handlers.CreateDoctorRequest:
     properties:
       full_name:
@@ -164,6 +177,11 @@ definitions:
     required:
     - doctor_id
     type: object
+  handlers.UpdateProcessRequest:
+    properties:
+      is_enabled:
+        type: boolean
+    type: object
   handlers.UpdateStatusRequest:
     description: Запрос для смены статуса тикета
     properties:
@@ -190,6 +208,13 @@ definitions:
         $ref: '#/definitions/models.Ticket'
       ticket_id:
         type: integer
+    type: object
+  models.BusinessProcess:
+    properties:
+      is_enabled:
+        type: boolean
+      process_name:
+        type: string
     type: object
   models.CreateAppointmentRequest:
     properties:
@@ -561,6 +586,43 @@ info:
   title: Electronic Queue API
   version: "1.0"
 paths:
+  /api/admin/create/administrator:
+    post:
+      consumes:
+      - application/json
+      description: Создает нового пользователя с ролью "администратор". Требует INTERNAL_API_KEY.
+      parameters:
+      - description: Данные нового администратора
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateAdministratorRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Администратор успешно создан
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: 'Ошибка: логин уже занят'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Создать нового администратора (Админ)
+      tags:
+      - admin
   /api/admin/create/doctor:
     post:
       consumes:
@@ -633,6 +695,77 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Создать нового регистратора (Админ)
+      tags:
+      - admin
+  /api/admin/processes:
+    get:
+      description: Возвращает список всех бизнес-процессов и их текущее состояние
+        (включен/отключен).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список процессов
+          schema:
+            items:
+              $ref: '#/definitions/models.BusinessProcess'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить статусы всех бизнес-процессов (Админ)
+      tags:
+      - admin
+  /api/admin/processes/{name}:
+    patch:
+      consumes:
+      - application/json
+      description: Включает или отключает указанный бизнес-процесс.
+      parameters:
+      - description: Имя процесса
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Новое состояние
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateProcessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Обновленный процесс
+          schema:
+            $ref: '#/definitions/models.BusinessProcess'
+        "400":
+          description: Ошибка в запросе
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Процесс не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Обновить статус бизнес-процесса (Админ)
       tags:
       - admin
   /api/admin/schedules:
@@ -827,6 +960,42 @@ paths:
       summary: Сгенерировать звуковое оповещение
       tags:
       - audio
+  /api/auth/login/administrator:
+    post:
+      consumes:
+      - application/json
+      description: Принимает логин и пароль, возвращает JWT токен.
+      parameters:
+      - description: Учетные данные
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с токеном
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'Ошибка: неверные учетные данные'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Аутентификация администратора
+      tags:
+      - auth
   /api/auth/login/doctor:
     post:
       consumes:
@@ -1752,6 +1921,35 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Получить расписание врача с информацией о записях
+      tags:
+      - registrar
+  /api/registrar/tickets:
+    get:
+      description: Возвращает список талонов по нужным статусам, с возможностью фильтрации
+        по категории.
+      parameters:
+      - description: Префикс категории для фильтрации (например, 'A', 'B')
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Массив талонов
+          schema:
+            items:
+              $ref: '#/definitions/models.Ticket'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить список талонов для регистратора
       tags:
       - registrar
   /api/registrar/tickets/{id}/status:

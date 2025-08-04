@@ -152,15 +152,15 @@ PRINTER="DeskJet 5000 series"     # Имя принтера для печати
     ```
 2. Запустите backend, используя бинарник для вашей ОС:
    **Windows**:  
-    ```powershell
+    ```
     ./windows-amd64.exe
     ```
    **Linux**:  
-    ```bash
+    ```
     ./linux-amd64
     ```
    **macOS**:  
-    ```bash
+    ```
     ./darwin-amd64
     ```
     Backend будет доступен по адресу: `http://localhost:{BACKEND_PORT}`

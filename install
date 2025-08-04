@@ -383,6 +383,7 @@ if [[ "$FLUTTER_MODE" == "true" ]]; then
   FLUTTER_ENV_FILE=".env"
   echo "API_BASE_URL=${API_BASE_URL}" > "$FLUTTER_ENV_FILE"
   echo "EXTERNAL_API_KEY=${EXTERNAL_API_KEY}" >> "$FLUTTER_ENV_FILE"
+  echo "INTERNAL_API_KEY=${INTERNAL_API_KEY}" >> "$FLUTTER_ENV_FILE"
   echo ".env file for Flutter frontend generated."
   echo "Getting Flutter packages..."
   if ! flutter pub get; then
@@ -464,6 +465,7 @@ if [[ "$FLUTTER_DOCKER_MODE" == "true" ]]; then
   API_BASE_URL="http://localhost:${BACKEND_PORT}"
   echo "API_BASE_URL=${API_BASE_URL}" > "$FLUTTER_ENV_FILE"
   echo "EXTERNAL_API_KEY=${EXTERNAL_API_KEY}" >> "$FLUTTER_ENV_FILE"
+  echo "INTERNAL_API_KEY=${INTERNAL_API_KEY}" >> "$FLUTTER_ENV_FILE"
   echo ".env file for Flutter frontend generated."
   rm -f Dockerfile
   cat > Dockerfile <<EOF

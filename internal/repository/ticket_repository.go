@@ -15,6 +15,22 @@ func NewTicketRepository(db *gorm.DB) TicketRepository {
 	return &ticketRepo{db: db}
 }
 
+// FindForRegistrar находит талоны по статусам и опционально по префиксу категории.
+func (r *ticketRepo) FindForRegistrar(statuses []models.TicketStatus, categoryPrefix string) ([]models.Ticket, error) {
+	var tickets []models.Ticket
+	query := r.db.Where("status IN ?", statuses)
+
+	if categoryPrefix != "" {
+		query = query.Where("ticket_number LIKE ?", categoryPrefix+"%")
+	}
+
+	// Сортируем по убыванию времени создания, чтобы новые были вверху
+	if err := query.Order("created_at DESC").Find(&tickets).Error; err != nil {
+		return nil, err
+	}
+	return tickets, nil
+}
+
 func (r *ticketRepo) Create(ticket *models.Ticket) error {
 	return r.db.Create(ticket).Error
 }

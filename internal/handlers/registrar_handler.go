@@ -18,6 +18,31 @@ func NewRegistrarHandler(ts *services.TicketService) *RegistrarHandler {
 	return &RegistrarHandler{ticketService: ts}
 }
 
+// НОВЫЙ МЕТОД: GetTickets
+// GetTickets godoc
+// @Summary      Получить список талонов для регистратора
+// @Description  Возвращает список талонов по нужным статусам, с возможностью фильтрации по категории.
+// @Tags         registrar
+// @Produce      json
+// @Param        category query string false "Префикс категории для фильтрации (например, 'A', 'B')"
+// @Success      200 {array} models.Ticket "Массив талонов"
+// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Security     ApiKeyAuth
+// @Router       /api/registrar/tickets [get]
+func (h *RegistrarHandler) GetTickets(c *gin.Context) {
+	log := logger.Default()
+	categoryPrefix := c.Query("category") // Получаем префикс категории из query-параметров
+
+	tickets, err := h.ticketService.GetTicketsForRegistrar(categoryPrefix)
+	if err != nil {
+		log.WithError(err).Error("GetTickets: failed to get tickets from service")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось получить список талонов"})
+		return
+	}
+
+	c.JSON(http.StatusOK, tickets)
+}
+
 type CallNextRequest struct {
 	WindowNumber int `json:"window_number" binding:"required,gt=0"`
 }
