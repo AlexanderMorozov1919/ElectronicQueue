@@ -23,6 +23,22 @@ func NewTicketService(repo repository.TicketRepository, serviceRepo repository.S
 	return &TicketService{repo: repo, serviceRepo: serviceRepo}
 }
 
+// GetTicketsForRegistrar получает список талонов для окна регистратора.
+// Включает статусы: ожидает, зарегистрирован, завершен.
+func (s *TicketService) GetTicketsForRegistrar(categoryPrefix string) ([]models.Ticket, error) {
+	statuses := []models.TicketStatus{
+		models.StatusWaiting,
+		models.StatusRegistered,
+		models.StatusCompleted,
+	}
+	tickets, err := s.repo.FindForRegistrar(statuses, categoryPrefix)
+	if err != nil {
+		logger.Default().WithError(err).Error("GetTicketsForRegistrar: repo error")
+		return nil, err
+	}
+	return tickets, nil
+}
+
 func (s *TicketService) GetAllServices() ([]models.Service, error) {
 	return s.serviceRepo.GetAll()
 }

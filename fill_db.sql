@@ -7,13 +7,14 @@
 -- --                     0. ОЧИСТКА ДАННЫХ                       --
 -- -----------------------------------------------------------------
 TRUNCATE TABLE 
-    appointments, 
-    tickets, 
-    schedules, 
-    services, 
-    doctors, 
-    registrars, 
-    patients 
+    appointments,
+    tickets,
+    schedules,
+    services,
+    doctors,
+    registrars,
+    administrators,
+    patients
 RESTART IDENTITY CASCADE;
 
 -- -----------------------------------------------------------------
@@ -52,7 +53,14 @@ INSERT INTO doctors (full_name, specialization, login, password_hash, status) VA
 ('Соколов Сергей Александрович', 'ЛОР', 'doctor7', '$2a$10$9dSK.8zXoR0lCfatQ4mBn.2l./3g.JYNbZCUEMZauwD.nFrJ115he', 'активен');
 
 -- -----------------------------------------------------------------
--- --                        4. ПАЦИЕНТЫ                          --
+-- --                      4. АДМИНИСТРАТОРЫ                      --
+-- -----------------------------------------------------------------
+-- Пароль: 'superpass'
+INSERT INTO administrators (full_name, login, password_hash) VALUES
+('Главный Администратор', 'root', '$2a$10$hpeOn4.Jv/K6M3lvFpJ9NO.PjLi4U3vpFfWWZ6cPS/nUc0lwDSuGu');
+
+-- -----------------------------------------------------------------
+-- --                        5. ПАЦИЕНТЫ                          --
 -- -----------------------------------------------------------------
 INSERT INTO patients (passport_series, passport_number, oms_number, full_name, birth_date, phone) VALUES
 ('4510', '123456', '1111111111111111', 'Андреев Андрей Андреевич', '1980-05-15', '+79112223344'),
@@ -72,7 +80,7 @@ INSERT INTO patients (passport_series, passport_number, oms_number, full_name, b
 ('4524', '282930', '1616161616161616', 'Сергеев Станислав Сергеевич', '1977-11-07', '+79822223344');
 
 -- -----------------------------------------------------------------
--- --        5. РАСПИСАНИЕ ВРАЧЕЙ (СЕГОДНЯ + 6 ДНЕЙ ВПЕРЕД)       --
+-- --        6. РАСПИСАНИЕ ВРАЧЕЙ (СЕГОДНЯ + 6 ДНЕЙ ВПЕРЕД)       --
 -- -----------------------------------------------------------------
 INSERT INTO schedules (doctor_id, cabinet, date, start_time, end_time)
 SELECT
@@ -90,7 +98,7 @@ CROSS JOIN generate_series(
 ) AS s(start_time);
 
 -- -----------------------------------------------------------------
--- --                6. ТАЛОНЫ И ЗАПИСИ НА ПРИЕМ                  --
+-- --                7. ТАЛОНЫ И ЗАПИСИ НА ПРИЕМ                  --
 -- -----------------------------------------------------------------
 -- Сценарий: Середина рабочего дня, примерно 12:00
 -- 6.1 Талоны в статусе "завершен"

@@ -39,7 +39,8 @@ type TicketRepository interface {
 	FindInProgressTicketForCabinet(cabinetNumber int) (*models.Ticket, error)
 	FindTicketsForCabinetQueue(cabinetNumber int) ([]models.DoctorQueueTicketResponse, error)
 	FindByStatusAndDoctor(status models.TicketStatus, doctorID uint) ([]models.Ticket, error)
-	GetDailyReport(date time.Time) ([]models.DailyReportRow, error) // НОВЫЙ МЕТОД
+	GetDailyReport(date time.Time) ([]models.DailyReportRow, error)
+	FindForRegistrar(statuses []models.TicketStatus, categoryPrefix string) ([]models.Ticket, error)
 }
 
 // ScheduleRepository определяет методы для взаимодействия с расписанием.
@@ -72,6 +73,12 @@ type RegistrarRepository interface {
 	Create(registrar *models.Registrar) error
 }
 
+// AdministratorRepository определяет методы для аутентификации администраторов.
+type AdministratorRepository interface {
+	FindByLogin(login string) (*models.Administrator, error)
+	Create(admin *models.Administrator) error
+}
+
 // ServiceRepository определяет методы для работы с услугами терминала.
 type ServiceRepository interface {
 	GetAll() ([]models.Service, error)
@@ -89,28 +96,39 @@ type CleanupRepository interface {
 	GetOrphanedAppointmentsCount() (int64, error)
 }
 
+// BusinessProcessRepository определяет методы для управления бизнес-процессами.
+type BusinessProcessRepository interface {
+	GetAll() ([]models.BusinessProcess, error)
+	Update(process *models.BusinessProcess) error
+	FindByName(name string) (*models.BusinessProcess, error)
+}
+
 // Repository содержит все репозитории приложения.
 type Repository struct {
-	Doctor      DoctorRepository
-	Patient     PatientRepository
-	Ticket      TicketRepository
-	Schedule    ScheduleRepository
-	Appointment AppointmentRepository
-	Service     ServiceRepository
-	Registrar   RegistrarRepository
-	Cleanup     CleanupRepository
+	Doctor          DoctorRepository
+	Patient         PatientRepository
+	Ticket          TicketRepository
+	Schedule        ScheduleRepository
+	Appointment     AppointmentRepository
+	Service         ServiceRepository
+	Registrar       RegistrarRepository
+	Administrator   AdministratorRepository
+	Cleanup         CleanupRepository
+	BusinessProcess BusinessProcessRepository
 }
 
 // NewRepository создает новый экземпляр главного репозитория.
 func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{
-		Doctor:      NewDoctorRepository(db),
-		Patient:     NewPatientRepository(db),
-		Ticket:      NewTicketRepository(db),
-		Schedule:    NewScheduleRepository(db),
-		Appointment: NewAppointmentRepository(db),
-		Service:     NewServiceRepository(db),
-		Registrar:   NewRegistrarRepository(db),
-		Cleanup:     NewCleanupRepository(db),
+		Doctor:          NewDoctorRepository(db),
+		Patient:         NewPatientRepository(db),
+		Ticket:          NewTicketRepository(db),
+		Schedule:        NewScheduleRepository(db),
+		Appointment:     NewAppointmentRepository(db),
+		Service:         NewServiceRepository(db),
+		Registrar:       NewRegistrarRepository(db),
+		Administrator:   NewAdministratorRepository(db),
+		Cleanup:         NewCleanupRepository(db),
+		BusinessProcess: NewBusinessProcessRepository(db),
 	}
 }
