@@ -33,7 +33,7 @@ type TicketRepository interface {
 	GetByID(id uint) (*models.Ticket, error)
 	FindByStatuses(statuses []models.TicketStatus) ([]models.Ticket, error)
 	FindByStatus(status models.TicketStatus) ([]models.Ticket, error)
-	GetNextWaitingTicket() (*models.Ticket, error)
+	GetNextWaitingTicket(categoryPrefix string) (*models.Ticket, error)
 	GetMaxTicketNumberForPrefix(prefix string) (int, error)
 	Delete(id uint) error
 	FindInProgressTicketForCabinet(cabinetNumber int) (*models.Ticket, error)

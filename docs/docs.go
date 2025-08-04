@@ -1740,7 +1740,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Находит первого пациента в очереди, меняет его статус на \"приглашен\" и присваивает номер окна",
+                "description": "Находит первого пациента в очереди (опционально по категории), меняет его статус на \"приглашен\" и присваивает номер окна",
                 "consumes": [
                     "application/json"
                 ],
@@ -1753,7 +1753,7 @@ const docTemplate = `{
                 "summary": "Вызвать следующего пациента",
                 "parameters": [
                     {
-                        "description": "Номер окна, которое вызывает пациента",
+                        "description": "Номер окна и опциональный префикс категории талона",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1780,6 +1780,72 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Ошибка: очередь пуста",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrar/call-specific": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Находит пациента по ID талона, меняет его статус на \"приглашен\" и присваивает номер окна. Доступно только для талонов в статусе 'ожидает'.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Вызвать конкретного пациента",
+                "parameters": [
+                    {
+                        "description": "ID талона и номер окна",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CallSpecificRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные вызванного талона",
+                        "schema": {
+                            "$ref": "#/definitions/models.TicketResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный ID, номер окна или неверный статус талона",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ошибка: талон не найден",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2490,6 +2556,25 @@ const docTemplate = `{
                 "window_number"
             ],
             "properties": {
+                "category_prefix": {
+                    "description": "Добавлено опциональное поле",
+                    "type": "string"
+                },
+                "window_number": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.CallSpecificRequest": {
+            "type": "object",
+            "required": [
+                "ticket_id",
+                "window_number"
+            ],
+            "properties": {
+                "ticket_id": {
+                    "type": "integer"
+                },
                 "window_number": {
                     "type": "integer"
                 }

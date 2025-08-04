@@ -5,9 +5,12 @@ import (
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/utils"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 const maxTicketNumber = 1000
@@ -121,11 +124,15 @@ func (s *TicketService) DeleteTicket(idStr string) error {
 	return err
 }
 
-func (s *TicketService) CallNextTicket(windowNumber int) (*models.Ticket, error) {
-	ticket, err := s.repo.GetNextWaitingTicket()
+func (s *TicketService) CallNextTicket(windowNumber int, categoryPrefix string) (*models.Ticket, error) {
+	ticket, err := s.repo.GetNextWaitingTicket(categoryPrefix)
 	if err != nil {
-		logger.Default().Info(fmt.Sprintf("CallNextTicket: no waiting tickets in queue: %v", err))
-		return nil, fmt.Errorf("очередь пуста")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Default().WithField("category", categoryPrefix).Info("CallNextTicket: no waiting tickets in queue for category")
+			return nil, fmt.Errorf("очередь пуста")
+		}
+		logger.Default().WithError(err).Error("CallNextTicket: repo error getting next ticket")
+		return nil, err
 	}
 
 	now := time.Now()
@@ -142,7 +149,36 @@ func (s *TicketService) CallNextTicket(windowNumber int) (*models.Ticket, error)
 	return ticket, nil
 }
 
-// НОВЫЙ МЕТОД
+// CallSpecificTicket вызывает конкретный талон по его ID.
+func (s *TicketService) CallSpecificTicket(ticketID uint, windowNumber int) (*models.Ticket, error) {
+	ticket, err := s.repo.GetByID(ticketID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("талон с ID %d не найден", ticketID)
+		}
+		logger.Default().WithError(err).Error(fmt.Sprintf("CallSpecificTicket: repo error getting ticket by id %d", ticketID))
+		return nil, fmt.Errorf("ошибка получения талона")
+	}
+
+	// Вызывать можно только талоны в статусе "ожидает"
+	if ticket.Status != models.StatusWaiting {
+		return nil, fmt.Errorf("талон %s имеет неверный статус '%s' для вызова (ожидался 'ожидает')", ticket.TicketNumber, ticket.Status)
+	}
+
+	now := time.Now()
+	ticket.Status = models.StatusInvited
+	ticket.WindowNumber = &windowNumber
+	ticket.CalledAt = &now
+
+	if err := s.repo.Update(ticket); err != nil {
+		logger.Default().WithError(err).Error("CallSpecificTicket: repo update error")
+		return nil, err
+	}
+
+	logger.Default().Info(fmt.Sprintf("Ticket %s specifically called to window %d", ticket.TicketNumber, windowNumber))
+	return ticket, nil
+}
+
 func (s *TicketService) GetDailyReport() ([]models.DailyReportRow, error) {
 	today := time.Now()
 	report, err := s.repo.GetDailyReport(today)

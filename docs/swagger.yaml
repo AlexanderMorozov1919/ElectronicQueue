@@ -2,9 +2,22 @@ basePath: /
 definitions:
   handlers.CallNextRequest:
     properties:
+      category_prefix:
+        description: Добавлено опциональное поле
+        type: string
       window_number:
         type: integer
     required:
+    - window_number
+    type: object
+  handlers.CallSpecificRequest:
+    properties:
+      ticket_id:
+        type: integer
+      window_number:
+        type: integer
+    required:
+    - ticket_id
     - window_number
     type: object
   handlers.CompleteAppointmentRequest:
@@ -1710,10 +1723,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Находит первого пациента в очереди, меняет его статус на "приглашен"
-        и присваивает номер окна
+      description: Находит первого пациента в очереди (опционально по категории),
+        меняет его статус на "приглашен" и присваивает номер окна
       parameters:
-      - description: Номер окна, которое вызывает пациента
+      - description: Номер окна и опциональный префикс категории талона
         in: body
         name: request
         required: true
@@ -1747,6 +1760,49 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Вызвать следующего пациента
+      tags:
+      - registrar
+  /api/registrar/call-specific:
+    post:
+      consumes:
+      - application/json
+      description: Находит пациента по ID талона, меняет его статус на "приглашен"
+        и присваивает номер окна. Доступно только для талонов в статусе 'ожидает'.
+      parameters:
+      - description: ID талона и номер окна
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CallSpecificRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные вызванного талона
+          schema:
+            $ref: '#/definitions/models.TicketResponse'
+        "400":
+          description: 'Ошибка: неверный ID, номер окна или неверный статус талона'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'Ошибка: талон не найден'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Вызвать конкретного пациента
       tags:
       - registrar
   /api/registrar/patients:
