@@ -63,7 +63,6 @@ type DoctorQueueTicketResponse struct {
 	Status          TicketStatus `gorm:"column:status" json:"status"`
 }
 
-// НОВАЯ СТРУКТУРА ДЛЯ ОТЧЕТА
 // DailyReportRow представляет одну строку в ежедневном отчете по талонам.
 type DailyReportRow struct {
 	TicketNumber         string       `json:"ticket_number"`
@@ -73,6 +72,9 @@ type DailyReportRow struct {
 	CabinetNumber        *int         `json:"cabinet_number"`
 	AppointmentTime      *string      `json:"appointment_time"`
 	Status               TicketStatus `json:"status"`
+	CalledAt             *time.Time   `json:"called_at"`
+	CompletedAt          *time.Time   `json:"completed_at"`
+	Duration             *string      `json:"duration"`
 }
 
 // ToResponse преобразует модель Ticket в объект ответа TicketResponse (DTO)

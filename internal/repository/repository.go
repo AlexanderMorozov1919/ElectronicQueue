@@ -7,6 +7,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// ReceptionLogRepository определяет методы для работы с логами обслуживания.
+type ReceptionLogRepository interface {
+	Create(log *models.ReceptionLog) error
+	Update(log *models.ReceptionLog) error
+	FindActiveLogByTicketID(ticketID uint) (*models.ReceptionLog, error)
+}
+
 // DoctorRepository определяет методы для взаимодействия с данными врачей.
 type DoctorRepository interface {
 	Create(doctor *models.Doctor) error
@@ -115,6 +122,7 @@ type Repository struct {
 	Administrator   AdministratorRepository
 	Cleanup         CleanupRepository
 	BusinessProcess BusinessProcessRepository
+	ReceptionLog    ReceptionLogRepository
 }
 
 // NewRepository создает новый экземпляр главного репозитория.
@@ -130,5 +138,6 @@ func NewRepository(db *gorm.DB) *Repository {
 		Administrator:   NewAdministratorRepository(db),
 		Cleanup:         NewCleanupRepository(db),
 		BusinessProcess: NewBusinessProcessRepository(db),
+		ReceptionLog:    NewReceptionLogRepository(db),
 	}
 }

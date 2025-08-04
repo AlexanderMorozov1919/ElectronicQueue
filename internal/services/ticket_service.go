@@ -17,13 +17,22 @@ const maxTicketNumber = 1000
 
 // TicketService предоставляет методы для работы с талонами
 type TicketService struct {
-	repo        repository.TicketRepository
-	serviceRepo repository.ServiceRepository
+	repo             repository.TicketRepository
+	serviceRepo      repository.ServiceRepository
+	receptionLogRepo repository.ReceptionLogRepository
 }
 
 // NewTicketService создает новый экземпляр TicketService
-func NewTicketService(repo repository.TicketRepository, serviceRepo repository.ServiceRepository) *TicketService {
-	return &TicketService{repo: repo, serviceRepo: serviceRepo}
+func NewTicketService(
+	repo repository.TicketRepository,
+	serviceRepo repository.ServiceRepository,
+	receptionLogRepo repository.ReceptionLogRepository,
+) *TicketService {
+	return &TicketService{
+		repo:             repo,
+		serviceRepo:      serviceRepo,
+		receptionLogRepo: receptionLogRepo,
+	}
 }
 
 // GetTicketsForRegistrar получает список талонов для окна регистратора.
@@ -102,10 +111,20 @@ func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 	return ticket, nil
 }
 
+// UpdateTicket обновляет талон и, если нужно, останавливает таймер обслуживания.
 func (s *TicketService) UpdateTicket(ticket *models.Ticket) error {
+	// НОВАЯ ЛОГИКА: Проверяем, является ли новый статус завершающим для этапа регистратуры
+	isReceptionFinalStatus := ticket.Status == models.StatusCompleted || ticket.Status == models.StatusRegistered
+
+	if isReceptionFinalStatus {
+		// Если статус "завершен" или "зарегистрирован", вызываем специальную функцию
+		return s.finalizeReceptionAndUpdateTicket(ticket)
+	}
+
+	// Для всех остальных статусов просто обновляем талон
 	err := s.repo.Update(ticket)
 	if err != nil {
-		logger.Default().Error(fmt.Sprintf("UpdateTicket: repo update error: %v", err))
+		logger.Default().WithError(err).Error(fmt.Sprintf("UpdateTicket: repo update error: %v", err))
 	}
 	return err
 }
@@ -145,6 +164,17 @@ func (s *TicketService) CallNextTicket(windowNumber int, categoryPrefix string) 
 		return nil, err
 	}
 
+	// Создаем лог для таймера
+	receptionLog := &models.ReceptionLog{
+		TicketID:     ticket.ID,
+		WindowNumber: windowNumber,
+		CalledAt:     now,
+	}
+	if err := s.receptionLogRepo.Create(receptionLog); err != nil {
+		// Логируем ошибку, но не прерываем основной процесс
+		logger.Default().WithError(err).Error("Failed to create reception log")
+	}
+
 	logger.Default().Info(fmt.Sprintf("Ticket %s called to window %d", ticket.TicketNumber, windowNumber))
 	return ticket, nil
 }
@@ -175,8 +205,57 @@ func (s *TicketService) CallSpecificTicket(ticketID uint, windowNumber int) (*mo
 		return nil, err
 	}
 
+	// Создаем лог для таймера
+	receptionLog := &models.ReceptionLog{
+		TicketID:     ticket.ID,
+		WindowNumber: windowNumber,
+		CalledAt:     now,
+	}
+	if err := s.receptionLogRepo.Create(receptionLog); err != nil {
+		// Логируем ошибку, но не прерываем основной процесс
+		logger.Default().WithError(err).Error("Failed to create reception log for specific call")
+	}
+
 	logger.Default().Info(fmt.Sprintf("Ticket %s specifically called to window %d", ticket.TicketNumber, windowNumber))
 	return ticket, nil
+}
+
+// finalizeReceptionAndUpdateTicket обновляет статус талона и останавливает таймер в reception_logs.
+func (s *TicketService) finalizeReceptionAndUpdateTicket(ticket *models.Ticket) error {
+	log := logger.Default().WithField("ticket_id", ticket.ID)
+	now := time.Now()
+
+	// Устанавливаем время завершения в таблице tickets ТОЛЬКО для статуса "завершен".
+	// Для "зарегистрирован" это поле остается пустым, так как талон уходит дальше.
+	if ticket.Status == models.StatusCompleted {
+		ticket.CompletedAt = &now
+	}
+
+	// 1. Обновляем сам талон в его таблице
+	if err := s.repo.Update(ticket); err != nil {
+		log.WithError(err).Error("finalizeReception: failed to update ticket status")
+		return err
+	}
+
+	// 2. Ищем активный лог в reception_logs, чтобы его закрыть
+	receptionLog, err := s.receptionLogRepo.FindActiveLogByTicketID(ticket.ID)
+	if err != nil {
+		log.WithError(err).Warn("finalizeReception: active reception log not found, cannot stop timer")
+		return nil // Не возвращаем ошибку, т.к. основной процесс (смена статуса) прошел успешно
+	}
+
+	// 3. Обновляем лог: ставим время завершения и рассчитываем длительность
+	receptionLog.CompletedAt = &now
+	duration := now.Sub(receptionLog.CalledAt)
+	receptionLog.Duration = &duration
+
+	if err := s.receptionLogRepo.Update(receptionLog); err != nil {
+		log.WithError(err).Error("finalizeReception: failed to update reception log")
+		// Опять же, не возвращаем ошибку, чтобы не сломать клиент
+	}
+
+	log.WithField("duration", duration).WithField("final_status", ticket.Status).Info("Reception finalized and logged")
+	return nil
 }
 
 func (s *TicketService) GetDailyReport() ([]models.DailyReportRow, error) {
