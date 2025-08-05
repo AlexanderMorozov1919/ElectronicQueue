@@ -214,8 +214,11 @@ definitions:
       is_enabled:
         type: boolean
       picture:
-        description: base64 encoded
         type: string
+      reception_on:
+        type: boolean
+      schedule_on:
+        type: boolean
       updated_at:
         type: string
     type: object
@@ -252,8 +255,11 @@ definitions:
       is_enabled:
         type: boolean
       picture:
-        description: base64 encoded
         type: string
+      reception_on:
+        type: boolean
+      schedule_on:
+        type: boolean
     required:
     - duration_sec
     - picture
@@ -566,8 +572,11 @@ definitions:
       is_enabled:
         type: boolean
       picture:
-        description: base64 encoded
         type: string
+      reception_on:
+        type: boolean
+      schedule_on:
+        type: boolean
     type: object
   models.UpdateRequest:
     properties:
@@ -1144,6 +1153,12 @@ paths:
   /api/ads/enabled:
     get:
       description: Возвращает список всех включенных рекламных материалов с изображениями.
+      parameters:
+      - description: Тип экрана ('reception' или 'schedule')
+        in: query
+        name: screen
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -1153,6 +1168,12 @@ paths:
             items:
               $ref: '#/definitions/models.AdResponse'
             type: array
+        "400":
+          description: Неверный тип экрана
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Внутренняя ошибка сервера
           schema:
