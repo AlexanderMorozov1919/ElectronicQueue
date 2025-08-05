@@ -10,24 +10,25 @@ import (
 
 // Config содержит переменные среды
 type Config struct {
-	DBUser          string
-	DBPassword      string
-	DBHost          string
-	DBPort          string
-	DBName          string
-	DBSSLMode       string
-	BackendPort     string
-	FrontendPort    string
-	JWTSecret       string
-	JWTExpiration   string
-	TicketMode      string
-	TicketHeight    string
-	LogDir          string
-	TicketDir       string
-	InternalAPIKey  string
-	ExternalAPIKey  string
-	PrinterName     string
-	MaintenanceTime string
+	DBUser                      string
+	DBPassword                  string
+	DBHost                      string
+	DBPort                      string
+	DBName                      string
+	DBSSLMode                   string
+	BackendPort                 string
+	FrontendPort                string
+	JWTSecret                   string
+	JWTExpiration               string
+	TicketMode                  string
+	TicketHeight                string
+	LogDir                      string
+	TicketDir                   string
+	InternalAPIKey              string
+	ExternalAPIKey              string
+	PrinterName                 string
+	MaintenanceTime             string
+	AudioBackgroundMusicEnabled bool
 }
 
 // LoadConfig загружает переменные среды из .env и возвращает структуру Config
@@ -39,24 +40,25 @@ func LoadConfig() (*Config, error) {
 	}
 
 	cfg := &Config{
-		DBUser:          getEnv("DB_USER"),
-		DBPassword:      getEnv("DB_PASSWORD"),
-		DBHost:          getEnv("DB_HOST"),
-		DBPort:          getEnv("DB_PORT"),
-		DBName:          getEnv("DB_NAME"),
-		DBSSLMode:       getEnv("DB_SSLMODE", "disable"),
-		BackendPort:     getEnv("BACKEND_PORT", "8080"),
-		FrontendPort:    getEnv("FRONTEND_PORT", "3000"),
-		JWTSecret:       getEnv("JWT_SECRET"),
-		JWTExpiration:   getEnv("JWT_EXPIRATION", "24h"),
-		TicketMode:      getEnv("TICKET_MODE", "b/w"),
-		TicketHeight:    getEnv("TICKET_HEIGHT", "800"),
-		LogDir:          getEnv("LOG_DIR", "logs"),
-		TicketDir:       getEnv("TICKET_DIR", "tickets"),
-		InternalAPIKey:  getEnv("INTERNAL_API_KEY"),
-		ExternalAPIKey:  getEnv("EXTERNAL_API_KEY"),
-		PrinterName:     getEnv("PRINTER"),
-		MaintenanceTime: getEnv("MAINTENANCE_TIME", "00:00"),
+		DBUser:                      getEnv("DB_USER"),
+		DBPassword:                  getEnv("DB_PASSWORD"),
+		DBHost:                      getEnv("DB_HOST"),
+		DBPort:                      getEnv("DB_PORT"),
+		DBName:                      getEnv("DB_NAME"),
+		DBSSLMode:                   getEnv("DB_SSLMODE", "disable"),
+		BackendPort:                 getEnv("BACKEND_PORT", "8080"),
+		FrontendPort:                getEnv("FRONTEND_PORT", "3000"),
+		JWTSecret:                   getEnv("JWT_SECRET"),
+		JWTExpiration:               getEnv("JWT_EXPIRATION", "24h"),
+		TicketMode:                  getEnv("TICKET_MODE", "b/w"),
+		TicketHeight:                getEnv("TICKET_HEIGHT", "800"),
+		LogDir:                      getEnv("LOG_DIR", "logs"),
+		TicketDir:                   getEnv("TICKET_DIR", "tickets"),
+		InternalAPIKey:              getEnv("INTERNAL_API_KEY"),
+		ExternalAPIKey:              getEnv("EXTERNAL_API_KEY"),
+		PrinterName:                 getEnv("PRINTER"),
+		MaintenanceTime:             getEnv("MAINTENANCE_TIME", "00:00"),
+		AudioBackgroundMusicEnabled: getEnv("BACKGROUND_MUSIC", "true") == "true",
 	}
 
 	// Валидация обязательных полей

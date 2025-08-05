@@ -184,7 +184,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
 	authHandler := handlers.NewAuthHandler(authService)
 	databaseHandler := handlers.NewDatabaseHandler(databaseService)
-	audioHandler := handlers.NewAudioHandler()
+	audioHandler := handlers.NewAudioHandler(cfg)
 	patientHandler := handlers.NewPatientHandler(patientService)
 	appointmentHandler := handlers.NewAppointmentHandler(appointmentService)
 	scheduleHandler := handlers.NewScheduleHandler(scheduleService, broker)
