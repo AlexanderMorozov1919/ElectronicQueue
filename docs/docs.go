@@ -801,6 +801,15 @@ const docTemplate = `{
                     "ads"
                 ],
                 "summary": "Получить активные рекламные материалы (Табло)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Тип экрана ('reception' или 'schedule')",
+                        "name": "screen",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Список активных рекламных материалов",
@@ -808,6 +817,15 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/models.AdResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный тип экрана",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     },
@@ -3147,8 +3165,13 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "picture": {
-                    "description": "base64 encoded",
                     "type": "string"
+                },
+                "reception_on": {
+                    "type": "boolean"
+                },
+                "schedule_on": {
+                    "type": "boolean"
                 },
                 "updated_at": {
                     "type": "string"
@@ -3209,8 +3232,13 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "picture": {
-                    "description": "base64 encoded",
                     "type": "string"
+                },
+                "reception_on": {
+                    "type": "boolean"
+                },
+                "schedule_on": {
+                    "type": "boolean"
                 }
             }
         },
@@ -3667,8 +3695,13 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "picture": {
-                    "description": "base64 encoded",
                     "type": "string"
+                },
+                "reception_on": {
+                    "type": "boolean"
+                },
+                "schedule_on": {
+                    "type": "boolean"
                 }
             }
         },

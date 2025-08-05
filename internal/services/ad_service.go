@@ -28,6 +28,8 @@ func (s *AdService) Create(req *models.CreateAdRequest) (*models.Ad, error) {
 		Picture:     picBytes,
 		DurationSec: req.DurationSec,
 		IsEnabled:   req.IsEnabled,
+		ReceptionOn: req.ReceptionOn,
+		ScheduleOn:  req.ScheduleOn,
 	}
 
 	if err := s.repo.Create(ad); err != nil {
@@ -40,8 +42,11 @@ func (s *AdService) GetAll() ([]models.Ad, error) {
 	return s.repo.GetAll()
 }
 
-func (s *AdService) GetEnabled() ([]models.Ad, error) {
-	return s.repo.GetEnabled()
+func (s *AdService) GetEnabled(screen string) ([]models.Ad, error) {
+	if screen != "reception" && screen != "schedule" {
+		return nil, fmt.Errorf("invalid screen type provided: %s", screen)
+	}
+	return s.repo.GetEnabledFor(screen)
 }
 
 func (s *AdService) GetByID(id uint) (*models.Ad, error) {
@@ -69,6 +74,12 @@ func (s *AdService) Update(id uint, req *models.UpdateAdRequest) (*models.Ad, er
 	}
 	if req.IsEnabled != nil {
 		ad.IsEnabled = *req.IsEnabled
+	}
+	if req.ReceptionOn != nil {
+		ad.ReceptionOn = *req.ReceptionOn
+	}
+	if req.ScheduleOn != nil {
+		ad.ScheduleOn = *req.ScheduleOn
 	}
 
 	if err := s.repo.Update(ad); err != nil {

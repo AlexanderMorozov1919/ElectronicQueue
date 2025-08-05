@@ -114,7 +114,7 @@ type BusinessProcessRepository interface {
 type AdRepository interface {
 	Create(ad *models.Ad) error
 	GetAll() ([]models.Ad, error)
-	GetEnabled() ([]models.Ad, error)
+	GetEnabledFor(screen string) ([]models.Ad, error)
 	GetByID(id uint) (*models.Ad, error)
 	Update(ad *models.Ad) error
 	Delete(id uint) error

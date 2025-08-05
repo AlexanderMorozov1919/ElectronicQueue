@@ -14,6 +14,7 @@ TRUNCATE TABLE
     doctors,
     registrars,
     administrators,
+    reception_logs,
     patients
 RESTART IDENTITY CASCADE;
 
@@ -92,10 +93,33 @@ SELECT
 FROM 
     (SELECT doctor_id, generate_series(CURRENT_DATE, CURRENT_DATE + interval '6 days', '1 day') as day FROM doctors) d
 CROSS JOIN generate_series(
-    (CURRENT_DATE + '08:00'::time)::timestamp,
-    (CURRENT_DATE + '19:30'::time)::timestamp,
+    (CURRENT_DATE + '06:00'::time)::timestamp,
+    (CURRENT_DATE + '21:30'::time)::timestamp,
     '30 minutes'::interval
-) AS s(start_time);
+) AS s(start_time)
+WHERE -- УБРАНЫ ВСЕ ФИЛЬТРЫ ПО СТАТУСУ, ГЕНЕРИРУЕМ ДЛЯ ВСЕХ
+    (
+        -- Врач 1 (Терапевт): Пн-Пт, 08:00-18:00
+        (d.doctor_id = 1 AND extract(isodow from d.day) <= 5 AND s.start_time::time >= '08:00' AND s.start_time::time < '18:00')
+        OR
+        -- Врач 2 (Хирург): Каждый день, 09:00-20:00
+        (d.doctor_id = 2 AND s.start_time::time >= '09:00' AND s.start_time::time < '20:00')
+        OR
+        -- Врач 3 (Кардиолог): Пн, Ср, Пт, 07:00-16:00
+        (d.doctor_id = 3 AND extract(isodow from d.day) IN (1, 3, 5) AND s.start_time::time >= '07:00' AND s.start_time::time < '16:00')
+        OR
+        -- Врач 4 (Невролог): Вт, Чт, Сб, 14:00-22:00
+        (d.doctor_id = 4 AND extract(isodow from d.day) IN (2, 4, 6) AND s.start_time::time >= '14:00' AND s.start_time::time < '22:00')
+        OR
+        -- Врач 5 (Офтальмолог): Пн, Вт, Ср, 10:00-15:00
+        (d.doctor_id = 5 AND extract(isodow from d.day) IN (1, 2, 3) AND s.start_time::time >= '10:00' AND s.start_time::time < '15:00')
+        OR
+        -- Врач 6 (Педиатр): Пн-Сб, 06:00-16:00
+        (d.doctor_id = 6 AND extract(isodow from d.day) <= 6 AND s.start_time::time >= '06:00' AND s.start_time::time < '16:00')
+        OR
+        -- Врач 7 (ЛОР): Каждый день, 12:00-21:00
+        (d.doctor_id = 7 AND s.start_time::time >= '12:00' AND s.start_time::time < '21:00')
+    );
 
 -- -----------------------------------------------------------------
 -- --                7. ТАЛОНЫ И ЗАПИСИ НА ПРИЕМ                  --
@@ -147,7 +171,6 @@ DECLARE
     ticket_num INT := 11;
 BEGIN
     FOR d_id IN 1..7 LOOP
-        CONTINUE WHEN (SELECT status FROM doctors WHERE doctor_id = d_id) = 'перерыв';
         FOR i IN 1..4 LOOP
             SELECT schedule_id INTO v_schedule_id FROM schedules
             WHERE doctor_id = d_id AND date = CURRENT_DATE AND is_available = TRUE

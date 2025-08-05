@@ -2,6 +2,7 @@ package repository
 
 import (
 	"ElectronicQueue/internal/models"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -20,16 +21,26 @@ func (r *adRepo) Create(ad *models.Ad) error {
 
 func (r *adRepo) GetAll() ([]models.Ad, error) {
 	var ads []models.Ad
-	// ИСПРАВЛЕНИЕ: Возвращаем Omit("picture"), чтобы не загружать картинки в общем списке
-	if err := r.db.Omit("picture").Order("created_at DESC").Find(&ads).Error; err != nil {
+	if err := r.db.Omit("picture").Order("created_at ASC").Find(&ads).Error; err != nil {
 		return nil, err
 	}
 	return ads, nil
 }
 
-func (r *adRepo) GetEnabled() ([]models.Ad, error) {
+func (r *adRepo) GetEnabledFor(screen string) ([]models.Ad, error) {
 	var ads []models.Ad
-	if err := r.db.Where("is_enabled = ?", true).Order("id ASC").Find(&ads).Error; err != nil {
+	query := r.db.Where("is_enabled = ?", true)
+
+	switch screen {
+	case "reception":
+		query = query.Where("reception_on = ?", true)
+	case "schedule":
+		query = query.Where("schedule_on = ?", true)
+	default:
+		return nil, fmt.Errorf("unknown screen type: %s", screen)
+	}
+
+	if err := query.Order("id ASC").Find(&ads).Error; err != nil {
 		return nil, err
 	}
 	return ads, nil

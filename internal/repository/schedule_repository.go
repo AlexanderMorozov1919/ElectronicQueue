@@ -103,9 +103,9 @@ func (r *scheduleRepo) FindAllSchedulesForDate(date time.Time) ([]models.Schedul
 	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
-	err := r.db.Preload("Doctor").
+	err := r.db.Joins("Doctor").
 		Where("date >= ? AND date < ?", startOfDay, endOfDay).
-		Order("doctor_id asc, start_time asc").
+		Order("schedules.doctor_id asc, schedules.start_time asc").
 		Find(&schedules).Error
 
 	return schedules, err

@@ -36,7 +36,6 @@ func (h *AdHandler) GetAllAds(c *gin.Context) {
 
 	var response []models.AdResponse
 	for _, ad := range ads {
-		// ИСПРАВЛЕНИЕ: Возвращаем пустую строку вместо картинки, чтобы ответ был легким
 		respAd := ad.ToResponse()
 		respAd.Picture = ""
 		response = append(response, respAd)
@@ -74,11 +73,19 @@ func (h *AdHandler) GetAdByID(c *gin.Context) {
 // @Description  Возвращает список всех включенных рекламных материалов с изображениями.
 // @Tags         ads
 // @Produce      json
+// @Param        screen query string true "Тип экрана ('reception' или 'schedule')"
 // @Success      200 {array} models.AdResponse "Список активных рекламных материалов"
+// @Failure      400 {object} map[string]string "Неверный тип экрана"
 // @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
 // @Router       /api/ads/enabled [get]
 func (h *AdHandler) GetEnabledAds(c *gin.Context) {
-	ads, err := h.service.GetEnabled()
+	screenType := c.Query("screen")
+	if screenType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "query parameter 'screen' is required"})
+		return
+	}
+
+	ads, err := h.service.GetEnabled(screenType)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get enabled ads"})
 		return
