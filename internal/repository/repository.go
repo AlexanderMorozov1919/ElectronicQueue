@@ -110,6 +110,16 @@ type BusinessProcessRepository interface {
 	FindByName(name string) (*models.BusinessProcess, error)
 }
 
+// AdRepository определяет методы для работы с рекламными материалами.
+type AdRepository interface {
+	Create(ad *models.Ad) error
+	GetAll() ([]models.Ad, error)
+	GetEnabled() ([]models.Ad, error)
+	GetByID(id uint) (*models.Ad, error)
+	Update(ad *models.Ad) error
+	Delete(id uint) error
+}
+
 // Repository содержит все репозитории приложения.
 type Repository struct {
 	Doctor          DoctorRepository
@@ -123,6 +133,7 @@ type Repository struct {
 	Cleanup         CleanupRepository
 	BusinessProcess BusinessProcessRepository
 	ReceptionLog    ReceptionLogRepository
+	Ad              AdRepository
 }
 
 // NewRepository создает новый экземпляр главного репозитория.
@@ -139,5 +150,6 @@ func NewRepository(db *gorm.DB) *Repository {
 		Cleanup:         NewCleanupRepository(db),
 		BusinessProcess: NewBusinessProcessRepository(db),
 		ReceptionLog:    NewReceptionLogRepository(db),
+		Ad:              NewAdRepository(db),
 	}
 }

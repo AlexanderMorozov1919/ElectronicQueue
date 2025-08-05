@@ -203,6 +203,22 @@ definitions:
     required:
     - status
     type: object
+  models.AdResponse:
+    properties:
+      created_at:
+        type: string
+      duration_sec:
+        type: integer
+      id:
+        type: integer
+      is_enabled:
+        type: boolean
+      picture:
+        description: base64 encoded
+        type: string
+      updated_at:
+        type: string
+    type: object
   models.Appointment:
     properties:
       created_at:
@@ -228,6 +244,19 @@ definitions:
         type: boolean
       process_name:
         type: string
+    type: object
+  models.CreateAdRequest:
+    properties:
+      duration_sec:
+        type: integer
+      is_enabled:
+        type: boolean
+      picture:
+        description: base64 encoded
+        type: string
+    required:
+    - duration_sec
+    - picture
     type: object
   models.CreateAppointmentRequest:
     properties:
@@ -530,6 +559,16 @@ definitions:
     - StatusInProgress
     - StatusCompleted
     - StatusRegistered
+  models.UpdateAdRequest:
+    properties:
+      duration_sec:
+        type: integer
+      is_enabled:
+        type: boolean
+      picture:
+        description: base64 encoded
+        type: string
+    type: object
   models.UpdateRequest:
     properties:
       data:
@@ -605,6 +644,165 @@ info:
   title: Electronic Queue API
   version: "1.0"
 paths:
+  /api/admin/ads:
+    get:
+      description: Возвращает список всех рекламных материалов без самих изображений.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список рекламных материалов
+          schema:
+            items:
+              $ref: '#/definitions/models.AdResponse'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить список всех рекламных материалов (Админ)
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Загружает новое рекламное объявление.
+      parameters:
+      - description: Данные для создания
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateAdRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Созданный материал
+          schema:
+            $ref: '#/definitions/models.AdResponse'
+        "400":
+          description: Ошибка в запросе
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Создать рекламный материал (Админ)
+      tags:
+      - admin
+  /api/admin/ads/{id}:
+    delete:
+      description: Удаляет рекламное объявление по ID.
+      parameters:
+      - description: ID рекламного материала
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Удалено
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка удаления
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Удалить рекламный материал (Админ)
+      tags:
+      - admin
+    get:
+      description: Возвращает полную информацию о рекламном материале, включая изображение.
+      parameters:
+      - description: ID рекламного материала
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Рекламный материал
+          schema:
+            $ref: '#/definitions/models.AdResponse'
+        "400":
+          description: Неверный ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Не найдено
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить рекламный материал по ID (Админ)
+      tags:
+      - admin
+    patch:
+      consumes:
+      - application/json
+      description: Обновляет существующее рекламное объявление.
+      parameters:
+      - description: ID рекламного материала
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateAdRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Обновленный материал
+          schema:
+            $ref: '#/definitions/models.AdResponse'
+        "400":
+          description: Ошибка в запросе
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Не найдено
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Обновить рекламный материал (Админ)
+      tags:
+      - admin
   /api/admin/create/administrator:
     post:
       consumes:
@@ -943,6 +1141,27 @@ paths:
       summary: Удалить тикет (Админ)
       tags:
       - admin
+  /api/ads/enabled:
+    get:
+      description: Возвращает список всех включенных рекламных материалов с изображениями.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список активных рекламных материалов
+          schema:
+            items:
+              $ref: '#/definitions/models.AdResponse'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить активные рекламные материалы (Табло)
+      tags:
+      - ads
   /api/audio/announce:
     get:
       description: Создает и возвращает WAV файл с озвучкой номера талона и окна.

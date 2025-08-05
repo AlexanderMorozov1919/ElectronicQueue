@@ -174,6 +174,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	cleanupService := services.NewCleanupService(repo.Cleanup)
 	tasksTimerService := services.NewTasksTimerService(cleanupService, cfg)
 	scheduleService := services.NewScheduleService(repo.Schedule, repo.Doctor)
+	adService := services.NewAdService(repo.Ad)
 
 	// Запускаем планировщик задач в фоне
 	go tasksTimerService.Start(context.Background())
@@ -188,6 +189,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	appointmentHandler := handlers.NewAppointmentHandler(appointmentService)
 	scheduleHandler := handlers.NewScheduleHandler(scheduleService, broker)
 	processHandler := handlers.NewBusinessProcessHandler(processService)
+	adHandler := handlers.NewAdHandler(adService)
 
 	// SSE-эндпоинт для табло очереди регистратуры (reception)
 	r.GET("/tickets", middleware.CheckBusinessProcess(processService, "reception"), sseHandler(broker, "reception_sse"))
@@ -214,6 +216,12 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		admin.POST("/create/administrator", authHandler.CreateAdministrator)
 		admin.GET("/processes", processHandler.GetAllProcesses)
 		admin.PATCH("/processes/:name", processHandler.UpdateProcess)
+
+		admin.GET("/ads", adHandler.GetAllAds)
+		admin.POST("/ads", adHandler.CreateAd)
+		admin.GET("/ads/:id", adHandler.GetAdByID)
+		admin.PATCH("/ads/:id", adHandler.UpdateAd)
+		admin.DELETE("/ads/:id", adHandler.DeleteAd)
 	}
 
 	// Эндпоинты для терминала (terminal)
@@ -279,6 +287,12 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		dbAPI.POST("/:table/insert", databaseHandler.InsertData)
 		dbAPI.PATCH("/:table/update", databaseHandler.UpdateData)
 		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
+	}
+
+	// Реклама используется табло регистратуры (reception)
+	adGroup := r.Group("/api/ads").Use(middleware.CheckBusinessProcess(processService, "reception", "schedule"))
+	{
+		adGroup.GET("/enabled", adHandler.GetEnabledAds)
 	}
 
 	// Озвучка используется табло регистратуры (reception)
