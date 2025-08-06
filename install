@@ -295,6 +295,7 @@ if [[ "$GO_MODE" == "true" ]]; then
   # Копируем необходимые файлы
   cp ./build/* "$BUILD_DIR/"
   cp -r docs "$BUILD_DIR/"
+  cp -r assets "$BUILD_DIR/"
   cp .env.example "$BUILD_DIR/.env"
 
   # Удаляем старый архив
