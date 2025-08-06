@@ -165,7 +165,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 
 	repo := repository.NewRepository(db)
 
-	ticketService := services.NewTicketService(repo.Ticket, repo.Service, repo.ReceptionLog)
+	ticketService := services.NewTicketService(repo.Ticket, repo.Service, repo.ReceptionLog, repo.Patient, repo.Appointment)
 	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
 	authService := services.NewAuthService(repo.Registrar, repo.Doctor, repo.Administrator, jwtManager)
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db))
@@ -231,6 +231,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		tickets.GET("/services", ticketHandler.Services)
 		tickets.POST("/print/selection", ticketHandler.Selection)
 		tickets.POST("/print/confirmation", ticketHandler.Confirmation)
+		tickets.POST("/appointment/phone", ticketHandler.CheckInByPhone)
 		tickets.GET("/download/:ticket_number", ticketHandler.DownloadTicket)
 		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)
 	}
@@ -334,7 +335,6 @@ func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 					return false
 				}
 
-				// Игнорируем уведомления, не связанные с талонами
 				if !strings.Contains(payloadStr, "ticket_number") {
 					return true
 				}

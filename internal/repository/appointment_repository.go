@@ -137,3 +137,28 @@ func (r *appointmentRepo) DeleteAppointmentAndFreeSlot(appointmentID uint) error
 		return nil
 	})
 }
+
+func (r *appointmentRepo) FindUpcomingByPatientID(patientID uint, now time.Time) (*models.Appointment, error) {
+	var appointment models.Appointment
+	today := now.Format("2006-01-02")
+
+	err := r.db.Joins("JOIN schedules ON schedules.schedule_id = appointments.schedule_id").
+		Preload("Schedule.Doctor").
+		Where("appointments.patient_id = ? AND appointments.ticket_id IS NULL AND schedules.date = ?", patientID, today).
+		Order("schedules.start_time asc").
+		First(&appointment).Error
+
+	return &appointment, err
+}
+
+func (r *appointmentRepo) AssignTicketToAppointment(appointment *models.Appointment, ticket *models.Ticket) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(ticket).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(appointment).Update("ticket_id", ticket.ID).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}

@@ -3,7 +3,6 @@ definitions:
   handlers.CallNextRequest:
     properties:
       category_prefix:
-        description: Добавлено опциональное поле
         type: string
       window_number:
         type: integer
@@ -19,6 +18,13 @@ definitions:
     required:
     - ticket_id
     - window_number
+    type: object
+  handlers.CheckInByPhoneRequest:
+    properties:
+      phone:
+        type: string
+    required:
+    - phone
     type: object
   handlers.CompleteAppointmentRequest:
     properties:
@@ -36,7 +42,6 @@ definitions:
     - ticket_id
     type: object
   handlers.ConfirmationRequest:
-    description: Запрос подтверждения действия (печать талона или получение электронного)
     properties:
       action:
         example: print_ticket
@@ -49,7 +54,6 @@ definitions:
     - service_id
     type: object
   handlers.ConfirmationResponse:
-    description: Ответ после подтверждения действия
     properties:
       message:
         example: Ваш электронный талон
@@ -140,7 +144,6 @@ definitions:
     - password
     type: object
   handlers.ServiceSelectionRequest:
-    description: Запрос для выбора услуги
     properties:
       service_id:
         example: make_appointment
@@ -149,7 +152,6 @@ definitions:
     - service_id
     type: object
   handlers.ServiceSelectionResponse:
-    description: Ответ после выбора услуги
     properties:
       action:
         example: confirm_print
@@ -196,7 +198,6 @@ definitions:
         type: boolean
     type: object
   handlers.UpdateStatusRequest:
-    description: Запрос для смены статуса тикета
     properties:
       status:
         type: string
@@ -440,6 +441,33 @@ definitions:
       phone:
         type: string
     type: object
+  models.RegistrarTicketResponse:
+    properties:
+      appointment_time:
+        type: string
+      called_at:
+        type: string
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      qr_code:
+        items:
+          type: integer
+        type: array
+      service_type:
+        type: string
+      started_at:
+        type: string
+      status:
+        $ref: '#/definitions/models.TicketStatus'
+      ticket_number:
+        type: string
+      window_number:
+        type: integer
+    type: object
   models.Schedule:
     properties:
       cabinet:
@@ -492,7 +520,6 @@ definitions:
         type: string
     type: object
   models.Ticket:
-    description: Модель талона электронной очереди
     properties:
       called_at:
         type: string
@@ -518,7 +545,6 @@ definitions:
         type: integer
     type: object
   models.TicketResponse:
-    description: Ответ API с данными талона
     properties:
       called_at:
         type: string
@@ -551,14 +577,6 @@ definitions:
     - завершен
     - зарегистрирован
     type: string
-    x-enum-comments:
-      StatusInvited: Пациент вызван к окну
-    x-enum-descriptions:
-    - ""
-    - Пациент вызван к окну
-    - ""
-    - ""
-    - ""
     x-enum-varnames:
     - StatusWaiting
     - StatusInvited
@@ -2241,7 +2259,7 @@ paths:
           description: Массив талонов
           schema:
             items:
-              $ref: '#/definitions/models.Ticket'
+              $ref: '#/definitions/models.RegistrarTicketResponse'
             type: array
         "500":
           description: Внутренняя ошибка сервера
@@ -2337,6 +2355,47 @@ paths:
               type: string
             type: object
       summary: Получить все активные талоны
+      tags:
+      - tickets
+  /api/tickets/appointment/phone:
+    post:
+      consumes:
+      - application/json
+      description: Проверяет наличие записи по номеру телефона и выдает приоритетный
+        талон, если прием скоро
+      parameters:
+      - description: Номер телефона пациента
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CheckInByPhoneRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ответ с данными талона
+          schema:
+            $ref: '#/definitions/handlers.ConfirmationResponse'
+        "400":
+          description: 'Ошибка: не передан номер телефона'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Запись не найдена или еще не время
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Регистрация на прием по номеру телефона
       tags:
       - tickets
   /api/tickets/download/{ticket_number}:

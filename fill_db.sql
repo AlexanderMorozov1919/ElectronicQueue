@@ -97,27 +97,20 @@ CROSS JOIN generate_series(
     (CURRENT_DATE + '21:30'::time)::timestamp,
     '30 minutes'::interval
 ) AS s(start_time)
-WHERE -- УБРАНЫ ВСЕ ФИЛЬТРЫ ПО СТАТУСУ, ГЕНЕРИРУЕМ ДЛЯ ВСЕХ
+WHERE 
     (
-        -- Врач 1 (Терапевт): Пн-Пт, 08:00-18:00
         (d.doctor_id = 1 AND extract(isodow from d.day) <= 5 AND s.start_time::time >= '08:00' AND s.start_time::time < '18:00')
         OR
-        -- Врач 2 (Хирург): Каждый день, 09:00-20:00
         (d.doctor_id = 2 AND s.start_time::time >= '09:00' AND s.start_time::time < '20:00')
         OR
-        -- Врач 3 (Кардиолог): Пн, Ср, Пт, 07:00-16:00
         (d.doctor_id = 3 AND extract(isodow from d.day) IN (1, 3, 5) AND s.start_time::time >= '07:00' AND s.start_time::time < '16:00')
         OR
-        -- Врач 4 (Невролог): Вт, Чт, Сб, 14:00-22:00
         (d.doctor_id = 4 AND extract(isodow from d.day) IN (2, 4, 6) AND s.start_time::time >= '14:00' AND s.start_time::time < '22:00')
         OR
-        -- Врач 5 (Офтальмолог): Пн, Вт, Ср, 10:00-15:00
         (d.doctor_id = 5 AND extract(isodow from d.day) IN (1, 2, 3) AND s.start_time::time >= '10:00' AND s.start_time::time < '15:00')
         OR
-        -- Врач 6 (Педиатр): Пн-Сб, 06:00-16:00
         (d.doctor_id = 6 AND extract(isodow from d.day) <= 6 AND s.start_time::time >= '06:00' AND s.start_time::time < '16:00')
         OR
-        -- Врач 7 (ЛОР): Каждый день, 12:00-21:00
         (d.doctor_id = 7 AND s.start_time::time >= '12:00' AND s.start_time::time < '21:00')
     );
 
@@ -125,18 +118,18 @@ WHERE -- УБРАНЫ ВСЕ ФИЛЬТРЫ ПО СТАТУСУ, ГЕНЕРИР�
 -- --                7. ТАЛОНЫ И ЗАПИСИ НА ПРИЕМ                  --
 -- -----------------------------------------------------------------
 -- Сценарий: Середина рабочего дня, примерно 12:00
--- 6.1 Талоны в статусе "завершен"
+-- 7.1 Талоны в статусе "завершен"
 INSERT INTO tickets (ticket_number, status, service_type, window_number, created_at, called_at, completed_at) VALUES
 ('A001', 'завершен', 'make_appointment', 1, NOW() - INTERVAL '3 hour', NOW() - INTERVAL '2 hour 50 minutes', NOW() - INTERVAL '2 hour 45 minutes'),
 ('C001', 'завершен', 'lab_tests', 2, NOW() - INTERVAL '2 hour 30 minutes', NOW() - INTERVAL '2 hour 20 minutes', NOW() - INTERVAL '2 hour 10 minutes'),
 ('D001', 'завершен', 'documents', 1, NOW() - INTERVAL '2 hour', NOW() - INTERVAL '1 hour 55 minutes', NOW() - INTERVAL '1 hour 40 minutes');
 
--- 6.2 Талоны в статусе "приглашен"
+-- 7.2 Талоны в статусе "приглашен"
 INSERT INTO tickets (ticket_number, status, service_type, window_number, created_at, called_at) VALUES
 ('A002', 'приглашен', 'make_appointment', 1, NOW() - INTERVAL '1 hour 30 minutes', NOW() - INTERVAL '1 minute'),
 ('B001', 'приглашен', 'confirm_appointment', 3, NOW() - INTERVAL '1 hour 25 minutes', NOW() - INTERVAL '30 seconds');
 
--- 6.3 Талоны в статусе "ожидает"
+-- 7.3 Талоны в статусе "ожидает"
 INSERT INTO tickets (ticket_number, status, service_type, created_at) VALUES
 ('C002', 'ожидает', 'lab_tests', NOW() - INTERVAL '1 hour'),
 ('D002', 'ожидает', 'documents', NOW() - INTERVAL '55 minutes'),
@@ -147,7 +140,7 @@ INSERT INTO tickets (ticket_number, status, service_type, created_at) VALUES
 ('D003', 'ожидает', 'documents', NOW() - INTERVAL '10 minutes'),
 ('B003', 'ожидает', 'confirm_appointment', NOW() - INTERVAL '5 minutes');
 
--- 6.4 Один пациент НА ПРИЕМЕ (для демонстрации)
+-- 7.4 Один пациент НА ПРИЕМЕ (для демонстрации)
 DO $$
 DECLARE
     v_schedule_id INT;
@@ -161,7 +154,7 @@ BEGIN
     END IF;
 END $$;
 
--- 6.5 Создаем по 4 ЗАПИСАННЫХ пациента для КАЖДОГО врача на СЕГОДНЯ
+-- 7.5 Создаем по 4 ЗАПИСАННЫХ пациента для КАЖДОГО врача на СЕГОДНЯ
 DO $$
 DECLARE
     d_id INT;
@@ -194,7 +187,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- 6.6 Создание будущих записей на прием (без талонов) на 6 дней вперед
+-- 7.6 Создание будущих записей на прием (без талонов) на 6 дней вперед
 DO $$
 DECLARE
     d_id INT;
@@ -222,7 +215,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- 6.7 Добавляем "заочные" записи (без талонов) на сегодня и завтра
+-- 7.7 Добавляем "заочные" записи (без талонов) на сегодня и завтра
 DO $$
 DECLARE
     d_id INT;
@@ -230,25 +223,51 @@ DECLARE
     s_id INT;
     day_offset INT;
 BEGIN
-    FOR d_id IN 1..7 LOOP -- Для каждого врача
-        FOR day_offset IN 0..1 LOOP -- На сегодня (0) и завтра (1)
-            FOR i IN 1..3 LOOP -- Создаем по 3 случайные записи
+    FOR d_id IN 1..7 LOOP 
+        FOR day_offset IN 0..1 LOOP 
+            FOR i IN 1..3 LOOP 
                 p_id := floor(random() * 15 + 1)::INT;
                 
                 SELECT schedule_id INTO s_id FROM schedules
                 WHERE doctor_id = d_id AND date = (CURRENT_DATE + day_offset * INTERVAL '1 day')
                 AND is_available = TRUE
-                -- Выбираем слоты после 14:00 для сегодняшнего дня, чтобы не пересекаться с активной очередью
                 AND (CASE WHEN day_offset = 0 THEN start_time >= '14:00:00' ELSE TRUE END)
                 ORDER BY random()
                 LIMIT 1;
                 
                 IF s_id IS NOT NULL THEN
-                    -- Создаем запись БЕЗ талона
                     INSERT INTO appointments (schedule_id, patient_id) VALUES (s_id, p_id);
                     UPDATE schedules SET is_available = FALSE WHERE schedule_id = s_id;
                 END IF;
             END LOOP;
         END LOOP;
     END LOOP;
+END $$;
+
+-- 7.8 Добавляем ОПОЗДАВШЕГО пациента (запись на 9 утра) и связанный с ним талон
+DO $$
+DECLARE
+    v_schedule_id INT;
+    v_ticket_id INT;
+    v_patient_id INT := 3; -- Берем 3-го пациента для примера
+BEGIN
+    -- Находим слот на 9:00 сегодня у первого врача
+    SELECT schedule_id INTO v_schedule_id 
+    FROM schedules 
+    WHERE doctor_id = 1 AND date = CURRENT_DATE AND start_time = '09:00:00'
+    LIMIT 1;
+    
+    IF v_schedule_id IS NOT NULL THEN
+        -- Создаем талон "В ожидании" для этой записи
+        INSERT INTO tickets (ticket_number, status, service_type, created_at) 
+        VALUES ('B099', 'ожидает', 'confirm_appointment', NOW() - INTERVAL '15 minutes') 
+        RETURNING ticket_id INTO v_ticket_id;
+        
+        -- Создаем саму запись, связывая пациента, расписание и талон
+        INSERT INTO appointments (schedule_id, patient_id, ticket_id) 
+        VALUES (v_schedule_id, v_patient_id, v_ticket_id);
+        
+        -- Помечаем слот как занятый
+        UPDATE schedules SET is_available = FALSE WHERE schedule_id = v_schedule_id;
+    END IF;
 END $$;

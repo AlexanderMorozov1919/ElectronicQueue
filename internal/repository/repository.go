@@ -31,6 +31,7 @@ type PatientRepository interface {
 	Create(patient *models.Patient) (*models.Patient, error)
 	Search(query string) ([]models.Patient, error)
 	FindByPassport(series, number string) (*models.Patient, error)
+	FindByPhone(phone string) (*models.Patient, error)
 }
 
 // TicketRepository определяет методы для взаимодействия с талонами.
@@ -47,7 +48,7 @@ type TicketRepository interface {
 	FindTicketsForCabinetQueue(cabinetNumber int) ([]models.DoctorQueueTicketResponse, error)
 	FindByStatusAndDoctor(status models.TicketStatus, doctorID uint) ([]models.Ticket, error)
 	GetDailyReport(date time.Time) ([]models.DailyReportRow, error)
-	FindForRegistrar(statuses []models.TicketStatus, categoryPrefix string) ([]models.Ticket, error)
+	FindForRegistrar(statuses []models.TicketStatus, categoryPrefix string) ([]models.RegistrarTicketResponse, error)
 }
 
 // ScheduleRepository определяет методы для взаимодействия с расписанием.
@@ -72,6 +73,8 @@ type AppointmentRepository interface {
 	FindByPatientID(patientID uint) ([]models.Appointment, error)
 	Update(appointment *models.Appointment) error
 	DeleteAppointmentAndFreeSlot(appointmentID uint) error
+	FindUpcomingByPatientID(patientID uint, now time.Time) (*models.Appointment, error)
+	AssignTicketToAppointment(appointment *models.Appointment, ticket *models.Ticket) error
 }
 
 // RegistrarRepository определяет методы для аутентификации регистраторов.
