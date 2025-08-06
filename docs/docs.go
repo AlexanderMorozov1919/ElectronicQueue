@@ -2460,7 +2460,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.Ticket"
+                                "$ref": "#/definitions/models.RegistrarTicketResponse"
                             }
                         }
                     },
@@ -2589,6 +2589,67 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/models.TicketResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/appointment/phone": {
+            "post": {
+                "description": "Проверяет наличие записи по номеру телефона и выдает приоритетный талон, если прием скоро",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Регистрация на прием по номеру телефона",
+                "parameters": [
+                    {
+                        "description": "Номер телефона пациента",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CheckInByPhoneRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ответ с данными талона",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ConfirmationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: не передан номер телефона",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Запись не найдена или еще не время",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     },
@@ -2857,7 +2918,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "category_prefix": {
-                    "description": "Добавлено опциональное поле",
                     "type": "string"
                 },
                 "window_number": {
@@ -2877,6 +2937,17 @@ const docTemplate = `{
                 },
                 "window_number": {
                     "type": "integer"
+                }
+            }
+        },
+        "handlers.CheckInByPhoneRequest": {
+            "type": "object",
+            "required": [
+                "phone"
+            ],
+            "properties": {
+                "phone": {
+                    "type": "string"
                 }
             }
         },
@@ -2904,7 +2975,6 @@ const docTemplate = `{
             }
         },
         "handlers.ConfirmationRequest": {
-            "description": "Запрос подтверждения действия (печать талона или получение электронного)",
             "type": "object",
             "required": [
                 "action",
@@ -2922,7 +2992,6 @@ const docTemplate = `{
             }
         },
         "handlers.ConfirmationResponse": {
-            "description": "Ответ после подтверждения действия",
             "type": "object",
             "properties": {
                 "message": {
@@ -3055,7 +3124,6 @@ const docTemplate = `{
             }
         },
         "handlers.ServiceSelectionRequest": {
-            "description": "Запрос для выбора услуги",
             "type": "object",
             "required": [
                 "service_id"
@@ -3068,7 +3136,6 @@ const docTemplate = `{
             }
         },
         "handlers.ServiceSelectionResponse": {
-            "description": "Ответ после выбора услуги",
             "type": "object",
             "properties": {
                 "action": {
@@ -3138,7 +3205,6 @@ const docTemplate = `{
             }
         },
         "handlers.UpdateStatusRequest": {
-            "description": "Запрос для смены статуса тикета",
             "type": "object",
             "required": [
                 "status"
@@ -3502,6 +3568,47 @@ const docTemplate = `{
                 }
             }
         },
+        "models.RegistrarTicketResponse": {
+            "type": "object",
+            "properties": {
+                "appointment_time": {
+                    "type": "string"
+                },
+                "called_at": {
+                    "type": "string"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "qr_code": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "service_type": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.TicketStatus"
+                },
+                "ticket_number": {
+                    "type": "string"
+                },
+                "window_number": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.Schedule": {
             "type": "object",
             "properties": {
@@ -3581,7 +3688,6 @@ const docTemplate = `{
             }
         },
         "models.Ticket": {
-            "description": "Модель талона электронной очереди",
             "type": "object",
             "properties": {
                 "called_at": {
@@ -3620,7 +3726,6 @@ const docTemplate = `{
             }
         },
         "models.TicketResponse": {
-            "description": "Ответ API с данными талона",
             "type": "object",
             "properties": {
                 "called_at": {
@@ -3666,16 +3771,6 @@ const docTemplate = `{
                 "на_приеме",
                 "завершен",
                 "зарегистрирован"
-            ],
-            "x-enum-comments": {
-                "StatusInvited": "Пациент вызван к окну"
-            },
-            "x-enum-descriptions": [
-                "",
-                "Пациент вызван к окну",
-                "",
-                "",
-                ""
             ],
             "x-enum-varnames": [
                 "StatusWaiting",

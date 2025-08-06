@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -29,29 +30,20 @@ func NewTicketHandler(service *services.TicketService, cfg *config.Config) *Tick
 	return &TicketHandler{service: service, config: cfg}
 }
 
-// ServiceSelectionRequest описывает запрос выбора услуги
-// @Description Запрос для выбора услуги
-// @Example {"service_id": "make_appointment"}
 type ServiceSelectionRequest struct {
 	ServiceID string `json:"service_id" binding:"required" example:"make_appointment"`
 }
 
-// @Description Ответ после выбора услуги
-// @Example {"action": "confirm_print", "service_name": "Записаться к врачу"}
 type ServiceSelectionResponse struct {
 	Action      string `json:"action" example:"confirm_print"`
 	ServiceName string `json:"service_name" example:"Записаться к врачу"`
 }
 
-// @Description Запрос подтверждения действия (печать талона или получение электронного)
-// @Example {"service_id": "make_appointment", "action": "print_ticket"}
 type ConfirmationRequest struct {
 	ServiceID string `json:"service_id" binding:"required" example:"make_appointment"`
 	Action    string `json:"action" binding:"required" example:"print_ticket"`
 }
 
-// @Description Ответ после подтверждения действия
-// @Example {"service_name": "Записаться к врачу", "ticket_number": "A001", "message": "Ваш электронный талон", "timeout": 10}
 type ConfirmationResponse struct {
 	ServiceName  string `json:"service_name" example:"Записаться к врачу"`
 	TicketNumber string `json:"ticket_number,omitempty" example:"A001"`
@@ -59,7 +51,10 @@ type ConfirmationResponse struct {
 	Timeout      int    `json:"timeout" example:"10"`
 }
 
-// TicketStatusRequest описывает запрос для смены статуса тикета
+type CheckInByPhoneRequest struct {
+	Phone string `json:"phone" binding:"required"`
+}
+
 // StartPage godoc
 // @Summary      Получить стартовую информацию
 // @Description  Возвращает стартовую информацию для клиента (например, текст кнопки)
@@ -153,7 +148,6 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 				height = parsed
 			}
 		}
-		// Генерируем QR-код
 		qrData := []byte(fmt.Sprintf("Талон: %s\nВремя: %s\nУслуга: %s",
 			ticket.TicketNumber,
 			ticket.CreatedAt.Format("02.01.2006 15:04:05"),
@@ -165,7 +159,6 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 			return
 		}
 
-		// Сохраняем изображение и QR-код в модель и обновляем запись
 		ticket.QRCode = qrData
 		if err := h.service.UpdateTicket(ticket); err != nil {
 			logger.Default().Error(fmt.Sprintf("Confirmation: failed to update ticket with image: %v", err))
@@ -173,7 +166,6 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 			return
 		}
 
-		// Сохраняем изображение на диск
 		dir := h.config.TicketDir
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			logger.Default().Error(fmt.Sprintf("Confirmation: failed to create tickets directory: %v", err))
@@ -188,7 +180,6 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 			return
 		}
 
-		// Печать талона
 		printerName := h.config.PrinterName
 		if printerName != "" {
 			if err := utils.PrintFile(printerName, filePath); err != nil {
@@ -208,6 +199,44 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 
 	resp := ConfirmationResponse{
 		ServiceName:  serviceName,
+		TicketNumber: ticket.TicketNumber,
+		Message:      "Ваш электронный талон",
+		Timeout:      10,
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// CheckInByPhone godoc
+// @Summary      Регистрация на прием по номеру телефона
+// @Description  Проверяет наличие записи по номеру телефона и выдает приоритетный талон, если прием скоро
+// @Tags         tickets
+// @Accept       json
+// @Produce      json
+// @Param        request body CheckInByPhoneRequest true "Номер телефона пациента"
+// @Success      200 {object} ConfirmationResponse "Ответ с данными талона"
+// @Failure      400 {object} map[string]string "Ошибка: не передан номер телефона"
+// @Failure      404 {object} map[string]string "Запись не найдена или еще не время"
+// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
+// @Router       /api/tickets/appointment/phone [post]
+func (h *TicketHandler) CheckInByPhone(c *gin.Context) {
+	var req CheckInByPhoneRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "phone is required"})
+		return
+	}
+
+	ticket, err := h.service.CheckInByPhone(req.Phone)
+	if err != nil {
+		if strings.Contains(err.Error(), "не найден") || strings.Contains(err.Error(), "нет предстоящих записей") || strings.Contains(err.Error(), "ваша запись на") {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	resp := ConfirmationResponse{
+		ServiceName:  h.service.MapServiceIDToName(*ticket.ServiceType),
 		TicketNumber: ticket.TicketNumber,
 		Message:      "Ваш электронный талон",
 		Timeout:      10,

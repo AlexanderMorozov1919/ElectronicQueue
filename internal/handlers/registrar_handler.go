@@ -25,13 +25,13 @@ func NewRegistrarHandler(ts *services.TicketService) *RegistrarHandler {
 // @Tags         registrar
 // @Produce      json
 // @Param        category query string false "Префикс категории для фильтрации (например, 'A', 'B')"
-// @Success      200 {array} models.Ticket "Массив талонов"
+// @Success      200 {array} models.RegistrarTicketResponse "Массив талонов"
 // @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
 // @Security     ApiKeyAuth
 // @Router       /api/registrar/tickets [get]
 func (h *RegistrarHandler) GetTickets(c *gin.Context) {
 	log := logger.Default()
-	categoryPrefix := c.Query("category") // Получаем префикс категории из query-параметров
+	categoryPrefix := c.Query("category")
 
 	tickets, err := h.ticketService.GetTicketsForRegistrar(categoryPrefix)
 	if err != nil {
@@ -45,7 +45,7 @@ func (h *RegistrarHandler) GetTickets(c *gin.Context) {
 
 type CallNextRequest struct {
 	WindowNumber   int    `json:"window_number" binding:"required,gt=0"`
-	CategoryPrefix string `json:"category_prefix,omitempty"` // Добавлено опциональное поле
+	CategoryPrefix string `json:"category_prefix,omitempty"`
 }
 
 type CallSpecificRequest struct {
@@ -136,9 +136,6 @@ func (h *RegistrarHandler) CallSpecific(c *gin.Context) {
 	c.JSON(http.StatusOK, ticket.ToResponse())
 }
 
-// UpdateStatusRequest описывает запрос для смены статуса тикета
-// @Description Запрос для смены статуса тикета
-// @Example {"status": "подойти_к_окну"}
 type UpdateStatusRequest struct {
 	Status string `json:"status" binding:"required"`
 }
