@@ -1,7 +1,9 @@
 CREATE TABLE IF NOT EXISTS ads (
     id SERIAL PRIMARY KEY,
-    picture BYTEA NOT NULL,
-    duration_sec INTEGER NOT NULL DEFAULT 5,
+    picture BYTEA, -- Поле для изображений, теперь может быть NULL
+    video BYTEA,   -- Новое поле для видео в формате MP4
+    duration_sec INTEGER NOT NULL DEFAULT 5, -- Длительность показа для изображений
+    repeat_count INTEGER NOT NULL DEFAULT 1, -- Количество повторов для видео
     is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     reception_on BOOLEAN NOT NULL DEFAULT TRUE,
     schedule_on BOOLEAN NOT NULL DEFAULT TRUE,
