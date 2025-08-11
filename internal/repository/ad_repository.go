@@ -21,7 +21,7 @@ func (r *adRepo) Create(ad *models.Ad) error {
 
 func (r *adRepo) GetAll() ([]models.Ad, error) {
 	var ads []models.Ad
-	if err := r.db.Omit("picture").Order("created_at ASC").Find(&ads).Error; err != nil {
+	if err := r.db.Order("created_at ASC").Find(&ads).Error; err != nil {
 		return nil, err
 	}
 	return ads, nil
