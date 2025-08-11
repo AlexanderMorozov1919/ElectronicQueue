@@ -290,6 +290,11 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
 	}
 
+	processes := r.Group("/api/processes")
+	{
+		processes.GET("/:name", processHandler.GetProcessStatusByName)
+	}
+
 	// Реклама используется табло регистратуры (reception)
 	adGroup := r.Group("/api/ads").Use(middleware.CheckBusinessProcess(processService, "reception", "schedule"))
 	{

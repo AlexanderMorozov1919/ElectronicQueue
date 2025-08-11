@@ -1848,6 +1848,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/processes/{name}": {
+            "get": {
+                "description": "Возвращает текущее состояние (включен/отключен) для указанного бизнес-процесса.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "processes"
+                ],
+                "summary": "Получить статус конкретного бизнес-процесса",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Имя процесса",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Статус процесса",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/registrar/appointments": {
             "post": {
                 "security": [

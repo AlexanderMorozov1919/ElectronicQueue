@@ -1872,6 +1872,28 @@ paths:
       summary: Получить очередь к врачу
       tags:
       - doctor
+  /api/processes/{name}:
+    get:
+      description: Возвращает текущее состояние (включен/отключен) для указанного
+        бизнес-процесса.
+      parameters:
+      - description: Имя процесса
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Статус процесса
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      summary: Получить статус конкретного бизнес-процесса
+      tags:
+      - processes
   /api/registrar/appointments:
     post:
       consumes:
