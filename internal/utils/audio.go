@@ -1,3 +1,4 @@
+// путь до файла: D:\vs\go\ElectronicQueue\internal\utils\audio.go
 package utils
 
 import (
@@ -37,7 +38,8 @@ type WAVData struct {
 }
 
 // GenerateAnnouncementWav создает WAV файл с озвучкой талона
-func GenerateAnnouncementWav(ticketNumber, windowNumber, audioDir string) ([]byte, error) {
+// ИЗМЕНЕНО: Добавлен параметр backgroundMusicEnabled
+func GenerateAnnouncementWav(ticketNumber, windowNumber, audioDir string, backgroundMusicEnabled bool) ([]byte, error) {
 	// Парсим номер талона
 	letter, number, err := parseTicketNumber(ticketNumber)
 	if err != nil {
@@ -76,20 +78,35 @@ func GenerateAnnouncementWav(ticketNumber, windowNumber, audioDir string) ([]byt
 		return nil, fmt.Errorf("ошибка объединения аудиофайлов: %v", err)
 	}
 
-	// Загружаем фоновую музыку
-	backgroundFile := filepath.Join(audioDir, "The_Time_Is_Now.wav")
-	backgroundAudio, err := loadWavFile(backgroundFile)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка загрузки фоновой музыки: %v", err)
+	// ИЗМЕНЕНО: Блок микширования теперь условный
+	if backgroundMusicEnabled {
+		// Загружаем фоновую музыку
+		backgroundFile := filepath.Join(audioDir, "The_Time_Is_Now.wav")
+		backgroundAudio, err := loadWavFile(backgroundFile)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка загрузки фоновой музыки: %v", err)
+		}
+
+		// Микшируем основную дорожку с фоновой
+		result, err := mixAudioTracks(mainAudio, backgroundAudio)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка микширования аудиодорожек: %v", err)
+		}
+
+		return result, nil
 	}
 
-	// Микшируем основную дорожку с фоновой
-	result, err := mixAudioTracks(mainAudio, backgroundAudio)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка микширования аудиодорожек: %v", err)
+	// ИЗМЕНЕНО: Если музыка отключена, возвращаем только основную дорожку
+	// Создаем результирующий WAV файл из основного аудио
+	var result bytes.Buffer
+	if err := binary.Write(&result, binary.LittleEndian, mainAudio.Header); err != nil {
+		return nil, fmt.Errorf("ошибка записи заголовка основного аудио: %w", err)
+	}
+	if _, err := result.Write(mainAudio.Data); err != nil {
+		return nil, fmt.Errorf("ошибка записи данных основного аудио: %w", err)
 	}
 
-	return result, nil
+	return result.Bytes(), nil
 }
 
 // parseTicketNumber парсит номер талона в формате "A007" или "C21"

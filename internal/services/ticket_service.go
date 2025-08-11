@@ -5,22 +5,54 @@ import (
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/utils"
+	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 const maxTicketNumber = 1000
 
-// TicketService предоставляет методы для работы с талонами
 type TicketService struct {
-	repo        repository.TicketRepository
-	serviceRepo repository.ServiceRepository
+	repo             repository.TicketRepository
+	serviceRepo      repository.ServiceRepository
+	receptionLogRepo repository.ReceptionLogRepository
+	patientRepo      repository.PatientRepository
+	appointmentRepo  repository.AppointmentRepository
 }
 
-// NewTicketService создает новый экземпляр TicketService
-func NewTicketService(repo repository.TicketRepository, serviceRepo repository.ServiceRepository) *TicketService {
-	return &TicketService{repo: repo, serviceRepo: serviceRepo}
+func NewTicketService(
+	repo repository.TicketRepository,
+	serviceRepo repository.ServiceRepository,
+	receptionLogRepo repository.ReceptionLogRepository,
+	patientRepo repository.PatientRepository,
+	appointmentRepo repository.AppointmentRepository,
+) *TicketService {
+	return &TicketService{
+		repo:             repo,
+		serviceRepo:      serviceRepo,
+		receptionLogRepo: receptionLogRepo,
+		patientRepo:      patientRepo,
+		appointmentRepo:  appointmentRepo,
+	}
+}
+
+// GetTicketsForRegistrar получает список талонов для окна регистратора.
+func (s *TicketService) GetTicketsForRegistrar(categoryPrefix string) ([]models.RegistrarTicketResponse, error) {
+	statuses := []models.TicketStatus{
+		models.StatusWaiting,
+		models.StatusRegistered,
+		models.StatusCompleted,
+	}
+	tickets, err := s.repo.FindForRegistrar(statuses, categoryPrefix)
+	if err != nil {
+		logger.Default().WithError(err).Error("GetTicketsForRegistrar: repo error")
+		return nil, err
+	}
+	return tickets, nil
 }
 
 func (s *TicketService) GetAllServices() ([]models.Service, error) {
@@ -83,10 +115,17 @@ func (s *TicketService) CreateTicket(serviceID string) (*models.Ticket, error) {
 	return ticket, nil
 }
 
+// UpdateTicket обновляет талон и, если нужно, останавливает таймер обслуживания.
 func (s *TicketService) UpdateTicket(ticket *models.Ticket) error {
+	isReceptionFinalStatus := ticket.Status == models.StatusCompleted || ticket.Status == models.StatusRegistered
+
+	if isReceptionFinalStatus {
+		return s.finalizeReceptionAndUpdateTicket(ticket)
+	}
+
 	err := s.repo.Update(ticket)
 	if err != nil {
-		logger.Default().Error(fmt.Sprintf("UpdateTicket: repo update error: %v", err))
+		logger.Default().WithError(err).Error(fmt.Sprintf("UpdateTicket: repo update error: %v", err))
 	}
 	return err
 }
@@ -105,11 +144,15 @@ func (s *TicketService) DeleteTicket(idStr string) error {
 	return err
 }
 
-func (s *TicketService) CallNextTicket(windowNumber int) (*models.Ticket, error) {
-	ticket, err := s.repo.GetNextWaitingTicket()
+func (s *TicketService) CallNextTicket(windowNumber int, categoryPrefix string) (*models.Ticket, error) {
+	ticket, err := s.repo.GetNextWaitingTicket(categoryPrefix)
 	if err != nil {
-		logger.Default().Info(fmt.Sprintf("CallNextTicket: no waiting tickets in queue: %v", err))
-		return nil, fmt.Errorf("очередь пуста")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Default().WithField("category", categoryPrefix).Info("CallNextTicket: no waiting tickets in queue for category")
+			return nil, fmt.Errorf("очередь пуста")
+		}
+		logger.Default().WithError(err).Error("CallNextTicket: repo error getting next ticket")
+		return nil, err
 	}
 
 	now := time.Now()
@@ -122,8 +165,136 @@ func (s *TicketService) CallNextTicket(windowNumber int) (*models.Ticket, error)
 		return nil, err
 	}
 
+	receptionLog := &models.ReceptionLog{
+		TicketID:     ticket.ID,
+		WindowNumber: windowNumber,
+		CalledAt:     now,
+	}
+	if err := s.receptionLogRepo.Create(receptionLog); err != nil {
+		logger.Default().WithError(err).Error("Failed to create reception log")
+	}
+
 	logger.Default().Info(fmt.Sprintf("Ticket %s called to window %d", ticket.TicketNumber, windowNumber))
 	return ticket, nil
+}
+
+func (s *TicketService) CallSpecificTicket(ticketID uint, windowNumber int) (*models.Ticket, error) {
+	ticket, err := s.repo.GetByID(ticketID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("талон с ID %d не найден", ticketID)
+		}
+		logger.Default().WithError(err).Error(fmt.Sprintf("CallSpecificTicket: repo error getting ticket by id %d", ticketID))
+		return nil, fmt.Errorf("ошибка получения талона")
+	}
+
+	if ticket.Status != models.StatusWaiting {
+		return nil, fmt.Errorf("талон %s имеет неверный статус '%s' для вызова (ожидался 'ожидает')", ticket.TicketNumber, ticket.Status)
+	}
+
+	now := time.Now()
+	ticket.Status = models.StatusInvited
+	ticket.WindowNumber = &windowNumber
+	ticket.CalledAt = &now
+
+	if err := s.repo.Update(ticket); err != nil {
+		logger.Default().WithError(err).Error("CallSpecificTicket: repo update error")
+		return nil, err
+	}
+
+	receptionLog := &models.ReceptionLog{
+		TicketID:     ticket.ID,
+		WindowNumber: windowNumber,
+		CalledAt:     now,
+	}
+	if err := s.receptionLogRepo.Create(receptionLog); err != nil {
+		logger.Default().WithError(err).Error("Failed to create reception log for specific call")
+	}
+
+	logger.Default().Info(fmt.Sprintf("Ticket %s specifically called to window %d", ticket.TicketNumber, windowNumber))
+	return ticket, nil
+}
+
+func (s *TicketService) CheckInByPhone(phone string) (*models.Ticket, error) {
+	nonAlphanumericRegex := regexp.MustCompile(`[^0-9]+`)
+	sanitizedPhone := nonAlphanumericRegex.ReplaceAllString(phone, "")
+
+	patient, err := s.patientRepo.FindByPhone(sanitizedPhone)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("пациент с указанным номером телефона не найден")
+		}
+		return nil, fmt.Errorf("ошибка поиска пациента: %w", err)
+	}
+
+	now := time.Now()
+	appointment, err := s.appointmentRepo.FindUpcomingByPatientID(patient.ID, now)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("у вас нет предстоящих записей на сегодня")
+		}
+		return nil, fmt.Errorf("ошибка поиска записи: %w", err)
+	}
+
+	serviceID := "confirm_appointment"
+	ticketNumber, err := s.generateTicketNumber(serviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	newTicket := &models.Ticket{
+		TicketNumber: ticketNumber,
+		Status:       models.StatusWaiting,
+		CreatedAt:    time.Now(),
+		ServiceType:  &serviceID,
+	}
+
+	if err := s.appointmentRepo.AssignTicketToAppointment(appointment, newTicket); err != nil {
+		return nil, fmt.Errorf("не удалось создать талон и привязать к записи: %w", err)
+	}
+
+	return newTicket, nil
+}
+
+func (s *TicketService) finalizeReceptionAndUpdateTicket(ticket *models.Ticket) error {
+	log := logger.Default().WithField("ticket_id", ticket.ID)
+	now := time.Now()
+
+	if ticket.Status == models.StatusCompleted {
+		ticket.CompletedAt = &now
+	}
+
+	if err := s.repo.Update(ticket); err != nil {
+		log.WithError(err).Error("finalizeReception: failed to update ticket status")
+		return err
+	}
+
+	receptionLog, err := s.receptionLogRepo.FindActiveLogByTicketID(ticket.ID)
+	if err != nil {
+		log.WithError(err).Warn("finalizeReception: active reception log not found, cannot stop timer")
+		return nil
+	}
+
+	receptionLog.CompletedAt = &now
+	duration := now.Sub(receptionLog.CalledAt)
+	receptionLog.Duration = &duration
+
+	if err := s.receptionLogRepo.Update(receptionLog); err != nil {
+		log.WithError(err).Error("finalizeReception: failed to update reception log")
+	}
+
+	log.WithField("duration", duration).WithField("final_status", ticket.Status).Info("Reception finalized and logged")
+	return nil
+}
+
+func (s *TicketService) GetDailyReport() ([]models.DailyReportRow, error) {
+	today := time.Now()
+	report, err := s.repo.GetDailyReport(today)
+	if err != nil {
+		logger.Default().WithError(err).Error("GetDailyReport: service error")
+		return nil, fmt.Errorf("ошибка получения данных для отчета: %w", err)
+	}
+	return report, nil
 }
 
 func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
@@ -140,7 +311,7 @@ func (s *TicketService) generateTicketNumber(serviceID string) (string, error) {
 	}
 
 	num := maxNum + 1
-	if num >= maxTicketNumber { // Use >= to be safe
+	if num >= maxTicketNumber {
 		num = 1
 	}
 	return fmt.Sprintf("%s%03d", letter, num), nil
@@ -158,7 +329,6 @@ func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket,
 	waitingTickets, err := s.repo.FindByStatuses([]models.TicketStatus{models.StatusWaiting})
 	waitingNumber := 0
 	if err == nil {
-		// Считаем только талоны, созданные до текущего
 		for _, wt := range waitingTickets {
 			if wt.CreatedAt.Before(ticket.CreatedAt) {
 				waitingNumber++

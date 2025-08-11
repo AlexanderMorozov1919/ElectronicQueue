@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/utils"
 	"net/http"
@@ -8,10 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AudioHandler struct{}
+type AudioHandler struct {
+	cfg *config.Config // Добавлено поле для хранения конфига
+}
 
-func NewAudioHandler() *AudioHandler {
-	return &AudioHandler{}
+func NewAudioHandler(cfg *config.Config) *AudioHandler {
+	return &AudioHandler{cfg: cfg} // Обновлен конструктор
 }
 
 // GenerateAnnouncement создает и отдает WAV файл с озвучкой талона.
@@ -35,8 +38,7 @@ func (h *AudioHandler) GenerateAnnouncement(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Параметры 'ticket' и 'window' обязательны"})
 		return
 	}
-
-	wavBytes, err := utils.GenerateAnnouncementWav(ticketNumber, windowNumber, "assets/audio")
+	wavBytes, err := utils.GenerateAnnouncementWav(ticketNumber, windowNumber, "assets/audio", h.cfg.AudioBackgroundMusicEnabled)
 	if err != nil {
 		log.WithError(err).Error("Audio handler: failed to generate WAV file")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось сгенерировать аудиофайл: " + err.Error()})

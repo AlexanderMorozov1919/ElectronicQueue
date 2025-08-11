@@ -11,16 +11,23 @@ import (
 )
 
 type AuthService struct {
-	registrarRepo repository.RegistrarRepository
-	doctorRepo    repository.DoctorRepository
-	jwtManager    *utils.JWTManager
+	registrarRepo     repository.RegistrarRepository
+	doctorRepo        repository.DoctorRepository
+	administratorRepo repository.AdministratorRepository
+	jwtManager        *utils.JWTManager
 }
 
-func NewAuthService(registrarRepo repository.RegistrarRepository, doctorRepo repository.DoctorRepository, jwtManager *utils.JWTManager) *AuthService {
+func NewAuthService(
+	registrarRepo repository.RegistrarRepository,
+	doctorRepo repository.DoctorRepository,
+	administratorRepo repository.AdministratorRepository,
+	jwtManager *utils.JWTManager,
+) *AuthService {
 	return &AuthService{
-		registrarRepo: registrarRepo,
-		doctorRepo:    doctorRepo,
-		jwtManager:    jwtManager,
+		registrarRepo:     registrarRepo,
+		doctorRepo:        doctorRepo,
+		administratorRepo: administratorRepo,
+		jwtManager:        jwtManager,
 	}
 }
 
@@ -61,6 +68,22 @@ func (s *AuthService) AuthenticateDoctor(login, password string) (string, *model
 	return token, doctor, nil
 }
 
+func (s *AuthService) AuthenticateAdministrator(login, password string) (string, error) {
+	admin, err := s.administratorRepo.FindByLogin(login)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return "", fmt.Errorf("неверный логин или пароль")
+		}
+		return "", err
+	}
+
+	if !utils.CheckPasswordHash(password, admin.PasswordHash) {
+		return "", fmt.Errorf("неверный логин или пароль")
+	}
+
+	return s.jwtManager.GenerateJWT(admin.AdministratorID, "administrator")
+}
+
 func (s *AuthService) CreateRegistrar(windowNumber int, login, password string) (*models.Registrar, error) {
 	_, err := s.registrarRepo.FindByLogin(login)
 	if err == nil {
@@ -89,7 +112,6 @@ func (s *AuthService) CreateRegistrar(windowNumber int, login, password string) 
 }
 
 func (s *AuthService) CreateDoctor(fullName, specialization, login, password string) (*models.Doctor, error) {
-	// Проверяем, не занят ли логин
 	_, err := s.doctorRepo.FindByLogin(login)
 	if err == nil {
 		return nil, fmt.Errorf("логин '%s' уже занят", login)
@@ -116,4 +138,31 @@ func (s *AuthService) CreateDoctor(fullName, specialization, login, password str
 	}
 
 	return newDoctor, nil
+}
+
+func (s *AuthService) CreateAdministrator(fullName, login, password string) (*models.Administrator, error) {
+	_, err := s.administratorRepo.FindByLogin(login)
+	if err == nil {
+		return nil, fmt.Errorf("логин '%s' уже занят", login)
+	}
+	if err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+
+	hashedPassword, err := utils.HashPassword(password)
+	if err != nil {
+		return nil, fmt.Errorf("не удалось захэшировать пароль: %w", err)
+	}
+
+	newAdmin := &models.Administrator{
+		FullName:     fullName,
+		Login:        login,
+		PasswordHash: hashedPassword,
+	}
+
+	if err := s.administratorRepo.Create(newAdmin); err != nil {
+		return nil, fmt.Errorf("не удалось создать администратора: %w", err)
+	}
+
+	return newAdmin, nil
 }

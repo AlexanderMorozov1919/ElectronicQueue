@@ -2,10 +2,29 @@ basePath: /
 definitions:
   handlers.CallNextRequest:
     properties:
+      category_prefix:
+        type: string
       window_number:
         type: integer
     required:
     - window_number
+    type: object
+  handlers.CallSpecificRequest:
+    properties:
+      ticket_id:
+        type: integer
+      window_number:
+        type: integer
+    required:
+    - ticket_id
+    - window_number
+    type: object
+  handlers.CheckInByPhoneRequest:
+    properties:
+      phone:
+        type: string
+    required:
+    - phone
     type: object
   handlers.CompleteAppointmentRequest:
     properties:
@@ -23,7 +42,6 @@ definitions:
     - ticket_id
     type: object
   handlers.ConfirmationRequest:
-    description: Запрос подтверждения действия (печать талона или получение электронного)
     properties:
       action:
         example: print_ticket
@@ -36,7 +54,6 @@ definitions:
     - service_id
     type: object
   handlers.ConfirmationResponse:
-    description: Ответ после подтверждения действия
     properties:
       message:
         example: Ваш электронный талон
@@ -50,6 +67,19 @@ definitions:
       timeout:
         example: 10
         type: integer
+    type: object
+  handlers.CreateAdministratorRequest:
+    properties:
+      full_name:
+        type: string
+      login:
+        type: string
+      password:
+        type: string
+    required:
+    - full_name
+    - login
+    - password
     type: object
   handlers.CreateDoctorRequest:
     properties:
@@ -114,7 +144,6 @@ definitions:
     - password
     type: object
   handlers.ServiceSelectionRequest:
-    description: Запрос для выбора услуги
     properties:
       service_id:
         example: make_appointment
@@ -123,7 +152,6 @@ definitions:
     - service_id
     type: object
   handlers.ServiceSelectionResponse:
-    description: Ответ после выбора услуги
     properties:
       action:
         example: confirm_print
@@ -164,13 +192,42 @@ definitions:
     required:
     - doctor_id
     type: object
+  handlers.UpdateProcessRequest:
+    properties:
+      is_enabled:
+        type: boolean
+    type: object
   handlers.UpdateStatusRequest:
-    description: Запрос для смены статуса тикета
     properties:
       status:
         type: string
     required:
     - status
+    type: object
+  models.AdResponse:
+    properties:
+      created_at:
+        type: string
+      duration_sec:
+        type: integer
+      id:
+        type: integer
+      is_enabled:
+        type: boolean
+      media_type:
+        type: string
+      picture:
+        type: string
+      reception_on:
+        type: boolean
+      repeat_count:
+        type: integer
+      schedule_on:
+        type: boolean
+      updated_at:
+        type: string
+      video:
+        type: string
     type: object
   models.Appointment:
     properties:
@@ -190,6 +247,30 @@ definitions:
         $ref: '#/definitions/models.Ticket'
       ticket_id:
         type: integer
+    type: object
+  models.BusinessProcess:
+    properties:
+      is_enabled:
+        type: boolean
+      process_name:
+        type: string
+    type: object
+  models.CreateAdRequest:
+    properties:
+      duration_sec:
+        type: integer
+      is_enabled:
+        type: boolean
+      picture:
+        type: string
+      reception_on:
+        type: boolean
+      repeat_count:
+        type: integer
+      schedule_on:
+        type: boolean
+      video:
+        type: string
     type: object
   models.CreateAppointmentRequest:
     properties:
@@ -249,6 +330,29 @@ definitions:
     - doctor_id
     - end_time
     - start_time
+    type: object
+  models.DailyReportRow:
+    properties:
+      appointment_time:
+        type: string
+      cabinet_number:
+        type: integer
+      called_at:
+        type: string
+      completed_at:
+        type: string
+      doctor_full_name:
+        type: string
+      doctor_specialization:
+        type: string
+      duration:
+        type: string
+      patient_full_name:
+        type: string
+      status:
+        $ref: '#/definitions/models.TicketStatus'
+      ticket_number:
+        type: string
     type: object
   models.DeleteRequest:
     properties:
@@ -344,6 +448,33 @@ definitions:
       phone:
         type: string
     type: object
+  models.RegistrarTicketResponse:
+    properties:
+      appointment_time:
+        type: string
+      called_at:
+        type: string
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      qr_code:
+        items:
+          type: integer
+        type: array
+      service_type:
+        type: string
+      started_at:
+        type: string
+      status:
+        $ref: '#/definitions/models.TicketStatus'
+      ticket_number:
+        type: string
+      window_number:
+        type: integer
+    type: object
   models.Schedule:
     properties:
       cabinet:
@@ -396,7 +527,6 @@ definitions:
         type: string
     type: object
   models.Ticket:
-    description: Модель талона электронной очереди
     properties:
       called_at:
         type: string
@@ -422,7 +552,6 @@ definitions:
         type: integer
     type: object
   models.TicketResponse:
-    description: Ответ API с данными талона
     properties:
       called_at:
         type: string
@@ -455,16 +584,29 @@ definitions:
     - завершен
     - зарегистрирован
     type: string
-    x-enum-comments:
-      StatusInvited: Пациент вызван к окну
-    x-enum-descriptions:
-    - Пациент вызван к окну
     x-enum-varnames:
     - StatusWaiting
     - StatusInvited
     - StatusInProgress
     - StatusCompleted
     - StatusRegistered
+  models.UpdateAdRequest:
+    properties:
+      duration_sec:
+        type: integer
+      is_enabled:
+        type: boolean
+      picture:
+        type: string
+      reception_on:
+        type: boolean
+      repeat_count:
+        type: integer
+      schedule_on:
+        type: boolean
+      video:
+        type: string
+    type: object
   models.UpdateRequest:
     properties:
       data:
@@ -534,13 +676,208 @@ definitions:
       min_start_time:
         type: string
     type: object
-host: localhost:8080
 info:
   contact: {}
   description: API для системы электронной очереди
   title: Electronic Queue API
   version: "1.0"
 paths:
+  /api/admin/ads:
+    get:
+      description: Возвращает список всех рекламных материалов без самих изображений.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список рекламных материалов
+          schema:
+            items:
+              $ref: '#/definitions/models.AdResponse'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить список всех рекламных материалов (Админ)
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Загружает новое рекламное объявление.
+      parameters:
+      - description: Данные для создания
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateAdRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Созданный материал
+          schema:
+            $ref: '#/definitions/models.AdResponse'
+        "400":
+          description: Ошибка в запросе
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Создать рекламный материал (Админ)
+      tags:
+      - admin
+  /api/admin/ads/{id}:
+    delete:
+      description: Удаляет рекламное объявление по ID.
+      parameters:
+      - description: ID рекламного материала
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Удалено
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка удаления
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Удалить рекламный материал (Админ)
+      tags:
+      - admin
+    get:
+      description: Возвращает полную информацию о рекламном материале, включая изображение.
+      parameters:
+      - description: ID рекламного материала
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Рекламный материал
+          schema:
+            $ref: '#/definitions/models.AdResponse'
+        "400":
+          description: Неверный ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Не найдено
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить рекламный материал по ID (Админ)
+      tags:
+      - admin
+    patch:
+      consumes:
+      - application/json
+      description: Обновляет существующее рекламное объявление.
+      parameters:
+      - description: ID рекламного материала
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateAdRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Обновленный материал
+          schema:
+            $ref: '#/definitions/models.AdResponse'
+        "400":
+          description: Ошибка в запросе
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Не найдено
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Обновить рекламный материал (Админ)
+      tags:
+      - admin
+  /api/admin/create/administrator:
+    post:
+      consumes:
+      - application/json
+      description: Создает нового пользователя с ролью "администратор". Требует INTERNAL_API_KEY.
+      parameters:
+      - description: Данные нового администратора
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateAdministratorRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Администратор успешно создан
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: 'Ошибка: логин уже занят'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Создать нового администратора (Админ)
+      tags:
+      - admin
   /api/admin/create/doctor:
     post:
       consumes:
@@ -613,6 +950,77 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Создать нового регистратора (Админ)
+      tags:
+      - admin
+  /api/admin/processes:
+    get:
+      description: Возвращает список всех бизнес-процессов и их текущее состояние
+        (включен/отключен).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список процессов
+          schema:
+            items:
+              $ref: '#/definitions/models.BusinessProcess'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить статусы всех бизнес-процессов (Админ)
+      tags:
+      - admin
+  /api/admin/processes/{name}:
+    patch:
+      consumes:
+      - application/json
+      description: Включает или отключает указанный бизнес-процесс.
+      parameters:
+      - description: Имя процесса
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Новое состояние
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateProcessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Обновленный процесс
+          schema:
+            $ref: '#/definitions/models.BusinessProcess'
+        "400":
+          description: Ошибка в запросе
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Процесс не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Обновить статус бизнес-процесса (Админ)
       tags:
       - admin
   /api/admin/schedules:
@@ -771,6 +1179,39 @@ paths:
       summary: Удалить тикет (Админ)
       tags:
       - admin
+  /api/ads/enabled:
+    get:
+      description: Возвращает список всех включенных рекламных материалов с изображениями.
+      parameters:
+      - description: Тип экрана ('reception' или 'schedule')
+        in: query
+        name: screen
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список активных рекламных материалов
+          schema:
+            items:
+              $ref: '#/definitions/models.AdResponse'
+            type: array
+        "400":
+          description: Неверный тип экрана
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить активные рекламные материалы (Табло)
+      tags:
+      - ads
   /api/audio/announce:
     get:
       description: Создает и возвращает WAV файл с озвучкой номера талона и окна.
@@ -807,6 +1248,42 @@ paths:
       summary: Сгенерировать звуковое оповещение
       tags:
       - audio
+  /api/auth/login/administrator:
+    post:
+      consumes:
+      - application/json
+      description: Принимает логин и пароль, возвращает JWT токен.
+      parameters:
+      - description: Учетные данные
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с токеном
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'Ошибка: неверные учетные данные'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Аутентификация администратора
+      tags:
+      - auth
   /api/auth/login/doctor:
     post:
       consumes:
@@ -1521,10 +1998,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Находит первого пациента в очереди, меняет его статус на "приглашен"
-        и присваивает номер окна
+      description: Находит первого пациента в очереди (опционально по категории),
+        меняет его статус на "приглашен" и присваивает номер окна
       parameters:
-      - description: Номер окна, которое вызывает пациента
+      - description: Номер окна и опциональный префикс категории талона
         in: body
         name: request
         required: true
@@ -1558,6 +2035,49 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Вызвать следующего пациента
+      tags:
+      - registrar
+  /api/registrar/call-specific:
+    post:
+      consumes:
+      - application/json
+      description: Находит пациента по ID талона, меняет его статус на "приглашен"
+        и присваивает номер окна. Доступно только для талонов в статусе 'ожидает'.
+      parameters:
+      - description: ID талона и номер окна
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CallSpecificRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные вызванного талона
+          schema:
+            $ref: '#/definitions/models.TicketResponse'
+        "400":
+          description: 'Ошибка: неверный ID, номер окна или неверный статус талона'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'Ошибка: талон не найден'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Вызвать конкретного пациента
       tags:
       - registrar
   /api/registrar/patients:
@@ -1669,6 +2189,30 @@ paths:
       summary: Поиск пациентов по ФИО, ОМС или паспорту
       tags:
       - registrar
+  /api/registrar/reports/daily:
+    get:
+      description: Возвращает список всех талонов, созданных сегодня, с детальной
+        информацией.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Массив строк отчета
+          schema:
+            items:
+              $ref: '#/definitions/models.DailyReportRow'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить отчет по талонам за текущий день
+      tags:
+      - registrar
   /api/registrar/schedules/doctor/{doctor_id}:
     get:
       description: Возвращает все временные слоты врача на указанную дату, включая
@@ -1708,6 +2252,35 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Получить расписание врача с информацией о записях
+      tags:
+      - registrar
+  /api/registrar/tickets:
+    get:
+      description: Возвращает список талонов по нужным статусам, с возможностью фильтрации
+        по категории.
+      parameters:
+      - description: Префикс категории для фильтрации (например, 'A', 'B')
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Массив талонов
+          schema:
+            items:
+              $ref: '#/definitions/models.RegistrarTicketResponse'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить список талонов для регистратора
       tags:
       - registrar
   /api/registrar/tickets/{id}/status:
@@ -1793,6 +2366,47 @@ paths:
               type: string
             type: object
       summary: Получить все активные талоны
+      tags:
+      - tickets
+  /api/tickets/appointment/phone:
+    post:
+      consumes:
+      - application/json
+      description: Проверяет наличие записи по номеру телефона и выдает приоритетный
+        талон, если прием скоро
+      parameters:
+      - description: Номер телефона пациента
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CheckInByPhoneRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ответ с данными талона
+          schema:
+            $ref: '#/definitions/handlers.ConfirmationResponse'
+        "400":
+          description: 'Ошибка: не передан номер телефона'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Запись не найдена или еще не время
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Регистрация на прием по номеру телефона
       tags:
       - tickets
   /api/tickets/download/{ticket_number}:

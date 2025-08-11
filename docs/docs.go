@@ -15,6 +15,314 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/admin/ads": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех рекламных материалов без самих изображений.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Получить список всех рекламных материалов (Админ)",
+                "responses": {
+                    "200": {
+                        "description": "Список рекламных материалов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.AdResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Загружает новое рекламное объявление.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Создать рекламный материал (Админ)",
+                "parameters": [
+                    {
+                        "description": "Данные для создания",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateAdRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Созданный материал",
+                        "schema": {
+                            "$ref": "#/definitions/models.AdResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка в запросе",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/ads/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Возвращает полную информацию о рекламном материале, включая изображение.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Получить рекламный материал по ID (Админ)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID рекламного материала",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Рекламный материал",
+                        "schema": {
+                            "$ref": "#/definitions/models.AdResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Не найдено",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Удаляет рекламное объявление по ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Удалить рекламный материал (Админ)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID рекламного материала",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Удалено",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка удаления",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Обновляет существующее рекламное объявление.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Обновить рекламный материал (Админ)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID рекламного материала",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные для обновления",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateAdRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Обновленный материал",
+                        "schema": {
+                            "$ref": "#/definitions/models.AdResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка в запросе",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Не найдено",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/create/administrator": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Создает нового пользователя с ролью \"администратор\". Требует INTERNAL_API_KEY.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Создать нового администратора (Админ)",
+                "parameters": [
+                    {
+                        "description": "Данные нового администратора",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateAdministratorRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Администратор успешно создан",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный запрос",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Ошибка: логин уже занят",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/admin/create/doctor": {
             "post": {
                 "security": [
@@ -121,6 +429,116 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Ошибка: логин уже занят",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/processes": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех бизнес-процессов и их текущее состояние (включен/отключен).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Получить статусы всех бизнес-процессов (Админ)",
+                "responses": {
+                    "200": {
+                        "description": "Список процессов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.BusinessProcess"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/processes/{name}": {
+            "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Включает или отключает указанный бизнес-процесс.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Обновить статус бизнес-процесса (Админ)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Имя процесса",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Новое состояние",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdateProcessRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Обновленный процесс",
+                        "schema": {
+                            "$ref": "#/definitions/models.BusinessProcess"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка в запросе",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Процесс не найден",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -373,6 +791,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/ads/enabled": {
+            "get": {
+                "description": "Возвращает список всех включенных рекламных материалов с изображениями.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ads"
+                ],
+                "summary": "Получить активные рекламные материалы (Табло)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Тип экрана ('reception' или 'schedule')",
+                        "name": "screen",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список активных рекламных материалов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.AdResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный тип экрана",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/audio/announce": {
             "get": {
                 "description": "Создает и возвращает WAV файл с озвучкой номера талона и окна.",
@@ -417,6 +885,61 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/login/administrator": {
+            "post": {
+                "description": "Принимает логин и пароль, возвращает JWT токен.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Аутентификация администратора",
+                "parameters": [
+                    {
+                        "description": "Учетные данные",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ с токеном",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный запрос",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка: неверные учетные данные",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1517,7 +2040,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Находит первого пациента в очереди, меняет его статус на \"приглашен\" и присваивает номер окна",
+                "description": "Находит первого пациента в очереди (опционально по категории), меняет его статус на \"приглашен\" и присваивает номер окна",
                 "consumes": [
                     "application/json"
                 ],
@@ -1530,7 +2053,7 @@ const docTemplate = `{
                 "summary": "Вызвать следующего пациента",
                 "parameters": [
                     {
-                        "description": "Номер окна, которое вызывает пациента",
+                        "description": "Номер окна и опциональный префикс категории талона",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1557,6 +2080,72 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Ошибка: очередь пуста",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrar/call-specific": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Находит пациента по ID талона, меняет его статус на \"приглашен\" и присваивает номер окна. Доступно только для талонов в статусе 'ожидает'.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Вызвать конкретного пациента",
+                "parameters": [
+                    {
+                        "description": "ID талона и номер окна",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CallSpecificRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные вызванного талона",
+                        "schema": {
+                            "$ref": "#/definitions/models.TicketResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный ID, номер окна или неверный статус талона",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ошибка: талон не найден",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1743,6 +2332,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/registrar/reports/daily": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех талонов, созданных сегодня, с детальной информацией.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Получить отчет по талонам за текущий день",
+                "responses": {
+                    "200": {
+                        "description": "Массив строк отчета",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.DailyReportRow"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/registrar/schedules/doctor/{doctor_id}": {
             "get": {
                 "security": [
@@ -1790,6 +2416,51 @@ const docTemplate = `{
                             "type": "object",
                             "additionalProperties": {
                                 "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrar/tickets": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Возвращает список талонов по нужным статусам, с возможностью фильтрации по категории.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrar"
+                ],
+                "summary": "Получить список талонов для регистратора",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Префикс категории для фильтрации (например, 'A', 'B')",
+                        "name": "category",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Массив талонов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.RegistrarTicketResponse"
                             }
                         }
                     },
@@ -1918,6 +2589,67 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/models.TicketResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tickets/appointment/phone": {
+            "post": {
+                "description": "Проверяет наличие записи по номеру телефона и выдает приоритетный талон, если прием скоро",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Регистрация на прием по номеру телефона",
+                "parameters": [
+                    {
+                        "description": "Номер телефона пациента",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CheckInByPhoneRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ответ с данными талона",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ConfirmationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: не передан номер телефона",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Запись не найдена или еще не время",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     },
@@ -2185,8 +2917,37 @@ const docTemplate = `{
                 "window_number"
             ],
             "properties": {
+                "category_prefix": {
+                    "type": "string"
+                },
                 "window_number": {
                     "type": "integer"
+                }
+            }
+        },
+        "handlers.CallSpecificRequest": {
+            "type": "object",
+            "required": [
+                "ticket_id",
+                "window_number"
+            ],
+            "properties": {
+                "ticket_id": {
+                    "type": "integer"
+                },
+                "window_number": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.CheckInByPhoneRequest": {
+            "type": "object",
+            "required": [
+                "phone"
+            ],
+            "properties": {
+                "phone": {
+                    "type": "string"
                 }
             }
         },
@@ -2214,7 +2975,6 @@ const docTemplate = `{
             }
         },
         "handlers.ConfirmationRequest": {
-            "description": "Запрос подтверждения действия (печать талона или получение электронного)",
             "type": "object",
             "required": [
                 "action",
@@ -2232,7 +2992,6 @@ const docTemplate = `{
             }
         },
         "handlers.ConfirmationResponse": {
-            "description": "Ответ после подтверждения действия",
             "type": "object",
             "properties": {
                 "message": {
@@ -2250,6 +3009,25 @@ const docTemplate = `{
                 "timeout": {
                     "type": "integer",
                     "example": 10
+                }
+            }
+        },
+        "handlers.CreateAdministratorRequest": {
+            "type": "object",
+            "required": [
+                "full_name",
+                "login",
+                "password"
+            ],
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
                 }
             }
         },
@@ -2346,7 +3124,6 @@ const docTemplate = `{
             }
         },
         "handlers.ServiceSelectionRequest": {
-            "description": "Запрос для выбора услуги",
             "type": "object",
             "required": [
                 "service_id"
@@ -2359,7 +3136,6 @@ const docTemplate = `{
             }
         },
         "handlers.ServiceSelectionResponse": {
-            "description": "Ответ после выбора услуги",
             "type": "object",
             "properties": {
                 "action": {
@@ -2420,14 +3196,59 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.UpdateProcessRequest": {
+            "type": "object",
+            "properties": {
+                "is_enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "handlers.UpdateStatusRequest": {
-            "description": "Запрос для смены статуса тикета",
             "type": "object",
             "required": [
                 "status"
             ],
             "properties": {
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AdResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "duration_sec": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_enabled": {
+                    "type": "boolean"
+                },
+                "media_type": {
+                    "type": "string"
+                },
+                "picture": {
+                    "type": "string"
+                },
+                "reception_on": {
+                    "type": "boolean"
+                },
+                "repeat_count": {
+                    "type": "integer"
+                },
+                "schedule_on": {
+                    "type": "boolean"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "video": {
                     "type": "string"
                 }
             }
@@ -2458,6 +3279,43 @@ const docTemplate = `{
                 },
                 "ticket_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.BusinessProcess": {
+            "type": "object",
+            "properties": {
+                "is_enabled": {
+                    "type": "boolean"
+                },
+                "process_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CreateAdRequest": {
+            "type": "object",
+            "properties": {
+                "duration_sec": {
+                    "type": "integer"
+                },
+                "is_enabled": {
+                    "type": "boolean"
+                },
+                "picture": {
+                    "type": "string"
+                },
+                "reception_on": {
+                    "type": "boolean"
+                },
+                "repeat_count": {
+                    "type": "integer"
+                },
+                "schedule_on": {
+                    "type": "boolean"
+                },
+                "video": {
+                    "type": "string"
                 }
             }
         },
@@ -2541,6 +3399,41 @@ const docTemplate = `{
                 "start_time": {
                     "type": "string",
                     "example": "2025-01-01T09:00:00Z"
+                }
+            }
+        },
+        "models.DailyReportRow": {
+            "type": "object",
+            "properties": {
+                "appointment_time": {
+                    "type": "string"
+                },
+                "cabinet_number": {
+                    "type": "integer"
+                },
+                "called_at": {
+                    "type": "string"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
+                "doctor_full_name": {
+                    "type": "string"
+                },
+                "doctor_specialization": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "string"
+                },
+                "patient_full_name": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.TicketStatus"
+                },
+                "ticket_number": {
+                    "type": "string"
                 }
             }
         },
@@ -2686,6 +3579,47 @@ const docTemplate = `{
                 }
             }
         },
+        "models.RegistrarTicketResponse": {
+            "type": "object",
+            "properties": {
+                "appointment_time": {
+                    "type": "string"
+                },
+                "called_at": {
+                    "type": "string"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "qr_code": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "service_type": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.TicketStatus"
+                },
+                "ticket_number": {
+                    "type": "string"
+                },
+                "window_number": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.Schedule": {
             "type": "object",
             "properties": {
@@ -2765,7 +3699,6 @@ const docTemplate = `{
             }
         },
         "models.Ticket": {
-            "description": "Модель талона электронной очереди",
             "type": "object",
             "properties": {
                 "called_at": {
@@ -2804,7 +3737,6 @@ const docTemplate = `{
             }
         },
         "models.TicketResponse": {
-            "description": "Ответ API с данными талона",
             "type": "object",
             "properties": {
                 "called_at": {
@@ -2851,12 +3783,6 @@ const docTemplate = `{
                 "завершен",
                 "зарегистрирован"
             ],
-            "x-enum-comments": {
-                "StatusInvited": "Пациент вызван к окну"
-            },
-            "x-enum-descriptions": [
-                "Пациент вызван к окну"
-            ],
             "x-enum-varnames": [
                 "StatusWaiting",
                 "StatusInvited",
@@ -2864,6 +3790,32 @@ const docTemplate = `{
                 "StatusCompleted",
                 "StatusRegistered"
             ]
+        },
+        "models.UpdateAdRequest": {
+            "type": "object",
+            "properties": {
+                "duration_sec": {
+                    "type": "integer"
+                },
+                "is_enabled": {
+                    "type": "boolean"
+                },
+                "picture": {
+                    "type": "string"
+                },
+                "reception_on": {
+                    "type": "boolean"
+                },
+                "repeat_count": {
+                    "type": "integer"
+                },
+                "schedule_on": {
+                    "type": "boolean"
+                },
+                "video": {
+                    "type": "string"
+                }
+            }
         },
         "models.UpdateRequest": {
             "type": "object",
@@ -2983,7 +3935,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Electronic Queue API",

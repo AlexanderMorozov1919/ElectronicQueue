@@ -36,7 +36,6 @@ import (
 // @title Electronic Queue API
 // @version 1.0
 // @description API для системы электронной очереди
-// @host localhost:8080
 // @BasePath /
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
@@ -62,6 +61,12 @@ func main() {
 	}
 	log.WithField("dbname", cfg.DBName).Info("Database connected successfully")
 
+	repo := repository.NewRepository(db)
+	processService, err := services.NewBusinessProcessService(repo.BusinessProcess)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to initialize Business Process Service")
+	}
+
 	notificationChannel := make(chan string, 100)
 	listenerCtx, cancelListener := context.WithCancel(context.Background())
 
@@ -75,7 +80,7 @@ func main() {
 
 	go listenForNotifications(listenerCtx, pool, notificationChannel, log)
 
-	r := setupRouter(psBroker, db, cfg)
+	r := setupRouter(psBroker, db, cfg, processService)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -146,7 +151,7 @@ func listenForNotifications(ctx context.Context, pool *pgxpool.Pool, notificatio
 }
 
 // setupRouter настраивает маршруты и middleware
-func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.Engine {
+func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, processService *services.BusinessProcessService) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.SetTrustedProxies(nil)
@@ -160,15 +165,16 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 
 	repo := repository.NewRepository(db)
 
-	ticketService := services.NewTicketService(repo.Ticket, repo.Service)
+	ticketService := services.NewTicketService(repo.Ticket, repo.Service, repo.ReceptionLog, repo.Patient, repo.Appointment)
 	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
-	authService := services.NewAuthService(repo.Registrar, repo.Doctor, jwtManager)
+	authService := services.NewAuthService(repo.Registrar, repo.Doctor, repo.Administrator, jwtManager)
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db))
 	patientService := services.NewPatientService(repo.Patient)
 	appointmentService := services.NewAppointmentService(repo.Appointment, repo.Ticket)
 	cleanupService := services.NewCleanupService(repo.Cleanup)
 	tasksTimerService := services.NewTasksTimerService(cleanupService, cfg)
 	scheduleService := services.NewScheduleService(repo.Schedule, repo.Doctor)
+	adService := services.NewAdService(repo.Ad)
 
 	// Запускаем планировщик задач в фоне
 	go tasksTimerService.Start(context.Background())
@@ -178,23 +184,28 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 	registrarHandler := handlers.NewRegistrarHandler(ticketService)
 	authHandler := handlers.NewAuthHandler(authService)
 	databaseHandler := handlers.NewDatabaseHandler(databaseService)
-	audioHandler := handlers.NewAudioHandler()
+	audioHandler := handlers.NewAudioHandler(cfg)
 	patientHandler := handlers.NewPatientHandler(patientService)
 	appointmentHandler := handlers.NewAppointmentHandler(appointmentService)
 	scheduleHandler := handlers.NewScheduleHandler(scheduleService, broker)
+	processHandler := handlers.NewBusinessProcessHandler(processService)
+	adHandler := handlers.NewAdHandler(adService)
 
-	// SSE-эндпоинт для табло очереди регистратуры
-	r.GET("/tickets", sseHandler(broker, "reception_sse"))
+	// SSE-эндпоинт для табло очереди регистратуры (reception)
+	r.GET("/tickets", middleware.CheckBusinessProcess(processService, "reception"), sseHandler(broker, "reception_sse"))
 
-	r.GET("/api/doctor/screen-updates/:cabinet_number", doctorHandler.DoctorScreenUpdates)
+	// SSE-эндпоинт для табло у кабинета врача (queue_doctor)
+	r.GET("/api/doctor/screen-updates/:cabinet_number", middleware.CheckBusinessProcess(processService, "queue_doctor"), doctorHandler.DoctorScreenUpdates)
 
+	// Аутентификация
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/login/registrar", authHandler.LoginRegistrar)
 		auth.POST("/login/doctor", authHandler.LoginDoctor)
-
+		auth.POST("/login/administrator", authHandler.LoginAdministrator)
 	}
 
+	// Админ-панель
 	admin := r.Group("/api/admin").Use(middleware.RequireAPIKey(cfg.InternalAPIKey))
 	{
 		admin.POST("/create/doctor", authHandler.CreateDoctor)
@@ -202,26 +213,42 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		admin.DELETE("/tickets/:id", registrarHandler.DeleteTicket)
 		admin.POST("/schedules", scheduleHandler.CreateSchedule)
 		admin.DELETE("/schedules/:id", scheduleHandler.DeleteSchedule)
+		admin.POST("/create/administrator", authHandler.CreateAdministrator)
+		admin.GET("/processes", processHandler.GetAllProcesses)
+		admin.PATCH("/processes/:name", processHandler.UpdateProcess)
+
+		admin.GET("/ads", adHandler.GetAllAds)
+		admin.POST("/ads", adHandler.CreateAd)
+		admin.GET("/ads/:id", adHandler.GetAdByID)
+		admin.PATCH("/ads/:id", adHandler.UpdateAd)
+		admin.DELETE("/ads/:id", adHandler.DeleteAd)
 	}
 
-	tickets := r.Group("/api/tickets")
+	// Эндпоинты для терминала (terminal)
+	tickets := r.Group("/api/tickets").Use(middleware.CheckBusinessProcess(processService, "terminal"))
 	{
 		tickets.GET("/start", ticketHandler.StartPage)
 		tickets.GET("/services", ticketHandler.Services)
-		tickets.GET("/active", ticketHandler.GetAllActive)
 		tickets.POST("/print/selection", ticketHandler.Selection)
 		tickets.POST("/print/confirmation", ticketHandler.Confirmation)
+		tickets.POST("/appointment/phone", ticketHandler.CheckInByPhone)
 		tickets.GET("/download/:ticket_number", ticketHandler.DownloadTicket)
 		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)
 	}
+	// табло регистратуры (reception)
+	r.GET("/api/tickets/active", middleware.CheckBusinessProcess(processService, "reception"), ticketHandler.GetAllActive)
 
-	publicDoctorGroup := r.Group("/api/doctor")
+	// Публичные эндпоинты, используемые окном регистратора и табло у кабинета (registry, queue_doctor)
+	publicDoctorGroup := r.Group("/api/doctor").Use(middleware.CheckBusinessProcess(processService, "registry", "queue_doctor"))
 	{
 		publicDoctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
 		publicDoctorGroup.GET("/cabinets/active", doctorHandler.GetActiveCabinets)
 	}
 
-	protectedDoctorGroup := r.Group("/api/doctor").Use(middleware.RequireRole(jwtManager, "doctor"))
+	// Эндпоинты для окна врача (doctor)
+	protectedDoctorGroup := r.Group("/api/doctor").
+		Use(middleware.RequireRole(jwtManager, "doctor")).
+		Use(middleware.CheckBusinessProcess(processService, "doctor"))
 	{
 		protectedDoctorGroup.GET("/tickets/registered", doctorHandler.GetRegisteredTickets)
 		protectedDoctorGroup.GET("/tickets/in-progress", doctorHandler.GetInProgressTickets)
@@ -233,9 +260,14 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		protectedDoctorGroup.POST("/set-inactive", doctorHandler.SetDoctorInactive)
 	}
 
-	registrar := r.Group("/api/registrar").Use(middleware.RequireRole(jwtManager, "registrar"))
+	// Эндпоинты для окна регистратора (registry)
+	registrar := r.Group("/api/registrar").
+		Use(middleware.RequireRole(jwtManager, "registrar")).
+		Use(middleware.CheckBusinessProcess(processService, "registry"))
 	{
 		registrar.POST("/call-next", registrarHandler.CallNext)
+		registrar.POST("/call-specific", registrarHandler.CallSpecific)
+		registrar.GET("/tickets", registrarHandler.GetTickets)
 		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
 		registrar.GET("/patients/search", patientHandler.SearchPatients)
 		registrar.POST("/patients", patientHandler.CreatePatient)
@@ -244,9 +276,13 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		registrar.GET("/patients/:patient_id/appointments", appointmentHandler.GetPatientAppointments)
 		registrar.DELETE("/appointments/:id", appointmentHandler.DeleteAppointment)
 		registrar.PATCH("/appointments/:id/confirm", appointmentHandler.ConfirmAppointment)
+		registrar.GET("/reports/daily", registrarHandler.GetDailyReport)
 	}
 
-	dbAPI := r.Group("/api/database").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
+	// Внешний API для базы данных (database)
+	dbAPI := r.Group("/api/database").
+		Use(middleware.RequireAPIKey(cfg.ExternalAPIKey)).
+		Use(middleware.CheckBusinessProcess(processService, "database"))
 	{
 		dbAPI.POST("/:table/select", databaseHandler.GetData)
 		dbAPI.POST("/:table/insert", databaseHandler.InsertData)
@@ -254,12 +290,20 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config) *gin.En
 		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
 	}
 
-	audioGroup := r.Group("/api/audio")
+	// Реклама используется табло регистратуры (reception)
+	adGroup := r.Group("/api/ads").Use(middleware.CheckBusinessProcess(processService, "reception", "schedule"))
+	{
+		adGroup.GET("/enabled", adHandler.GetEnabledAds)
+	}
+
+	// Озвучка используется табло регистратуры (reception)
+	audioGroup := r.Group("/api/audio").Use(middleware.CheckBusinessProcess(processService, "reception"))
 	{
 		audioGroup.GET("/announce", audioHandler.GenerateAnnouncement)
 	}
 
-	scheduleGroup := r.Group("/api/schedules")
+	// Эндпоинты для общего расписания (schedule)
+	scheduleGroup := r.Group("/api/schedules").Use(middleware.CheckBusinessProcess(processService, "schedule"))
 	{
 		scheduleGroup.GET("/today/updates", scheduleHandler.GetTodayScheduleUpdates)
 	}
@@ -291,7 +335,6 @@ func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 					return false
 				}
 
-				// Игнорируем уведомления, не связанные с талонами
 				if !strings.Contains(payloadStr, "ticket_number") {
 					return true
 				}

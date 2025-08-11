@@ -38,10 +38,9 @@
 
 ```bash
 # Backend
-git clone https://github.com/AlexanderMorozov1919/ElectronicQueue.git
+git clone -b develop https://github.com/AlexanderMorozov1919/ElectronicQueue.git
 
 # Frontend
-# Актуальный функционал реализован в ветке develop: git checkout develop
 git clone -b develop https://github.com/AlexanderMorozov1919/electronicqueue-frontend.git
 
 # Главный каталог
@@ -60,36 +59,37 @@ cp .env.example .env
 
 ```ini
 # 🗄️ База данных
-DB_USER=postgres                # Имя пользователя для подключения к БД
-DB_PASSWORD=1234                # Пароль пользователя для подключения к БД
-DB_HOST=localhost               # Адрес сервера базы данных PostgreSQL
-DB_PORT=5432                    # Порт базы данных PostgreSQL
-DB_NAME=el_queue                # Имя базы данных
-DB_SSLMODE=disable              # Режим SSL для подключения к БД
+DB_USER=postgres                  # Имя пользователя для подключения к БД
+DB_PASSWORD=1234                  # Пароль пользователя для подключения к БД
+DB_HOST=localhost                 # Адрес сервера базы данных PostgreSQL
+DB_PORT=5432                      # Порт базы данных PostgreSQL
+DB_NAME=el_queue                  # Имя базы данных
+DB_SSLMODE=disable                # Режим SSL для подключения к БД
 
 # 🌐 Сервер
-BACKEND_PORT=8080               # Порт, на котором запускается backend-сервер
-FRONTEND_PORT=3000              # Порт, на котором запускается frontend-сервер
-BROWSER=chrome                  # Браузер для запуска Flutter frontend (chrome | edge)
+BACKEND_PORT=8080                 # Порт, на котором запускается backend-сервер
+FRONTEND_PORT=3000                # Порт, на котором запускается frontend-сервер
+API_BASE_URL=http://localhost:8080# URL для доступа к backend API
+BROWSER=chrome                    # Браузер для запуска Flutter frontend (chrome | edge)
 
 # 🔐 Безопасность
-JWT_SECRET=your-secret-key      # Секретный ключ для подписи JWT
-JWT_EXPIRATION=24h              # Время жизни токена (например, 24h)
+JWT_SECRET=your-secret-key        # Секретный ключ для подписи JWT
+JWT_EXPIRATION=24h                # Время жизни токена (например, 24h)
 
 # 🎫 Настройки талонов
-TICKET_MODE=color               # Режим генерации талона (color | b/w)
-TICKET_HEIGHT=1024              # Высота талона для печати в пикселях
+TICKET_MODE=color                 # Режим генерации талона (color | b/w)
+TICKET_HEIGHT=1024                # Высота талона для печати в пикселях
 
 # 📝 Каталоги
-LOG_DIR=logs                    # Путь к папке логов приложения
-TICKET_DIR=tickets              # Путь к папке со сгенерированными талонами
+LOG_DIR=logs                      # Путь к папке логов приложения
+TICKET_DIR=tickets                # Путь к папке со сгенерированными талонами
 
 # 🔑 API ключи
-INTERNAL_API_KEY=iak12345       # API ключ для внутренних сервисов
-EXTERNAL_API_KEY=eak12345       # API ключ для внешних сервисов
+INTERNAL_API_KEY=iak12345         # API ключ для внутренних сервисов
+EXTERNAL_API_KEY=eak12345         # API ключ для внешних сервисов
 
 # 🖨️ Принтер талонов
-PRINTER="DeskJet 5000 series"   # Имя принтера для печати
+PRINTER="DeskJet 5000 series"     # Имя принтера для печати
 ```
 
 ---
@@ -131,9 +131,55 @@ PRINTER="DeskJet 5000 series"   # Имя принтера для печати
 | `flutter-docker`      | Запуск frontend на Flutter в Docker (требуется Docker)          |
 | `local`               | Запуск Go и Flutter локально                                    |
 | `docker`              | Запуск Go и Flutter в Docker                                    |
-> ❗️ **Важно**: Дождитесь запуска backend сервера и 5+ секунд после запуска, прежде чем отправлять запросы с frontend сервера
 
----
+
+## 📦 Запуск из архивов
+
+Если вы не хотите собирать проект, можно воспользоваться готовыми архивами:
+
+- **backend_build.zip** — находится в репозитории `ElectronicQueue`
+- **frontend_build.zip** — находится в репозитории `electronicqueue-frontend`
+
+### 1️⃣ Backend
+
+1. Распакуйте архив `backend_build.zip` в отдельную папку.
+    ```
+    unzip backend_build.zip -d backend_build
+    ```
+2. Перейдите в папку с распакованным backend.
+    ```
+    cd backend_build
+    ```
+2. Запустите backend, используя бинарник для вашей ОС:
+   **Windows**:  
+    ```
+    ./windows-amd64.exe
+    ```
+   **Linux**:  
+    ```
+    ./linux-amd64
+    ```
+   **macOS**:  
+    ```
+    ./darwin-amd64
+    ```
+    Backend будет доступен по адресу: `http://localhost:{BACKEND_PORT}`
+
+### 2️⃣ Frontend
+
+1. Распакуйте архив `frontend_build.zip` в отдельную папку
+    ```
+    unzip frontend_build.zip -d frontend_build
+    ```
+2. Перейдите в папку с распакованным frontend
+    ```
+    cd frontend_build
+    ```
+3. Запустите локальный сервер командой:
+   ```
+   python -m http.server {FRONTEND_PORT}
+   ```
+   Frontend будет доступен по адресу: `http://localhost:{FRONTEND_PORT}/{имя_сервиса}/`
 
 ## 🧹 Очистка проекта
 
@@ -165,12 +211,13 @@ PRINTER="DeskJet 5000 series"   # Имя принтера для печати
 | 🔳 **Очередь к регистратору** | `http://localhost:{FRONTEND_PORT+2}`                 | Электронное табло очереди |
 | 📝 **Регистратор**            | `http://localhost:{FRONTEND_PORT+3}`                 | Окно регистратора         |
 | 🖥️ **Терминал**               | `http://localhost:{FRONTEND_PORT+4}`                 | Интерфейс терминала       |
+| 📅 **Расписание**             | `http://localhost:{FRONTEND_PORT+5}`                 | Расписание врачей         |
 
 ---
 
 ## 📚 Документация
 
-Полная документация доступна в **[Swagger UI](http://localhost:8080/swagger/index.html)**
+Полная документация доступна в **[Swagger UI](https://elqueue.iwtcode.com/swagger/index.html)**
 
 ---
 
@@ -178,7 +225,6 @@ PRINTER="DeskJet 5000 series"   # Имя принтера для печати
 
 - Чтобы Docker работал, необходимо запустить **Docker Desktop**.
 - Если y Docker возникают ошибки, попробуйте перезагрузить **Docker Desktop**.
-- Если появляется ошибка о недоступности API backend сервера *(ClientException: Failed to fetch)*, подождите пока загрузиться **Backend**, **5+ секунд** после загрузки и **обновите страницу**.
 
 ---
 

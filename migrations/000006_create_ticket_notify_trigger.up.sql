@@ -1,3 +1,6 @@
+-- Подавляем вывод NOTICE-сообщений, например, при удалении несуществующего триггера
+SET client_min_messages TO warning;
+
 CREATE OR REPLACE FUNCTION notify_ticket_change() RETURNS TRIGGER AS $$
 DECLARE
     payload JSON;
@@ -43,3 +46,6 @@ DROP TRIGGER IF EXISTS tickets_change_trigger ON tickets;
 CREATE TRIGGER tickets_change_trigger
 AFTER INSERT OR UPDATE OR DELETE ON tickets
 FOR EACH ROW EXECUTE FUNCTION notify_ticket_change();
+
+-- Возвращаем уровень сообщений по умолчанию
+RESET client_min_messages;

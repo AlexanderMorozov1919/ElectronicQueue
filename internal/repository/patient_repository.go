@@ -44,3 +44,11 @@ func (r *patientRepo) FindByPassport(series, number string) (*models.Patient, er
 	}
 	return &patient, nil
 }
+
+func (r *patientRepo) FindByPhone(phone string) (*models.Patient, error) {
+	var patient models.Patient
+	if err := r.db.Where("regexp_replace(phone, '[^0-9]+', '', 'g') = ?", phone).First(&patient).Error; err != nil {
+		return nil, err
+	}
+	return &patient, nil
+}

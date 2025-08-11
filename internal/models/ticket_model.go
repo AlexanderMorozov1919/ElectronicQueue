@@ -7,23 +7,15 @@ import (
 type TicketStatus string
 
 // TicketStatus определяет перечисление для статусов талонов.
-// @Description Перечисление статусов талонов электронной очереди
-// @Enum string
-// @swagger:model
-// @Schema
 const (
 	StatusWaiting    TicketStatus = "ожидает"
-	StatusInvited    TicketStatus = "приглашен" // Пациент вызван к окну
+	StatusInvited    TicketStatus = "приглашен"
 	StatusInProgress TicketStatus = "на_приеме"
 	StatusCompleted  TicketStatus = "завершен"
 	StatusRegistered TicketStatus = "зарегистрирован"
 )
 
 // Ticket представляет собой модель талона электронной очереди.
-// @Description Модель талона электронной очереди
-// @Name Ticket
-// @swagger:model
-// @Schema
 type Ticket struct {
 	ID           uint         `gorm:"primaryKey;autoIncrement;column:ticket_id" json:"id"`
 	TicketNumber string       `gorm:"type:varchar(20);not null;unique;column:ticket_number" json:"ticket_number"`
@@ -38,10 +30,6 @@ type Ticket struct {
 }
 
 // TicketResponse определяет данные, возвращаемые API.
-// @Description Ответ API с данными талона
-// @Name TicketResponse
-// @swagger:model
-// @Schema
 type TicketResponse struct {
 	ID           uint         `json:"id"`
 	TicketNumber string       `json:"ticket_number"`
@@ -55,12 +43,32 @@ type TicketResponse struct {
 	CompletedAt  *time.Time   `json:"completed_at,omitempty"`
 }
 
+// RegistrarTicketResponse расширяет Ticket, добавляя время записи для нужд регистратуры.
+type RegistrarTicketResponse struct {
+	Ticket
+	AppointmentTime *string `json:"appointment_time,omitempty"`
+}
+
 // DoctorQueueTicketResponse определяет структуру для одного элемента в очереди к врачу.
 type DoctorQueueTicketResponse struct {
 	StartTime       string       `gorm:"column:start_time" json:"start_time"`
 	TicketNumber    string       `gorm:"column:ticket_number" json:"ticket_number"`
 	PatientFullName string       `gorm:"column:full_name" json:"patient_full_name"`
 	Status          TicketStatus `gorm:"column:status" json:"status"`
+}
+
+// DailyReportRow представляет одну строку в ежедневном отчете по талонам.
+type DailyReportRow struct {
+	TicketNumber         string       `json:"ticket_number"`
+	PatientFullName      *string      `json:"patient_full_name"`
+	DoctorFullName       *string      `json:"doctor_full_name"`
+	DoctorSpecialization *string      `json:"doctor_specialization"`
+	CabinetNumber        *int         `json:"cabinet_number"`
+	AppointmentTime      *string      `json:"appointment_time"`
+	Status               TicketStatus `json:"status"`
+	CalledAt             *time.Time   `json:"called_at"`
+	CompletedAt          *time.Time   `json:"completed_at"`
+	Duration             *string      `json:"duration"`
 }
 
 // ToResponse преобразует модель Ticket в объект ответа TicketResponse (DTO)

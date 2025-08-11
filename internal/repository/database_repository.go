@@ -103,6 +103,12 @@ func (r *databaseRepo) GetData(tableName string, page, limit int, filters models
 	offset := (page - 1) * limit
 	tx = tx.Offset(offset).Limit(limit)
 
+	// Если таблица - tickets, применяем кастомную сортировку
+	if tableName == "tickets" {
+		orderClause := "CASE status WHEN 'ожидает' THEN 1 WHEN 'приглашен' THEN 2 WHEN 'зарегистрирован' THEN 3 WHEN 'на_приеме' THEN 4 WHEN 'завершен' THEN 5 ELSE 6 END, created_at ASC"
+		tx = tx.Order(orderClause)
+	}
+
 	// Выполнение запроса
 	var results []map[string]interface{}
 	if err := tx.Find(&results).Error; err != nil {

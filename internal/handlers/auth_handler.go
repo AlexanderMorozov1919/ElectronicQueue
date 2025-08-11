@@ -33,6 +33,12 @@ type CreateDoctorRequest struct {
 	Password       string `json:"password" binding:"required"`
 }
 
+type CreateAdministratorRequest struct {
+	FullName string `json:"full_name" binding:"required"`
+	Login    string `json:"login" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
 // LoginRegistrar обрабатывает аутентификацию регистратора
 // @Summary      Аутентификация регистратора
 // @Description  Принимает логин и пароль, возвращает JWT токен.
@@ -163,5 +169,69 @@ func (h *AuthHandler) CreateDoctor(c *gin.Context) {
 		"login":          doctor.Login,
 		"full_name":      doctor.FullName,
 		"specialization": doctor.Specialization,
+	})
+}
+
+// LoginAdministrator обрабатывает аутентификацию администратора
+// @Summary      Аутентификация администратора
+// @Description  Принимает логин и пароль, возвращает JWT токен.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials body LoginRequest true "Учетные данные"
+// @Success      200 {object} map[string]string "Успешный ответ с токеном"
+// @Failure      400 {object} map[string]string "Ошибка: неверный запрос"
+// @Failure      401 {object} map[string]string "Ошибка: неверные учетные данные"
+// @Router       /api/auth/login/administrator [post]
+func (h *AuthHandler) LoginAdministrator(c *gin.Context) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+		return
+	}
+
+	token, err := h.authService.AuthenticateAdministrator(req.Login, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+// CreateAdministrator создает нового пользователя-администратора.
+// @Summary      Создать нового администратора (Админ)
+// @Description  Создает нового пользователя с ролью "администратор". Требует INTERNAL_API_KEY.
+// @Tags         admin
+// @Accept       json
+// @Produce      json
+// @Param        credentials body CreateAdministratorRequest true "Данные нового администратора"
+// @Success      201 {object} map[string]interface{} "Администратор успешно создан"
+// @Failure      400 {object} map[string]string "Ошибка: неверный запрос"
+// @Failure      409 {object} map[string]string "Ошибка: логин уже занят"
+// @Security     ApiKeyAuth
+// @Router       /api/admin/create/administrator [post]
+func (h *AuthHandler) CreateAdministrator(c *gin.Context) {
+	var req CreateAdministratorRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса: " + err.Error()})
+		return
+	}
+
+	admin, err := h.authService.CreateAdministrator(req.FullName, req.Login, req.Password)
+	if err != nil {
+		if err.Error() == "логин '"+req.Login+"' уже занят" {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":          "Администратор успешно создан",
+		"administrator_id": admin.AdministratorID,
+		"login":            admin.Login,
+		"full_name":        admin.FullName,
 	})
 }
