@@ -3230,16 +3230,25 @@ const docTemplate = `{
                 "is_enabled": {
                     "type": "boolean"
                 },
+                "media_type": {
+                    "type": "string"
+                },
                 "picture": {
                     "type": "string"
                 },
                 "reception_on": {
                     "type": "boolean"
                 },
+                "repeat_count": {
+                    "type": "integer"
+                },
                 "schedule_on": {
                     "type": "boolean"
                 },
                 "updated_at": {
+                    "type": "string"
+                },
+                "video": {
                     "type": "string"
                 }
             }
@@ -3286,10 +3295,6 @@ const docTemplate = `{
         },
         "models.CreateAdRequest": {
             "type": "object",
-            "required": [
-                "duration_sec",
-                "picture"
-            ],
             "properties": {
                 "duration_sec": {
                     "type": "integer"
@@ -3303,8 +3308,14 @@ const docTemplate = `{
                 "reception_on": {
                     "type": "boolean"
                 },
+                "repeat_count": {
+                    "type": "integer"
+                },
                 "schedule_on": {
                     "type": "boolean"
+                },
+                "video": {
+                    "type": "string"
                 }
             }
         },
@@ -3795,8 +3806,14 @@ const docTemplate = `{
                 "reception_on": {
                     "type": "boolean"
                 },
+                "repeat_count": {
+                    "type": "integer"
+                },
                 "schedule_on": {
                     "type": "boolean"
+                },
+                "video": {
+                    "type": "string"
                 }
             }
         },

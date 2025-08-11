@@ -19,17 +19,44 @@ func NewAdService(repo repository.AdRepository) *AdService {
 }
 
 func (s *AdService) Create(req *models.CreateAdRequest) (*models.Ad, error) {
-	picBytes, err := base64.StdEncoding.DecodeString(req.Picture)
-	if err != nil {
-		return nil, fmt.Errorf("invalid base64 picture data: %w", err)
+	if (req.Picture == "" && req.Video == "") || (req.Picture != "" && req.Video != "") {
+		return nil, errors.New("you must provide either a picture or a video, but not both")
 	}
 
 	ad := &models.Ad{
-		Picture:     picBytes,
-		DurationSec: req.DurationSec,
 		IsEnabled:   req.IsEnabled,
 		ReceptionOn: req.ReceptionOn,
 		ScheduleOn:  req.ScheduleOn,
+	}
+
+	if req.Picture != "" {
+		picBytes, err := base64.StdEncoding.DecodeString(req.Picture)
+		if err != nil {
+			return nil, fmt.Errorf("invalid base64 picture data: %w", err)
+		}
+		ad.Picture = picBytes
+		ad.Video = nil
+
+		if req.DurationSec != nil {
+			ad.DurationSec = *req.DurationSec
+		} else {
+			ad.DurationSec = 5 // Default for images
+		}
+		ad.RepeatCount = 1 // Default for images
+	} else { // Video is provided
+		videoBytes, err := base64.StdEncoding.DecodeString(req.Video)
+		if err != nil {
+			return nil, fmt.Errorf("invalid base64 video data: %w", err)
+		}
+		ad.Video = videoBytes
+		ad.Picture = nil
+
+		ad.DurationSec = 5 // Default value since DB field is NOT NULL
+		if req.RepeatCount != nil {
+			ad.RepeatCount = *req.RepeatCount
+		} else {
+			ad.RepeatCount = 1 // Default for videos
+		}
 	}
 
 	if err := s.repo.Create(ad); err != nil {
@@ -68,9 +95,21 @@ func (s *AdService) Update(id uint, req *models.UpdateAdRequest) (*models.Ad, er
 			return nil, fmt.Errorf("invalid base64 picture data: %w", err)
 		}
 		ad.Picture = picBytes
+		ad.Video = nil // Clear video if picture is updated
+	} else if req.Video != "" {
+		videoBytes, err := base64.StdEncoding.DecodeString(req.Video)
+		if err != nil {
+			return nil, fmt.Errorf("invalid base64 video data: %w", err)
+		}
+		ad.Video = videoBytes
+		ad.Picture = nil // Clear picture if video is updated
 	}
+
 	if req.DurationSec != nil {
 		ad.DurationSec = *req.DurationSec
+	}
+	if req.RepeatCount != nil {
+		ad.RepeatCount = *req.RepeatCount
 	}
 	if req.IsEnabled != nil {
 		ad.IsEnabled = *req.IsEnabled

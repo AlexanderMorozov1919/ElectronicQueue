@@ -38,6 +38,7 @@ func (h *AdHandler) GetAllAds(c *gin.Context) {
 	for _, ad := range ads {
 		respAd := ad.ToResponse()
 		respAd.Picture = ""
+		respAd.Video = ""
 		response = append(response, respAd)
 	}
 	c.JSON(http.StatusOK, response)
