@@ -15,18 +15,16 @@ func NewTicketRepository(db *gorm.DB) TicketRepository {
 	return &ticketRepo{db: db}
 }
 
-// FindForRegistrar находит талоны для регистратора с информацией о времени записи.
-func (r *ticketRepo) FindForRegistrar(statuses []models.TicketStatus, categoryPrefix string) ([]models.RegistrarTicketResponse, error) {
+func (r *ticketRepo) FindForRegistrar(statuses []models.TicketStatus, categoryPrefixes []string) ([]models.RegistrarTicketResponse, error) {
 	var tickets []models.RegistrarTicketResponse
-	// ИЗМЕНЕНИЕ: Формат времени теперь 'YYYY-MM-DD HH24:MI:SS' (с пробелом)
 	query := r.db.Table("tickets as t").
 		Select("t.*, to_char(s.date + s.start_time, 'YYYY-MM-DD HH24:MI:SS') as appointment_time").
 		Joins("LEFT JOIN appointments a ON t.ticket_id = a.ticket_id").
 		Joins("LEFT JOIN schedules s ON a.schedule_id = s.schedule_id").
 		Where("t.status IN ?", statuses)
 
-	if categoryPrefix != "" {
-		query = query.Where("t.ticket_number LIKE ?", categoryPrefix+"%")
+	if len(categoryPrefixes) > 0 {
+		query = query.Where("LEFT(t.ticket_number, 1) IN ?", categoryPrefixes)
 	}
 
 	if err := query.Order("t.created_at DESC").Find(&tickets).Error; err != nil {
@@ -67,39 +65,33 @@ func (r *ticketRepo) FindByStatus(status models.TicketStatus) ([]models.Ticket, 
 	return tickets, nil
 }
 
-// GetNextWaitingTicket находит следующий талон в очереди с учетом динамического приоритета по времени записи.
-func (r *ticketRepo) GetNextWaitingTicket(categoryPrefix string) (*models.Ticket, error) {
+func (r *ticketRepo) GetNextWaitingTicket(categoryPrefixes []string) (*models.Ticket, error) {
 	var ticket models.Ticket
 
-	baseQuery := `
-        SELECT t.* FROM tickets t
-        LEFT JOIN appointments a ON t.ticket_id = a.ticket_id
-        LEFT JOIN schedules s ON a.schedule_id = s.schedule_id AND s.date = CURRENT_DATE
-        WHERE t.status = 'ожидает'
-    `
+	baseQuery := r.db.
+		Select("t.*").
+		Table("tickets as t").
+		Joins("LEFT JOIN appointments a ON t.ticket_id = a.ticket_id").
+		Joins("LEFT JOIN schedules s ON a.schedule_id = s.schedule_id AND s.date = CURRENT_DATE").
+		Where("t.status = ?", "ожидает")
 
-	if categoryPrefix != "" {
-		baseQuery += " AND t.ticket_number LIKE '" + categoryPrefix + "%'"
+	if len(categoryPrefixes) > 0 {
+		baseQuery = baseQuery.Where("LEFT(t.ticket_number, 1) IN ?", categoryPrefixes)
 	}
 
-	orderedQuery := baseQuery + `
-        ORDER BY
-            CASE
-                WHEN s.start_time IS NOT NULL AND s.start_time < NOW()::time THEN 0
-                WHEN s.start_time IS NOT NULL AND s.start_time BETWEEN NOW()::time AND (NOW() + INTERVAL '5 minutes')::time THEN 1
-                ELSE 2
-            END,
-            s.start_time ASC,
-            t.created_at ASC
-        LIMIT 1
-    `
+	orderedQuery := baseQuery.Order(`
+        CASE
+            WHEN s.start_time IS NOT NULL AND s.start_time < NOW()::time THEN 0
+            WHEN s.start_time IS NOT NULL AND s.start_time BETWEEN NOW()::time AND (NOW() + INTERVAL '5 minutes')::time THEN 1
+            ELSE 2
+        END,
+        s.start_time ASC,
+        t.created_at ASC
+    `).Limit(1)
 
-	err := r.db.Raw(orderedQuery).Scan(&ticket).Error
+	err := orderedQuery.First(&ticket).Error
 	if err != nil {
 		return nil, err
-	}
-	if ticket.ID == 0 {
-		return nil, gorm.ErrRecordNotFound
 	}
 	return &ticket, nil
 }

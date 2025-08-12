@@ -1,24 +1,5 @@
 basePath: /
 definitions:
-  handlers.CallNextRequest:
-    properties:
-      category_prefix:
-        type: string
-      window_number:
-        type: integer
-    required:
-    - window_number
-    type: object
-  handlers.CallSpecificRequest:
-    properties:
-      ticket_id:
-        type: integer
-      window_number:
-        type: integer
-    required:
-    - ticket_id
-    - window_number
-    type: object
   handlers.CheckInByPhoneRequest:
     properties:
       phone:
@@ -197,13 +178,6 @@ definitions:
       is_enabled:
         type: boolean
     type: object
-  handlers.UpdateStatusRequest:
-    properties:
-      status:
-        type: string
-    required:
-    - status
-    type: object
   models.AdResponse:
     properties:
       created_at:
@@ -331,29 +305,6 @@ definitions:
     - end_time
     - start_time
     type: object
-  models.DailyReportRow:
-    properties:
-      appointment_time:
-        type: string
-      cabinet_number:
-        type: integer
-      called_at:
-        type: string
-      completed_at:
-        type: string
-      doctor_full_name:
-        type: string
-      doctor_specialization:
-        type: string
-      duration:
-        type: string
-      patient_full_name:
-        type: string
-      status:
-        $ref: '#/definitions/models.TicketStatus'
-      ticket_number:
-        type: string
-    type: object
   models.DeleteRequest:
     properties:
       filters:
@@ -448,33 +399,6 @@ definitions:
       phone:
         type: string
     type: object
-  models.RegistrarTicketResponse:
-    properties:
-      appointment_time:
-        type: string
-      called_at:
-        type: string
-      completed_at:
-        type: string
-      created_at:
-        type: string
-      id:
-        type: integer
-      qr_code:
-        items:
-          type: integer
-        type: array
-      service_type:
-        type: string
-      started_at:
-        type: string
-      status:
-        $ref: '#/definitions/models.TicketStatus'
-      ticket_number:
-        type: string
-      window_number:
-        type: integer
-    type: object
   models.Schedule:
     properties:
       cabinet:
@@ -520,8 +444,10 @@ definitions:
   models.Service:
     properties:
       id:
-        type: string
+        type: integer
       letter:
+        type: string
+      service_id:
         type: string
       title:
         type: string
@@ -1122,61 +1048,6 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Удалить слот из расписания (Админ)
-      tags:
-      - admin
-  /api/admin/tickets/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Удаляет тикет по ID. Требует INTERNAL_API_KEY.
-      parameters:
-      - description: ID тикета
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Тикет удален
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Ошибка запроса
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Отсутствует ключ API
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Неверный ключ API
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Тикет не найден
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Удалить тикет (Админ)
       tags:
       - admin
   /api/ads/enabled:
@@ -1872,6 +1743,28 @@ paths:
       summary: Получить очередь к врачу
       tags:
       - doctor
+  /api/processes/{name}:
+    get:
+      description: Возвращает текущее состояние (включен/отключен) для указанного
+        бизнес-процесса.
+      parameters:
+      - description: Имя процесса
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Статус процесса
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      summary: Получить статус конкретного бизнес-процесса
+      tags:
+      - processes
   /api/registrar/appointments:
     post:
       consumes:
@@ -1994,92 +1887,6 @@ paths:
       summary: Подтвердить явку по записи
       tags:
       - registrar
-  /api/registrar/call-next:
-    post:
-      consumes:
-      - application/json
-      description: Находит первого пациента в очереди (опционально по категории),
-        меняет его статус на "приглашен" и присваивает номер окна
-      parameters:
-      - description: Номер окна и опциональный префикс категории талона
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.CallNextRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Данные вызванного талона
-          schema:
-            $ref: '#/definitions/models.TicketResponse'
-        "400":
-          description: 'Ошибка: неверный номер окна'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: 'Ошибка: очередь пуста'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Вызвать следующего пациента
-      tags:
-      - registrar
-  /api/registrar/call-specific:
-    post:
-      consumes:
-      - application/json
-      description: Находит пациента по ID талона, меняет его статус на "приглашен"
-        и присваивает номер окна. Доступно только для талонов в статусе 'ожидает'.
-      parameters:
-      - description: ID талона и номер окна
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.CallSpecificRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Данные вызванного талона
-          schema:
-            $ref: '#/definitions/models.TicketResponse'
-        "400":
-          description: 'Ошибка: неверный ID, номер окна или неверный статус талона'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: 'Ошибка: талон не найден'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Вызвать конкретного пациента
-      tags:
-      - registrar
   /api/registrar/patients:
     post:
       consumes:
@@ -2189,30 +1996,6 @@ paths:
       summary: Поиск пациентов по ФИО, ОМС или паспорту
       tags:
       - registrar
-  /api/registrar/reports/daily:
-    get:
-      description: Возвращает список всех талонов, созданных сегодня, с детальной
-        информацией.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Массив строк отчета
-          schema:
-            items:
-              $ref: '#/definitions/models.DailyReportRow'
-            type: array
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Получить отчет по талонам за текущий день
-      tags:
-      - registrar
   /api/registrar/schedules/doctor/{doctor_id}:
     get:
       description: Возвращает все временные слоты врача на указанную дату, включая
@@ -2252,84 +2035,6 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Получить расписание врача с информацией о записях
-      tags:
-      - registrar
-  /api/registrar/tickets:
-    get:
-      description: Возвращает список талонов по нужным статусам, с возможностью фильтрации
-        по категории.
-      parameters:
-      - description: Префикс категории для фильтрации (например, 'A', 'B')
-        in: query
-        name: category
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Массив талонов
-          schema:
-            items:
-              $ref: '#/definitions/models.RegistrarTicketResponse'
-            type: array
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Получить список талонов для регистратора
-      tags:
-      - registrar
-  /api/registrar/tickets/{id}/status:
-    patch:
-      consumes:
-      - application/json
-      description: Изменяет статус тикета по ID
-      parameters:
-      - description: ID тикета
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Новый статус
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.UpdateStatusRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Статус обновлен
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Ошибка запроса
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Тикет не найден
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Сменить статус тикета
       tags:
       - registrar
   /api/schedules/today/updates:

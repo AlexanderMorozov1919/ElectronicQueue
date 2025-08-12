@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS registrar_category_priorities;
