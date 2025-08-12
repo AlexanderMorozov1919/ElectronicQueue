@@ -706,91 +706,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/admin/tickets/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Удаляет тикет по ID. Требует INTERNAL_API_KEY.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Удалить тикет (Админ)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID тикета",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Тикет удален",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Отсутствует ключ API",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Неверный ключ API",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Тикет не найден",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/ads/enabled": {
             "get": {
                 "description": "Возвращает список всех включенных рекламных материалов с изображениями.",
@@ -2065,138 +1980,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/registrar/call-next": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Находит первого пациента в очереди (опционально по категории), меняет его статус на \"приглашен\" и присваивает номер окна",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registrar"
-                ],
-                "summary": "Вызвать следующего пациента",
-                "parameters": [
-                    {
-                        "description": "Номер окна и опциональный префикс категории талона",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.CallNextRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Данные вызванного талона",
-                        "schema": {
-                            "$ref": "#/definitions/models.TicketResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный номер окна",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Ошибка: очередь пуста",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/registrar/call-specific": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Находит пациента по ID талона, меняет его статус на \"приглашен\" и присваивает номер окна. Доступно только для талонов в статусе 'ожидает'.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registrar"
-                ],
-                "summary": "Вызвать конкретного пациента",
-                "parameters": [
-                    {
-                        "description": "ID талона и номер окна",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.CallSpecificRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Данные вызванного талона",
-                        "schema": {
-                            "$ref": "#/definitions/models.TicketResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID, номер окна или неверный статус талона",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Ошибка: талон не найден",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/registrar/patients": {
             "post": {
                 "security": [
@@ -2364,43 +2147,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/registrar/reports/daily": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Возвращает список всех талонов, созданных сегодня, с детальной информацией.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registrar"
-                ],
-                "summary": "Получить отчет по талонам за текущий день",
-                "responses": {
-                    "200": {
-                        "description": "Массив строк отчета",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.DailyReportRow"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/registrar/schedules/doctor/{doctor_id}": {
             "get": {
                 "security": [
@@ -2444,127 +2190,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Ошибка: неверный ID или формат даты",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/registrar/tickets": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Возвращает список талонов по нужным статусам, с возможностью фильтрации по категории.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registrar"
-                ],
-                "summary": "Получить список талонов для регистратора",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Префикс категории для фильтрации (например, 'A', 'B')",
-                        "name": "category",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Массив талонов",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.RegistrarTicketResponse"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/registrar/tickets/{id}/status": {
-            "patch": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Изменяет статус тикета по ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registrar"
-                ],
-                "summary": "Сменить статус тикета",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID тикета",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Новый статус",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.UpdateStatusRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Статус обновлен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Тикет не найден",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2943,35 +2568,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handlers.CallNextRequest": {
-            "type": "object",
-            "required": [
-                "window_number"
-            ],
-            "properties": {
-                "category_prefix": {
-                    "type": "string"
-                },
-                "window_number": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handlers.CallSpecificRequest": {
-            "type": "object",
-            "required": [
-                "ticket_id",
-                "window_number"
-            ],
-            "properties": {
-                "ticket_id": {
-                    "type": "integer"
-                },
-                "window_number": {
-                    "type": "integer"
-                }
-            }
-        },
         "handlers.CheckInByPhoneRequest": {
             "type": "object",
             "required": [
@@ -3236,17 +2832,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.UpdateStatusRequest": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
         "models.AdResponse": {
             "type": "object",
             "properties": {
@@ -3434,41 +3019,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.DailyReportRow": {
-            "type": "object",
-            "properties": {
-                "appointment_time": {
-                    "type": "string"
-                },
-                "cabinet_number": {
-                    "type": "integer"
-                },
-                "called_at": {
-                    "type": "string"
-                },
-                "completed_at": {
-                    "type": "string"
-                },
-                "doctor_full_name": {
-                    "type": "string"
-                },
-                "doctor_specialization": {
-                    "type": "string"
-                },
-                "duration": {
-                    "type": "string"
-                },
-                "patient_full_name": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/models.TicketStatus"
-                },
-                "ticket_number": {
-                    "type": "string"
-                }
-            }
-        },
         "models.DeleteRequest": {
             "type": "object",
             "required": [
@@ -3611,47 +3161,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.RegistrarTicketResponse": {
-            "type": "object",
-            "properties": {
-                "appointment_time": {
-                    "type": "string"
-                },
-                "called_at": {
-                    "type": "string"
-                },
-                "completed_at": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "qr_code": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "service_type": {
-                    "type": "string"
-                },
-                "started_at": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/models.TicketStatus"
-                },
-                "ticket_number": {
-                    "type": "string"
-                },
-                "window_number": {
-                    "type": "integer"
-                }
-            }
-        },
         "models.Schedule": {
             "type": "object",
             "properties": {
@@ -3720,9 +3229,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "letter": {
+                    "type": "string"
+                },
+                "service_id": {
                     "type": "string"
                 },
                 "title": {
