@@ -241,6 +241,18 @@ func (s *TicketService) CallSpecificTicket(ticketID uint, windowNumber int) (*mo
 	return ticket, nil
 }
 
+func (s *TicketService) GetInvitedTicketForWindow(windowNumber int) (*models.Ticket, error) {
+	ticket, err := s.repo.FindInvitedByWindowNumber(windowNumber)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil // Это не ошибка, просто нет активного талона
+		}
+		logger.Default().WithError(err).WithField("window", windowNumber).Error("GetInvitedTicketForWindow: repo error")
+		return nil, err
+	}
+	return ticket, nil
+}
+
 func (s *TicketService) CheckInByPhone(phone string) (*models.Ticket, error) {
 	nonAlphanumericRegex := regexp.MustCompile(`[^0-9]+`)
 	sanitizedPhone := nonAlphanumericRegex.ReplaceAllString(phone, "")

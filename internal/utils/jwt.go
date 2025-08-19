@@ -10,8 +10,9 @@ import (
 // Claims содержит информацию о пользователе и стандартные JWT claims для токена
 // Встраиваем jwt.RegisteredClaims для совместимости с jwt.Claims
 type Claims struct {
-	UserID uint   `json:"user_id"`
-	Role   string `json:"role"`
+	UserID       uint   `json:"user_id"`
+	Role         string `json:"role"`
+	WindowNumber int    `json:"window_number,omitempty"` // omitempty не будет включать поле, если оно равно 0
 	jwt.RegisteredClaims
 }
 
@@ -38,16 +39,11 @@ func NewJWTManager(secret string, expiration string) (*JWTManager, error) {
 	}, nil
 }
 
-// GenerateJWT создает и подписывает новый JWT для указанного ID пользователя и роли
-func (m *JWTManager) GenerateJWT(userID uint, role string) (string, error) {
-	claims := Claims{
-		UserID: userID,
-		Role:   role,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(m.tokenDuration)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
+// GenerateJWT создает и подписывает новый JWT на основе переданных claims
+func (m *JWTManager) GenerateJWT(claims *Claims) (string, error) {
+	// Устанавливаем стандартные поля времени жизни токена
+	claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(m.tokenDuration))
+	claims.IssuedAt = jwt.NewNumericDate(time.Now())
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString([]byte(m.secretKey))

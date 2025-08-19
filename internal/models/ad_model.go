@@ -10,8 +10,8 @@ type Ad struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	Picture     []byte    `gorm:"type:bytea" json:"-"`
 	Video       []byte    `gorm:"type:bytea" json:"-"`
-	DurationSec int       `gorm:"column:duration_sec;not null;default:5" json:"duration_sec"`
-	RepeatCount int       `gorm:"column:repeat_count;not null;default:1" json:"repeat_count"`
+	DurationSec *int      `gorm:"column:duration_sec" json:"duration_sec,omitempty"` // Указатель для nullable
+	RepeatCount *int      `gorm:"column:repeat_count" json:"repeat_count,omitempty"` // Указатель для nullable
 	IsEnabled   bool      `gorm:"column:is_enabled;not null;default:true" json:"is_enabled"`
 	ReceptionOn bool      `gorm:"column:reception_on;not null;default:true" json:"reception_on"`
 	ScheduleOn  bool      `gorm:"column:schedule_on;not null;default:true" json:"schedule_on"`
@@ -25,8 +25,8 @@ type AdResponse struct {
 	Picture     string    `json:"picture,omitempty"`
 	Video       string    `json:"video,omitempty"`
 	MediaType   string    `json:"media_type"`
-	DurationSec int       `json:"duration_sec"`
-	RepeatCount int       `json:"repeat_count"`
+	DurationSec *int      `json:"duration_sec,omitempty"` // omitempty уберет поле, если оно nil
+	RepeatCount *int      `json:"repeat_count,omitempty"` // omitempty уберет поле, если оно nil
 	IsEnabled   bool      `json:"is_enabled"`
 	ReceptionOn bool      `json:"reception_on"`
 	ScheduleOn  bool      `json:"schedule_on"`
@@ -60,8 +60,6 @@ type UpdateAdRequest struct {
 func (a *Ad) ToResponse() AdResponse {
 	resp := AdResponse{
 		ID:          a.ID,
-		DurationSec: a.DurationSec,
-		RepeatCount: a.RepeatCount,
 		IsEnabled:   a.IsEnabled,
 		ReceptionOn: a.ReceptionOn,
 		ScheduleOn:  a.ScheduleOn,
@@ -72,9 +70,11 @@ func (a *Ad) ToResponse() AdResponse {
 	if len(a.Video) > 0 {
 		resp.MediaType = "video"
 		resp.Video = base64.StdEncoding.EncodeToString(a.Video)
+		resp.RepeatCount = a.RepeatCount
 	} else if len(a.Picture) > 0 {
 		resp.MediaType = "image"
 		resp.Picture = base64.StdEncoding.EncodeToString(a.Picture)
+		resp.DurationSec = a.DurationSec
 	} else {
 		resp.MediaType = "none"
 	}

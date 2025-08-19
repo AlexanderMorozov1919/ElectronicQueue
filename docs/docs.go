@@ -2839,6 +2839,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "duration_sec": {
+                    "description": "omitempty уберет поле, если оно nil",
                     "type": "integer"
                 },
                 "id": {
@@ -2857,6 +2858,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "repeat_count": {
+                    "description": "omitempty уберет поле, если оно nil",
                     "type": "integer"
                 },
                 "schedule_on": {

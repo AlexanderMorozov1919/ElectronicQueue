@@ -5,6 +5,7 @@ import (
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/services"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -42,6 +43,33 @@ func (h *RegistrarHandler) GetTickets(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, tickets)
+}
+
+func (h *RegistrarHandler) GetCurrentTicket(c *gin.Context) {
+	windowNumberStr := c.Query("window_number")
+	if windowNumberStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Query parameter 'window_number' is required"})
+		return
+	}
+
+	windowNumber, err := strconv.Atoi(windowNumberStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid 'window_number' format"})
+		return
+	}
+
+	ticket, err := h.ticketService.GetInvitedTicketForWindow(windowNumber)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current ticket"})
+		return
+	}
+
+	if ticket == nil {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No active ticket for this window"})
+		return
+	}
+
+	c.JSON(http.StatusOK, ticket.ToResponse())
 }
 
 type CallNextRequest struct {
