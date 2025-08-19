@@ -36,13 +36,14 @@ func (s *AdService) Create(req *models.CreateAdRequest) (*models.Ad, error) {
 		}
 		ad.Picture = picBytes
 		ad.Video = nil
+		ad.RepeatCount = nil // Явно устанавливаем NULL
 
 		if req.DurationSec != nil {
-			ad.DurationSec = *req.DurationSec
+			ad.DurationSec = req.DurationSec
 		} else {
-			ad.DurationSec = 5 // Default for images
+			defaultDuration := 5 // Значение по умолчанию для изображений
+			ad.DurationSec = &defaultDuration
 		}
-		ad.RepeatCount = 1 // Default for images
 	} else { // Video is provided
 		videoBytes, err := base64.StdEncoding.DecodeString(req.Video)
 		if err != nil {
@@ -50,12 +51,13 @@ func (s *AdService) Create(req *models.CreateAdRequest) (*models.Ad, error) {
 		}
 		ad.Video = videoBytes
 		ad.Picture = nil
+		ad.DurationSec = nil // Явно устанавливаем NULL
 
-		ad.DurationSec = 5 // Default value since DB field is NOT NULL
 		if req.RepeatCount != nil {
-			ad.RepeatCount = *req.RepeatCount
+			ad.RepeatCount = req.RepeatCount
 		} else {
-			ad.RepeatCount = 1 // Default for videos
+			defaultRepeat := 1 // Значение по умолчанию для видео
+			ad.RepeatCount = &defaultRepeat
 		}
 	}
 
@@ -95,21 +97,23 @@ func (s *AdService) Update(id uint, req *models.UpdateAdRequest) (*models.Ad, er
 			return nil, fmt.Errorf("invalid base64 picture data: %w", err)
 		}
 		ad.Picture = picBytes
-		ad.Video = nil // Clear video if picture is updated
+		ad.Video = nil       // Очищаем видео
+		ad.RepeatCount = nil // Очищаем счетчик повторов
 	} else if req.Video != "" {
 		videoBytes, err := base64.StdEncoding.DecodeString(req.Video)
 		if err != nil {
 			return nil, fmt.Errorf("invalid base64 video data: %w", err)
 		}
 		ad.Video = videoBytes
-		ad.Picture = nil // Clear picture if video is updated
+		ad.Picture = nil     // Очищаем картинку
+		ad.DurationSec = nil // Очищаем длительность
 	}
 
 	if req.DurationSec != nil {
-		ad.DurationSec = *req.DurationSec
+		ad.DurationSec = req.DurationSec
 	}
 	if req.RepeatCount != nil {
-		ad.RepeatCount = *req.RepeatCount
+		ad.RepeatCount = req.RepeatCount
 	}
 	if req.IsEnabled != nil {
 		ad.IsEnabled = *req.IsEnabled
