@@ -297,6 +297,12 @@ if [[ "$GO_MODE" == "true" ]]; then
   cp -r docs "$BUILD_DIR/"
   cp -r assets "$BUILD_DIR/"
   cp .env.example "$BUILD_DIR/.env"
+  cp -r migrations "$BUILD_DIR/"
+  if [ -f "fill_db.sql" ]; then
+    cp fill_db.sql "$BUILD_DIR/"
+  fi
+  cp install "$BUILD_DIR/"
+
 
   # Удаляем старый архив
   rm -f "$GO_ARCHIVE_NAME"
