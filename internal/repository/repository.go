@@ -44,6 +44,7 @@ type TicketRepository interface {
 	GetNextWaitingTicket(categoryPrefixes []string) (*models.Ticket, error)
 	GetMaxTicketNumberForPrefix(prefix string) (int, error)
 	Delete(id uint) error
+	FindInvitedByWindowNumber(windowNumber int) (*models.Ticket, error)
 	FindInProgressTicketForCabinet(cabinetNumber int) (*models.Ticket, error)
 	FindTicketsForCabinetQueue(cabinetNumber int) ([]models.DoctorQueueTicketResponse, error)
 	FindByStatusAndDoctor(status models.TicketStatus, doctorID uint) ([]models.Ticket, error)

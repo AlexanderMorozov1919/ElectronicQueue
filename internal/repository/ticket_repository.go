@@ -110,6 +110,15 @@ func (r *ticketRepo) Delete(id uint) error {
 	return r.db.Delete(&models.Ticket{}, id).Error
 }
 
+func (r *ticketRepo) FindInvitedByWindowNumber(windowNumber int) (*models.Ticket, error) {
+	var ticket models.Ticket
+	err := r.db.Where("status = ? AND window_number = ?", models.StatusInvited, windowNumber).First(&ticket).Error
+	if err != nil {
+		return nil, err
+	}
+	return &ticket, nil
+}
+
 func (r *ticketRepo) FindInProgressTicketForCabinet(cabinetNumber int) (*models.Ticket, error) {
 	var ticket models.Ticket
 	today := time.Now().Format("2006-01-02")

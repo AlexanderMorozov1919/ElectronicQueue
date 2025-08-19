@@ -44,7 +44,14 @@ func (s *AuthService) AuthenticateRegistrar(login, password string) (string, err
 		return "", fmt.Errorf("неверный логин или пароль")
 	}
 
-	return s.jwtManager.GenerateJWT(registrar.RegistrarID, "registrar")
+	// Создаем claims специально для регистратора, включая номер окна
+	claims := &utils.Claims{
+		UserID:       registrar.RegistrarID,
+		Role:         "registrar",
+		WindowNumber: registrar.WindowNumber,
+	}
+
+	return s.jwtManager.GenerateJWT(claims)
 }
 
 func (s *AuthService) AuthenticateDoctor(login, password string) (string, *models.Doctor, error) {
@@ -60,7 +67,13 @@ func (s *AuthService) AuthenticateDoctor(login, password string) (string, *model
 		return "", nil, fmt.Errorf("неверный логин или пароль")
 	}
 
-	token, err := s.jwtManager.GenerateJWT(doctor.ID, "doctor")
+	// Создаем claims для врача БЕЗ номера окна
+	claims := &utils.Claims{
+		UserID: doctor.ID,
+		Role:   "doctor",
+	}
+
+	token, err := s.jwtManager.GenerateJWT(claims)
 	if err != nil {
 		return "", nil, err
 	}
@@ -81,7 +94,13 @@ func (s *AuthService) AuthenticateAdministrator(login, password string) (string,
 		return "", fmt.Errorf("неверный логин или пароль")
 	}
 
-	return s.jwtManager.GenerateJWT(admin.AdministratorID, "administrator")
+	// Создаем claims для администратора БЕЗ номера окна
+	claims := &utils.Claims{
+		UserID: admin.AdministratorID,
+		Role:   "administrator",
+	}
+
+	return s.jwtManager.GenerateJWT(claims)
 }
 
 func (s *AuthService) CreateRegistrar(windowNumber int, login, password string) (*models.Registrar, error) {
