@@ -296,6 +296,24 @@ func (s *TicketService) CheckInByPhone(phone string) (*models.Ticket, error) {
 
 func (s *TicketService) finalizeReceptionAndUpdateTicket(ticket *models.Ticket) error {
 	log := logger.Default().WithField("ticket_id", ticket.ID)
+
+	// FETCH a fresh copy from DB to check its CURRENT status
+	currentTicket, err := s.repo.GetByID(ticket.ID)
+	if err != nil {
+		log.WithError(err).Error("finalizeReception: failed to fetch current ticket state")
+		return err // Ticket not found
+	}
+
+	// This is the CRUCIAL check. If the ticket is ALREADY registered for a doctor,
+	// and the registrar is trying to mark it as 'completed', we should PREVENT this.
+	if currentTicket.Status == models.StatusRegistered && ticket.Status == models.StatusCompleted {
+		log.Warn("finalizeReception: Attempted to mark a 'registered' ticket as 'completed'. Action ignored.")
+		// We return `nil` to not show an error to the registrar.
+		// The ticket status remains 'registered'.
+		// The registrar's screen will be cleared by them calling the next patient.
+		return nil
+	}
+
 	now := time.Now()
 
 	if ticket.Status == models.StatusCompleted {
