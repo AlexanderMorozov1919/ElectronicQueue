@@ -76,3 +76,20 @@ func (h *BusinessProcessHandler) UpdateProcess(c *gin.Context) {
 
 	c.JSON(http.StatusOK, process)
 }
+
+// GetProcessStatusByName godoc
+// @Summary      Получить статус конкретного бизнес-процесса
+// @Description  Возвращает текущее состояние (включен/отключен) для указанного бизнес-процесса.
+// @Tags         processes
+// @Produce      json
+// @Param        name path string true "Имя процесса"
+// @Success      200 {object} map[string]bool "Статус процесса"
+// @Router       /api/processes/{name} [get]
+func (h *BusinessProcessHandler) GetProcessStatusByName(c *gin.Context) {
+	processName := c.Param("name")
+	isEnabled := h.service.IsEnabled(processName)
+	c.JSON(http.StatusOK, gin.H{
+		"process_name": processName,
+		"is_enabled":   isEnabled,
+	})
+}

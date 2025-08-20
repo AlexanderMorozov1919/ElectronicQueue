@@ -1,14 +1,18 @@
 CREATE TABLE IF NOT EXISTS ads (
     id SERIAL PRIMARY KEY,
-    picture BYTEA, -- Поле для изображений, теперь может быть NULL
-    video BYTEA,   -- Новое поле для видео в формате MP4
-    duration_sec INTEGER NOT NULL DEFAULT 5, -- Длительность показа для изображений
-    repeat_count INTEGER NOT NULL DEFAULT 1, -- Количество повторов для видео
+    picture BYTEA,
+    video BYTEA,
+    duration_sec INTEGER, -- Убрали NOT NULL и DEFAULT
+    repeat_count INTEGER, -- Убрали NOT NULL и DEFAULT
     is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     reception_on BOOLEAN NOT NULL DEFAULT TRUE,
     schedule_on BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT check_media_fields CHECK (
+        (picture IS NOT NULL AND video IS NULL AND duration_sec IS NOT NULL AND repeat_count IS NULL) OR
+        (video IS NOT NULL AND picture IS NULL AND repeat_count IS NOT NULL AND duration_sec IS NULL)
+    )
 );
 
 -- Триггер для автоматического обновления updated_at

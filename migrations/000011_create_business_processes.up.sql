@@ -11,5 +11,6 @@ INSERT INTO business_processes (process_name, is_enabled) VALUES
 ('doctor', TRUE),
 ('queue_doctor', TRUE),
 ('schedule', TRUE),
-('database', TRUE)
+('database', TRUE),
+('appointment', TRUE)
 ON CONFLICT (process_name) DO NOTHING;

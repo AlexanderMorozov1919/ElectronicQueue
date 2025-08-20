@@ -165,7 +165,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 
 	repo := repository.NewRepository(db)
 
-	ticketService := services.NewTicketService(repo.Ticket, repo.Service, repo.ReceptionLog, repo.Patient, repo.Appointment)
+	ticketService := services.NewTicketService(repo.Ticket, repo.Service, repo.ReceptionLog, repo.Patient, repo.Appointment, repo.RegistrarPriority)
 	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
 	authService := services.NewAuthService(repo.Registrar, repo.Doctor, repo.Administrator, jwtManager)
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db))
@@ -175,13 +175,13 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	tasksTimerService := services.NewTasksTimerService(cleanupService, cfg)
 	scheduleService := services.NewScheduleService(repo.Schedule, repo.Doctor)
 	adService := services.NewAdService(repo.Ad)
+	registrarService := services.NewRegistrarService(repo.RegistrarPriority, repo.Service)
 
-	// Запускаем планировщик задач в фоне
 	go tasksTimerService.Start(context.Background())
 
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
 	doctorHandler := handlers.NewDoctorHandler(doctorService, broker)
-	registrarHandler := handlers.NewRegistrarHandler(ticketService)
+	registrarHandler := handlers.NewRegistrarHandler(ticketService, registrarService)
 	authHandler := handlers.NewAuthHandler(authService)
 	databaseHandler := handlers.NewDatabaseHandler(databaseService)
 	audioHandler := handlers.NewAudioHandler(cfg)
@@ -191,13 +191,10 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	processHandler := handlers.NewBusinessProcessHandler(processService)
 	adHandler := handlers.NewAdHandler(adService)
 
-	// SSE-эндпоинт для табло очереди регистратуры (reception)
 	r.GET("/tickets", middleware.CheckBusinessProcess(processService, "reception"), sseHandler(broker, "reception_sse"))
 
-	// SSE-эндпоинт для табло у кабинета врача (queue_doctor)
 	r.GET("/api/doctor/screen-updates/:cabinet_number", middleware.CheckBusinessProcess(processService, "queue_doctor"), doctorHandler.DoctorScreenUpdates)
 
-	// Аутентификация
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/login/registrar", authHandler.LoginRegistrar)
@@ -205,7 +202,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		auth.POST("/login/administrator", authHandler.LoginAdministrator)
 	}
 
-	// Админ-панель
 	admin := r.Group("/api/admin").Use(middleware.RequireAPIKey(cfg.InternalAPIKey))
 	{
 		admin.POST("/create/doctor", authHandler.CreateDoctor)
@@ -224,7 +220,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		admin.DELETE("/ads/:id", adHandler.DeleteAd)
 	}
 
-	// Эндпоинты для терминала (terminal)
 	tickets := r.Group("/api/tickets").Use(middleware.CheckBusinessProcess(processService, "terminal"))
 	{
 		tickets.GET("/start", ticketHandler.StartPage)
@@ -235,17 +230,14 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		tickets.GET("/download/:ticket_number", ticketHandler.DownloadTicket)
 		tickets.GET("/view/:ticket_number", ticketHandler.ViewTicket)
 	}
-	// табло регистратуры (reception)
 	r.GET("/api/tickets/active", middleware.CheckBusinessProcess(processService, "reception"), ticketHandler.GetAllActive)
 
-	// Публичные эндпоинты, используемые окном регистратора и табло у кабинета (registry, queue_doctor)
 	publicDoctorGroup := r.Group("/api/doctor").Use(middleware.CheckBusinessProcess(processService, "registry", "queue_doctor"))
 	{
 		publicDoctorGroup.GET("/active", doctorHandler.GetAllActiveDoctors)
 		publicDoctorGroup.GET("/cabinets/active", doctorHandler.GetActiveCabinets)
 	}
 
-	// Эндпоинты для окна врача (doctor)
 	protectedDoctorGroup := r.Group("/api/doctor").
 		Use(middleware.RequireRole(jwtManager, "doctor")).
 		Use(middleware.CheckBusinessProcess(processService, "doctor"))
@@ -260,7 +252,6 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		protectedDoctorGroup.POST("/set-inactive", doctorHandler.SetDoctorInactive)
 	}
 
-	// Эндпоинты для окна регистратора (registry)
 	registrar := r.Group("/api/registrar").
 		Use(middleware.RequireRole(jwtManager, "registrar")).
 		Use(middleware.CheckBusinessProcess(processService, "registry"))
@@ -268,6 +259,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		registrar.POST("/call-next", registrarHandler.CallNext)
 		registrar.POST("/call-specific", registrarHandler.CallSpecific)
 		registrar.GET("/tickets", registrarHandler.GetTickets)
+		registrar.GET("/tickets/current", registrarHandler.GetCurrentTicket)
 		registrar.PATCH("/tickets/:id/status", registrarHandler.UpdateStatus)
 		registrar.GET("/patients/search", patientHandler.SearchPatients)
 		registrar.POST("/patients", patientHandler.CreatePatient)
@@ -277,9 +269,11 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		registrar.DELETE("/appointments/:id", appointmentHandler.DeleteAppointment)
 		registrar.PATCH("/appointments/:id/confirm", appointmentHandler.ConfirmAppointment)
 		registrar.GET("/reports/daily", registrarHandler.GetDailyReport)
+		registrar.GET("/services", registrarHandler.GetAllServices)
+		registrar.GET("/priorities", registrarHandler.GetPriorities)
+		registrar.POST("/priorities", registrarHandler.SetPriorities)
 	}
 
-	// Внешний API для базы данных (database)
 	dbAPI := r.Group("/api/database").
 		Use(middleware.RequireAPIKey(cfg.ExternalAPIKey)).
 		Use(middleware.CheckBusinessProcess(processService, "database"))
@@ -290,19 +284,21 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
 	}
 
-	// Реклама используется табло регистратуры (reception)
+	processes := r.Group("/api/processes")
+	{
+		processes.GET("/:name", processHandler.GetProcessStatusByName)
+	}
+
 	adGroup := r.Group("/api/ads").Use(middleware.CheckBusinessProcess(processService, "reception", "schedule"))
 	{
 		adGroup.GET("/enabled", adHandler.GetEnabledAds)
 	}
 
-	// Озвучка используется табло регистратуры (reception)
 	audioGroup := r.Group("/api/audio").Use(middleware.CheckBusinessProcess(processService, "reception"))
 	{
 		audioGroup.GET("/announce", audioHandler.GenerateAnnouncement)
 	}
 
-	// Эндпоинты для общего расписания (schedule)
 	scheduleGroup := r.Group("/api/schedules").Use(middleware.CheckBusinessProcess(processService, "schedule"))
 	{
 		scheduleGroup.GET("/today/updates", scheduleHandler.GetTodayScheduleUpdates)
@@ -316,7 +312,6 @@ type NotificationPayload struct {
 	Data   models.TicketResponse `json:"data"`
 }
 
-// sseHandler подписывает клиента на события от брокера
 func sseHandler(broker *pubsub.Broker, handlerID string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")

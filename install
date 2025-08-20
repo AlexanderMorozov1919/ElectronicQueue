@@ -17,18 +17,19 @@ rm -f migrations/fill_db.sql
 
 # --- Аргументы ---
 usage() {
-  echo "Usage: $0 [local] [docker] [go] [go-docker] [flutter] [flutter-docker] [database] [fill] [rewrite]"
+  echo "Usage: $0 [local] [docker] [go] [flutter] [database] [build] [fill] [clear]"
   echo
   echo "Key descriptions:"
-  echo "  go               - Build and setup Go backend for Linux, Windows, macOS (includes DB migration)"
+  echo "  go               - Setup Go backend environment (DB migration, dependencies)"
+  echo "  flutter          - Setup Flutter frontend environment (dependencies)"
+  echo "  build            - Build and archive the project (use with 'go' or 'flutter'). Example: './install go build'"
   echo "  go-docker        - Build and setup Go backend in Docker"
-  echo "  flutter          - Build and setup Flutter frontend"
   echo "  flutter-docker   - Build and setup Flutter frontend in Docker"
   echo "  local            - Local build of Go and Flutter"
   echo "  docker           - Build Go and Flutter in Docker"
   echo "  database         - Manage database using psql"
-  echo "  fill             - Fill the database with test data (used with 'go' or 'database')"
-  echo "  rewrite          - Recreate the database (used with 'go' or 'database')"
+  echo "  fill             - Recreate and fill the database with test data (used with 'go' or 'database')"
+  echo "  clear            - Clear (recreate) the database (used with 'go' or 'database')"
   exit 1
 }
 
@@ -41,7 +42,8 @@ FLUTTER_DOCKER_MODE=""
 GO_DOCKER_MODE=""
 DATABASE_MODE=""
 FILL=""
-REWRITE=""
+CLEAR_MODE=""
+BUILD_MODE=""
 for arg in "$@"; do
   case $arg in
     go)
@@ -61,9 +63,13 @@ for arg in "$@"; do
       ;;
     fill)
       FILL="true"
+      CLEAR_MODE="true" # fill теперь также подразумевает очистку
       ;;
-    rewrite)
-      REWRITE="true"
+    clear)
+      CLEAR_MODE="true"
+      ;;
+    build)
+      BUILD_MODE="true"
       ;;
     local)
       GO_MODE="true"
@@ -83,9 +89,9 @@ if [[ "$DATABASE_MODE" == "true" ]]; then
     echo "--- Database Setup using psql ---"
     export PGPASSWORD="$DB_PASSWORD"
     export PGCLIENTENCODING="UTF8"
-    if [[ "$REWRITE" == "true" ]]; then
-      # Удаляем базу данных, если указан флаг rewrite
-      echo "Dropping database '$DB_NAME' due to 'rewrite' flag..."
+    if [[ "$CLEAR_MODE" == "true" ]]; then
+      # Удаляем базу данных, если указан флаг clear или fill
+      echo "Dropping database '$DB_NAME' due to 'clear' or 'fill' flag..."
       if PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "postgres" -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"; then
           echo "Database '$DB_NAME' dropped successfully."
       else
@@ -146,7 +152,8 @@ fi
 
 
 if [[ "$GO_MODE" == "true" ]]; then
-  if [[ "$REWRITE" == "true" ]]; then
+  echo "--- Go Backend Setup ---"
+  if [[ "$CLEAR_MODE" == "true" ]]; then
     # Удаляем базу данных
     echo "Dropping database '$DB_NAME'..."
     if PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"; then
@@ -236,104 +243,114 @@ if [[ "$GO_MODE" == "true" ]]; then
     exit 1
   fi
 
-  # Создаем чистую директорию для сборок
-  echo "Creating build directory..."
-  rm -rf ./build
-  mkdir -p ./build
+  # Блок сборки, который выполняется только при наличии флага 'build'
+  if [[ "$BUILD_MODE" == "true" ]]; then
+    echo "--- Building Go Application ---"
+    # Создаем чистую директорию для сборок
+    echo "Creating build directory..."
+    rm -rf ./build
+    mkdir -p ./build
 
-  # Целевые платформы для кросс-компиляции
-  TARGET_PLATFORMS="linux/amd64 windows/amd64 darwin/amd64"
+    # Целевые платформы для кросс-компиляции
+    TARGET_PLATFORMS="linux/amd64 windows/amd64 darwin/amd64"
 
-  echo "Building Go application for Linux, Windows, and macOS..."
+    echo "Building Go application for Linux, Windows, and macOS..."
 
-  for target in $TARGET_PLATFORMS; do
-    GOOS=${target%/*}
-    GOARCH=${target#*/}
-    
-    BINARY_NAME="${GOOS}-${GOARCH}"
-    if [[ "$GOOS" == "windows" ]]; then
-      BINARY_NAME+=".exe"
-    fi
-    OUTPUT_PATH="./build/$BINARY_NAME"
-
-    echo "--- Building for $GOOS/$GOARCH ---"
-    
-    if CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -o "$OUTPUT_PATH" cmd/main.go; then
-      echo "Build successful. Binary: $OUTPUT_PATH"
+    for target in $TARGET_PLATFORMS; do
+      GOOS=${target%/*}
+      GOARCH=${target#*/}
       
-      # Даем права на исполнение для Linux и macOS
-      if [[ "$GOOS" == "linux" || "$GOOS" == "darwin" ]]; then
-        echo "Making the binary executable..."
-        if ! chmod +x "$OUTPUT_PATH"; then
-          echo "Failed to make binary executable."
+      BINARY_NAME="${GOOS}-${GOARCH}"
+      if [[ "$GOOS" == "windows" ]]; then
+        BINARY_NAME+=".exe"
+      fi
+      OUTPUT_PATH="./build/$BINARY_NAME"
+
+      echo "--- Building for $GOOS/$GOARCH ---"
+      
+      if CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -o "$OUTPUT_PATH" cmd/main.go; then
+        echo "Build successful. Binary: $OUTPUT_PATH"
+        
+        # Даем права на исполнение для Linux и macOS
+        if [[ "$GOOS" == "linux" || "$GOOS" == "darwin" ]]; then
+          echo "Making the binary executable..."
+          if ! chmod +x "$OUTPUT_PATH"; then
+            echo "Failed to make binary executable."
+            exit 1
+          fi
+        fi
+      else
+        echo "Build for $GOOS/$GOARCH failed."
+        exit 1
+      fi
+    done
+
+    echo "-------------------------------------"
+    echo "All Go builds completed successfully."
+
+    # --- архивация ---
+    echo "Archiving all builds into a single archive..."
+    GO_ARCHIVE_NAME="backend_build.zip"
+    
+    if [ ! -f ".env.example" ]; then
+        echo "Error: .env.example not found. Cannot create archive."
+        exit 1
+    fi
+
+    # Создаем временную папку для файлов архива
+    BUILD_DIR="backend_build"
+    rm -rf "$BUILD_DIR"
+    mkdir "$BUILD_DIR"
+
+    # Копируем необходимые файлы
+    cp ./build/* "$BUILD_DIR/"
+    cp -r docs "$BUILD_DIR/"
+    cp -r assets "$BUILD_DIR/"
+    cp .env.example "$BUILD_DIR/.env"
+    cp -r migrations "$BUILD_DIR/"
+    if [ -f "fill_db.sql" ]; then
+      cp fill_db.sql "$BUILD_DIR/"
+    fi
+    cp install "$BUILD_DIR/"
+
+
+    # Удаляем старый архив
+    rm -f "$GO_ARCHIVE_NAME"
+
+    # Определяем ОС и используем соответствующую команду для архивации
+    OS_TYPE="$(uname -s)"
+    case "$OS_TYPE" in
+      Linux*|Darwin*)
+        echo "Using 'zip' command for Linux/macOS..."
+        if (cd "$BUILD_DIR" && zip -r "../$GO_ARCHIVE_NAME" .); then
+          echo "Go builds successfully archived to '$GO_ARCHIVE_NAME'."
+        else
+          echo "Failed to archive the Go builds using 'zip'."
+          rm -rf "$BUILD_DIR"
           exit 1
         fi
-      fi
-    else
-      echo "Build for $GOOS/$GOARCH failed."
-      exit 1
-    fi
-  done
-
-  echo "-------------------------------------"
-  echo "All Go builds completed successfully."
-
-  # --- архивация ---
-  echo "Archiving all builds into a single archive..."
-  GO_ARCHIVE_NAME="backend_build.zip"
-  
-  if [ ! -f ".env.example" ]; then
-      echo "Error: .env.example not found. Cannot create archive."
-      exit 1
-  fi
-
-  # Создаем временную папку для файлов архива
-  BUILD_DIR="backend_build"
-  rm -rf "$BUILD_DIR"
-  mkdir "$BUILD_DIR"
-
-  # Копируем необходимые файлы
-  cp ./build/* "$BUILD_DIR/"
-  cp -r docs "$BUILD_DIR/"
-  cp -r assets "$BUILD_DIR/"
-  cp .env.example "$BUILD_DIR/.env"
-
-  # Удаляем старый архив
-  rm -f "$GO_ARCHIVE_NAME"
-
-  # Определяем ОС и используем соответствующую команду для архивации
-  OS_TYPE="$(uname -s)"
-  case "$OS_TYPE" in
-    Linux*|Darwin*)
-      echo "Using 'zip' command for Linux/macOS..."
-      if (cd "$BUILD_DIR" && zip -r "../$GO_ARCHIVE_NAME" .); then
-        echo "Go builds successfully archived to '$GO_ARCHIVE_NAME'."
-      else
-        echo "Failed to archive the Go builds using 'zip'."
+        ;;
+      CYGWIN*|MINGW*|MSYS*|Windows_NT)
+        echo "Using 'PowerShell' for Windows..."
+        if powershell.exe -Command "Compress-Archive -Path '$BUILD_DIR\*' -DestinationPath '$GO_ARCHIVE_NAME' -Force"; then
+          echo "Go builds successfully archived to '$GO_ARCHIVE_NAME'."
+        else
+          echo "Failed to archive the Go builds using PowerShell."
+          rm -rf "$BUILD_DIR"
+          exit 1
+        fi
+        ;;
+      *)
+        echo "Unsupported OS for archiving: $OS_TYPE. Cannot create archive."
         rm -rf "$BUILD_DIR"
         exit 1
-      fi
-      ;;
-    CYGWIN*|MINGW*|MSYS*|Windows_NT)
-      echo "Using 'PowerShell' for Windows..."
-      if powershell.exe -Command "Compress-Archive -Path '$BUILD_DIR\*' -DestinationPath '$GO_ARCHIVE_NAME' -Force"; then
-        echo "Go builds successfully archived to '$GO_ARCHIVE_NAME'."
-      else
-        echo "Failed to archive the Go builds using PowerShell."
-        rm -rf "$BUILD_DIR"
-        exit 1
-      fi
-      ;;
-    *)
-      echo "Unsupported OS for archiving: $OS_TYPE. Cannot create archive."
-      rm -rf "$BUILD_DIR"
-      exit 1
-      ;;
-  esac
+        ;;
+    esac
 
-  # Удаляем временную папку и папку сборок
-  rm -rf "$BUILD_DIR"
-  rm -rf "./build"
+    # Удаляем временную папку и папку сборок
+    rm -rf "$BUILD_DIR"
+    rm -rf "./build"
+  fi # конец блока if BUILD_MODE
 
   echo "Go setup complete."
 fi
@@ -344,7 +361,7 @@ if [[ "$GO_DOCKER_MODE" == "true" ]]; then
     exit 1
   fi
   docker compose down > /dev/null 2>&1
-  if [[ "$REWRITE" == "true" ]]; then
+  if [[ "$CLEAR_MODE" == "true" ]]; then
     docker compose down > /dev/null 2>&1
     docker volume rm electronicqueue_db-data > /dev/null 2>&1
   fi
@@ -378,6 +395,7 @@ if [[ "$GO_DOCKER_MODE" == "true" ]]; then
 fi
 
 if [[ "$FLUTTER_MODE" == "true" ]]; then
+  echo "--- Flutter Frontend Setup ---"
   cd "$(dirname "$0")/../electronicqueue-frontend" || { echo "Failed to change directory to electronicqueue-frontend."; exit 1; }
   
   # Generate .env for Flutter frontend
@@ -392,64 +410,69 @@ if [[ "$FLUTTER_MODE" == "true" ]]; then
     exit 1
   fi
 
-  if [ -z "$FRONTEND_PORT" ]; then
-    echo "FRONTEND_PORT is not set in .env! Please set it to a starting port, e.g., 8080."
-    exit 1
-  fi
-
-  mapfile -t FLUTTER_MAIN_FILES < <(find ./lib -maxdepth 2 -type f -name '*main*.dart' | sed 's|^\./lib/||')
-  echo "Found ${#FLUTTER_MAIN_FILES[@]} main files to build and run."
-  rm -rf "build/web/"
-
-  for MAIN_FILE in "${FLUTTER_MAIN_FILES[@]}"; do
-    BASE_HREF_PATH=$(basename "$MAIN_FILE" .dart | sed 's/^main_//')
-    BASE_HREF_VALUE="/${BASE_HREF_PATH}/"
-    OUTPUT_DIR="build/web/$BASE_HREF_PATH"
-
-    echo "--- Building application '$BASE_HREF_PATH' from 'lib/$MAIN_FILE' ---"
-    echo "    Using base href: '$BASE_HREF_VALUE'"
-    echo "    Output directory: '$OUTPUT_DIR'"
-    
-    if ! MSYS_NO_PATHCONV=1 flutter build web --release -t "lib/$MAIN_FILE" --output "$OUTPUT_DIR" --base-href="$BASE_HREF_VALUE"; then
-      echo "Failed to build '$BASE_HREF_PATH'."
+  # Блок сборки, который выполняется только при наличии флага 'build'
+  if [[ "$BUILD_MODE" == "true" ]]; then
+    echo "--- Building Flutter Application ---"
+    if [ -z "$FRONTEND_PORT" ]; then
+      echo "FRONTEND_PORT is not set in .env! Please set it to a starting port, e.g., 8080."
       exit 1
     fi
-    echo "Build for '$BASE_HREF_PATH' successful."
-  done
 
-  echo "----------------------------------------------------"
-  echo "Archiving the build..."
-  ARCHIVE_NAME="frontend_build.zip"
-  ARCHIVE_PATH="./$ARCHIVE_NAME"
-  rm -f "$ARCHIVE_PATH"
+    mapfile -t FLUTTER_MAIN_FILES < <(find ./lib -maxdepth 2 -type f -name '*main*.dart' | sed 's|^\./lib/||')
+    echo "Found ${#FLUTTER_MAIN_FILES[@]} main files to build and run."
+    rm -rf "build/web/"
 
-  OS_TYPE="$(uname -s)"
-  case "$OS_TYPE" in
-    Linux*|Darwin*)
-      echo "Using 'zip' command for Linux/macOS..."
-      if (cd build/web && zip -r "../../$ARCHIVE_NAME" .); then
-        echo "Build successfully archived to '$ARCHIVE_NAME' in the frontend root."
-      else
-        echo "Failed to archive the build using 'zip'."
+    for MAIN_FILE in "${FLUTTER_MAIN_FILES[@]}"; do
+      BASE_HREF_PATH=$(basename "$MAIN_FILE" .dart | sed 's/^main_//')
+      BASE_HREF_VALUE="/${BASE_HREF_PATH}/"
+      OUTPUT_DIR="build/web/$BASE_HREF_PATH"
+
+      echo "--- Building application '$BASE_HREF_PATH' from 'lib/$MAIN_FILE' ---"
+      echo "    Using base href: '$BASE_HREF_VALUE'"
+      echo "    Output directory: '$OUTPUT_DIR'"
+      
+      if ! MSYS_NO_PATHCONV=1 flutter build web --release -t "lib/$MAIN_FILE" --output "$OUTPUT_DIR" --base-href="$BASE_HREF_VALUE"; then
+        echo "Failed to build '$BASE_HREF_PATH'."
         exit 1
       fi
-      ;;
-    CYGWIN*|MINGW*|MSYS*|Windows_NT)
-      echo "Using 'PowerShell' for Windows..."
-      if powershell.exe -Command "Compress-Archive -Path 'build/web\*' -DestinationPath '$ARCHIVE_PATH' -Force"; then
-        echo "Build successfully archived to '$ARCHIVE_NAME' in the frontend root."
-      else
-        echo "Failed to archive the build using PowerShell. Make sure PowerShell is available."
+      echo "Build for '$BASE_HREF_PATH' successful."
+    done
+
+    echo "----------------------------------------------------"
+    echo "Archiving the build..."
+    ARCHIVE_NAME="frontend_build.zip"
+    ARCHIVE_PATH="./$ARCHIVE_NAME"
+    rm -f "$ARCHIVE_PATH"
+
+    OS_TYPE="$(uname -s)"
+    case "$OS_TYPE" in
+      Linux*|Darwin*)
+        echo "Using 'zip' command for Linux/macOS..."
+        if (cd build/web && zip -r "../../$ARCHIVE_NAME" .); then
+          echo "Build successfully archived to '$ARCHIVE_NAME' in the frontend root."
+        else
+          echo "Failed to archive the build using 'zip'."
+          exit 1
+        fi
+        ;;
+      CYGWIN*|MINGW*|MSYS*|Windows_NT)
+        echo "Using 'PowerShell' for Windows..."
+        if powershell.exe -Command "Compress-Archive -Path 'build/web\*' -DestinationPath '$ARCHIVE_PATH' -Force"; then
+          echo "Build successfully archived to '$ARCHIVE_NAME' in the frontend root."
+        else
+          echo "Failed to archive the build using PowerShell. Make sure PowerShell is available."
+          exit 1
+        fi
+        ;;
+      *)
+        echo "Unsupported OS: $OS_TYPE. Cannot create archive."
         exit 1
-      fi
-      ;;
-    *)
-      echo "Unsupported OS: $OS_TYPE. Cannot create archive."
-      exit 1
-      ;;
-  esac
+        ;;
+    esac
+  fi # конец блока if BUILD_MODE
 
   cd - > /dev/null
+  echo "Flutter setup complete."
 fi
 
 if [[ "$FLUTTER_DOCKER_MODE" == "true" ]]; then

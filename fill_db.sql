@@ -35,10 +35,7 @@ INSERT INTO registrars (window_number, login, password_hash) VALUES
 (1, 'admin1', '$2a$10$g3C8q/gOeSAT2uVgFXz8M.Xs4OELKH7gD24P3nciXTfbm4RePxWqG'),
 (2, 'admin2', '$2a$10$fnLMINfO.s4.zMr6MooIHuoxiLy1CcFCGajzmH8VlxGw0BvnMB75C'),
 (3, 'admin3', '$2a$10$LFWIFiiMooFIOXX2IsW4vuQwvNE3vtUqPLDyvKA8cdO/1YSjKzAsu'),
-(4, 'admin4', '$2a$10$NOnwKKyVVyhAZGPgtOUF9uQzbWYSmtVZSHUosreJfbxj/vYL/XmC2'),
-(5, 'admin5', '$2a$10$sSIr0.6WFNw2jyVXE2OEbusHqE.nPCbytzskyx2HJ/0TKyWJBqKeO'),
-(6, 'admin6', '$2a$10$Ud9Hwrm4vawrae6WpIsRWe1A1wAWkAqdlX65/R5LuFkRJ1w17Qxri'),
-(7, 'admin7', '$2a$10$hllZlVYZ0R.kEvq0il3e2eXyctV/3X0li0OT7DeKfJrY9QTQZwTbO');
+(4, 'admin4', '$2a$10$NOnwKKyVVyhAZGPgtOUF9uQzbWYSmtVZSHUosreJfbxj/vYL/XmC2');
 
 -- -----------------------------------------------------------------
 -- --                         3. ВРАЧИ                            --
