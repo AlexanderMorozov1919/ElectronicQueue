@@ -140,10 +140,10 @@ func (r *ticketRepo) FindTicketsForCabinetQueue(cabinetNumber int) ([]models.Doc
 	today := time.Now().Format("2006-01-02")
 
 	err := r.db.Table("tickets").
-		Select("to_char(schedules.start_time, 'HH24:MI') as start_time, tickets.ticket_number, patients.full_name, tickets.status").
+		Select("to_char(schedules.start_time, 'HH24:MI') as start_time, tickets.ticket_number, COALESCE(patients.full_name, 'Пациент по талону') as full_name, tickets.status").
 		Joins("JOIN appointments ON appointments.ticket_id = tickets.ticket_id").
 		Joins("JOIN schedules ON schedules.schedule_id = appointments.schedule_id").
-		Joins("JOIN patients ON patients.patient_id = appointments.patient_id").
+		Joins("LEFT JOIN patients ON patients.patient_id = appointments.patient_id").
 		Where("schedules.cabinet = ? AND schedules.date = ? AND tickets.status IN ?",
 			cabinetNumber, today, []string{string(models.StatusInProgress), string(models.StatusRegistered)}).
 		Order("CASE WHEN tickets.status = 'на_приеме' THEN 0 ELSE 1 END, schedules.start_time ASC").

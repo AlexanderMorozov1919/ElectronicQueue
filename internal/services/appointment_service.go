@@ -43,8 +43,8 @@ func (s *AppointmentService) GetDoctorScheduleWithAppointments(doctorID uint, da
 // CreateAppointment обрабатывает логику создания новой записи.
 // Основная работа (транзакция) выполняется в репозитории.
 func (s *AppointmentService) CreateAppointment(req *models.CreateAppointmentRequest) (*models.Appointment, error) {
-	if req.ScheduleID == 0 || req.PatientID == 0 {
-		return nil, fmt.Errorf("ScheduleID и PatientID являются обязательными полями")
+	if req.ScheduleID == 0 {
+		return nil, fmt.Errorf("ScheduleID является обязательным полем")
 	}
 
 	appointment, err := s.repo.CreateAppointmentInTransaction(req)

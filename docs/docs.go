@@ -2941,7 +2941,6 @@ const docTemplate = `{
         "models.CreateAppointmentRequest": {
             "type": "object",
             "required": [
-                "patient_id",
                 "schedule_id"
             ],
             "properties": {

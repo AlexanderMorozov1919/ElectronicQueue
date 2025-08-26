@@ -8,7 +8,7 @@ import (
 type Appointment struct {
 	ID         uint      `gorm:"primaryKey;autoIncrement;column:appointment_id" json:"id"`
 	ScheduleID uint      `gorm:"not null;column:schedule_id" json:"schedule_id"`
-	PatientID  uint      `gorm:"not null;column:patient_id" json:"patient_id"`
+	PatientID  *uint     `gorm:"column:patient_id" json:"patient_id,omitempty"`
 	TicketID   *uint     `gorm:"column:ticket_id" json:"ticket_id,omitempty"`
 	CreatedAt  time.Time `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
 	Patient    Patient   `gorm:"foreignKey:PatientID" json:"patient,omitempty"`
@@ -19,7 +19,7 @@ type Appointment struct {
 // CreateAppointmentRequest определяет структуру для создания новой записи на прием.
 type CreateAppointmentRequest struct {
 	ScheduleID uint  `json:"schedule_id" binding:"required"`
-	PatientID  uint  `json:"patient_id" binding:"required"`
+	PatientID  *uint `json:"patient_id"`
 	TicketID   *uint `json:"ticket_id"`
 }
 
