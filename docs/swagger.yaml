@@ -257,7 +257,6 @@ definitions:
       ticket_id:
         type: integer
     required:
-    - patient_id
     - schedule_id
     type: object
   models.CreatePatientRequest:
