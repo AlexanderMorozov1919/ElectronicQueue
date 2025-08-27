@@ -2916,7 +2916,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "duration_sec": {
-                    "type": "integer"
+                    "description": "--- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---",
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "is_enabled": {
                     "type": "boolean"
@@ -2928,7 +2930,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "repeat_count": {
-                    "type": "integer"
+                    "description": "--- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---",
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "schedule_on": {
                     "type": "boolean"
@@ -3340,7 +3344,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "duration_sec": {
-                    "type": "integer"
+                    "description": "--- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---",
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "is_enabled": {
                     "type": "boolean"
@@ -3352,7 +3358,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "repeat_count": {
-                    "type": "integer"
+                    "description": "--- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---",
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "schedule_on": {
                     "type": "boolean"

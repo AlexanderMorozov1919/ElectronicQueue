@@ -38,8 +38,8 @@ type AdResponse struct {
 type CreateAdRequest struct {
 	Picture     string `json:"picture,omitempty"`
 	Video       string `json:"video,omitempty"`
-	DurationSec *int   `json:"duration_sec,omitempty" binding:"omitempty,gt=0"`
-	RepeatCount *int   `json:"repeat_count,omitempty" binding:"omitempty,gt=0"`
+	DurationSec *int   `json:"duration_sec,omitempty" binding:"omitempty,gte=1"` // --- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---
+	RepeatCount *int   `json:"repeat_count,omitempty" binding:"omitempty,gte=1"` // --- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---
 	IsEnabled   bool   `json:"is_enabled"`
 	ReceptionOn bool   `json:"reception_on"`
 	ScheduleOn  bool   `json:"schedule_on"`
@@ -49,8 +49,8 @@ type CreateAdRequest struct {
 type UpdateAdRequest struct {
 	Picture     string `json:"picture,omitempty"`
 	Video       string `json:"video,omitempty"`
-	DurationSec *int   `json:"duration_sec,omitempty" binding:"omitempty,gt=0"`
-	RepeatCount *int   `json:"repeat_count,omitempty" binding:"omitempty,gt=0"`
+	DurationSec *int   `json:"duration_sec,omitempty" binding:"omitempty,gte=1"` // --- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---
+	RepeatCount *int   `json:"repeat_count,omitempty" binding:"omitempty,gte=1"` // --- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---
 	IsEnabled   *bool  `json:"is_enabled,omitempty"`
 	ReceptionOn *bool  `json:"reception_on,omitempty"`
 	ScheduleOn  *bool  `json:"schedule_on,omitempty"`

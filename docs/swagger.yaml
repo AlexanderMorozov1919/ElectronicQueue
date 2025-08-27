@@ -234,6 +234,8 @@ definitions:
   models.CreateAdRequest:
     properties:
       duration_sec:
+        description: '--- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---'
+        minimum: 1
         type: integer
       is_enabled:
         type: boolean
@@ -242,6 +244,8 @@ definitions:
       reception_on:
         type: boolean
       repeat_count:
+        description: '--- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---'
+        minimum: 1
         type: integer
       schedule_on:
         type: boolean
@@ -520,6 +524,8 @@ definitions:
   models.UpdateAdRequest:
     properties:
       duration_sec:
+        description: '--- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---'
+        minimum: 1
         type: integer
       is_enabled:
         type: boolean
@@ -528,6 +534,8 @@ definitions:
       reception_on:
         type: boolean
       repeat_count:
+        description: '--- ИЗМЕНЕНИЕ: gt=0 на gte=1 ---'
+        minimum: 1
         type: integer
       schedule_on:
         type: boolean
