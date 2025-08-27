@@ -91,24 +91,25 @@ func (s *AdService) Update(id uint, req *models.UpdateAdRequest) (*models.Ad, er
 		return nil, err
 	}
 
+	// Если предоставлено новое изображение, обновляем его и очищаем поля видео.
 	if req.Picture != "" {
 		picBytes, err := base64.StdEncoding.DecodeString(req.Picture)
 		if err != nil {
 			return nil, fmt.Errorf("invalid base64 picture data: %w", err)
 		}
 		ad.Picture = picBytes
-		ad.Video = nil       // Очищаем видео
-		ad.RepeatCount = nil // Очищаем счетчик повторов
+		ad.Video = nil
 	} else if req.Video != "" {
+		// Если предоставлено новое видео, обновляем его и очищаем поля изображения.
 		videoBytes, err := base64.StdEncoding.DecodeString(req.Video)
 		if err != nil {
 			return nil, fmt.Errorf("invalid base64 video data: %w", err)
 		}
 		ad.Video = videoBytes
-		ad.Picture = nil     // Очищаем картинку
-		ad.DurationSec = nil // Очищаем длительность
+		ad.Picture = nil
 	}
 
+	// Обновляем скалярные поля из запроса, если они были предоставлены.
 	if req.DurationSec != nil {
 		ad.DurationSec = req.DurationSec
 	}
@@ -123,6 +124,22 @@ func (s *AdService) Update(id uint, req *models.UpdateAdRequest) (*models.Ad, er
 	}
 	if req.ScheduleOn != nil {
 		ad.ScheduleOn = *req.ScheduleOn
+	}
+
+	if len(ad.Picture) > 0 {
+		ad.Video = nil
+		ad.RepeatCount = nil
+		if ad.DurationSec == nil {
+			defaultDuration := 5
+			ad.DurationSec = &defaultDuration
+		}
+	} else if len(ad.Video) > 0 {
+		ad.Picture = nil
+		ad.DurationSec = nil
+		if ad.RepeatCount == nil {
+			defaultRepeat := 1
+			ad.RepeatCount = &defaultRepeat
+		}
 	}
 
 	if err := s.repo.Update(ad); err != nil {
