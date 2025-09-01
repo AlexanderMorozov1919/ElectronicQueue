@@ -50,7 +50,7 @@ func GenerateAnnouncementWav(ticketNumber, windowNumber, audioDir string, backgr
 	var audioFiles []string
 
 	// 1. Клиент_номер.wav
-	audioFiles = append(audioFiles, filepath.Join(audioDir, "Клиент_номер.wav"))
+	audioFiles = append(audioFiles, filepath.Join(audioDir, "Klient_nomer.wav"))
 
 	// 2. Буква талона
 	audioFiles = append(audioFiles, filepath.Join(audioDir, fmt.Sprintf("%s.wav", letter)))
@@ -63,7 +63,7 @@ func GenerateAnnouncementWav(ticketNumber, windowNumber, audioDir string, backgr
 	audioFiles = append(audioFiles, numberFiles...)
 
 	// 4. Подойдите_к_окну_номер.wav
-	audioFiles = append(audioFiles, filepath.Join(audioDir, "Подойдите_к_окну_номер.wav"))
+	audioFiles = append(audioFiles, filepath.Join(audioDir, "Podoidite_k_oknu_nomer.wav"))
 
 	// 5. Номер окна
 	windowFiles, err := getNumberFiles(windowNumber, audioDir)
