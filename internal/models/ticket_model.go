@@ -59,8 +59,8 @@ type DoctorQueueTicketResponse struct {
 
 // DailyReportRow представляет одну строку в ежедневном отчете по талонам.
 type DailyReportRow struct {
-	TicketNumber         string       `json:"ticket_number"`
-	PatientFullName      *string      `json:"patient_full_name"`
+	TicketNumber string `json:"ticket_number"`
+	// PatientFullName      *string      `json:"patient_full_name"` // УДАЛЕНО
 	DoctorFullName       *string      `json:"doctor_full_name"`
 	DoctorSpecialization *string      `json:"doctor_specialization"`
 	CabinetNumber        *int         `json:"cabinet_number"`
