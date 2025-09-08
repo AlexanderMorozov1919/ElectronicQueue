@@ -80,36 +80,36 @@ INSERT INTO patients (passport_series, passport_number, oms_number, full_name, b
 -- -----------------------------------------------------------------
 -- --        6. РАСПИСАНИЕ ВРАЧЕЙ (СЕГОДНЯ + 6 ДНЕЙ ВПЕРЕД)       --
 -- -----------------------------------------------------------------
--- INSERT INTO schedules (doctor_id, cabinet, date, start_time, end_time)
--- SELECT
---     d.doctor_id,
---     (100 + d.doctor_id) AS cabinet,
---     d.day::date,
---     s.start_time::time,
---     (s.start_time + '30 minutes'::interval)::time AS end_time
--- FROM 
---     (SELECT doctor_id, generate_series(CURRENT_DATE, CURRENT_DATE + interval '6 days', '1 day') as day FROM doctors) d
--- CROSS JOIN generate_series(
---     (CURRENT_DATE + '06:00'::time)::timestamp,
---     (CURRENT_DATE + '21:30'::time)::timestamp,
---     '30 minutes'::interval
--- ) AS s(start_time)
--- WHERE 
---     (
---         (d.doctor_id = 1 AND extract(isodow from d.day) <= 5 AND s.start_time::time >= '08:00' AND s.start_time::time < '18:00')
---         OR
---         (d.doctor_id = 2 AND s.start_time::time >= '09:00' AND s.start_time::time < '20:00')
---         OR
---         (d.doctor_id = 3 AND extract(isodow from d.day) IN (1, 3, 5) AND s.start_time::time >= '07:00' AND s.start_time::time < '16:00')
---         OR
---         (d.doctor_id = 4 AND extract(isodow from d.day) IN (2, 4, 6) AND s.start_time::time >= '14:00' AND s.start_time::time < '22:00')
---         OR
---         (d.doctor_id = 5 AND extract(isodow from d.day) IN (1, 2, 3) AND s.start_time::time >= '10:00' AND s.start_time::time < '15:00')
---         OR
---         (d.doctor_id = 6 AND extract(isodow from d.day) <= 6 AND s.start_time::time >= '06:00' AND s.start_time::time < '16:00')
---         OR
---         (d.doctor_id = 7 AND s.start_time::time >= '12:00' AND s.start_time::time < '21:00')
---     );
+INSERT INTO schedules (doctor_id, cabinet, date, start_time, end_time)
+SELECT
+    d.doctor_id,
+    (100 + d.doctor_id) AS cabinet,
+    d.day::date,
+    s.start_time::time,
+    (s.start_time + '30 minutes'::interval)::time AS end_time
+FROM 
+    (SELECT doctor_id, generate_series(CURRENT_DATE, CURRENT_DATE + interval '6 days', '1 day') as day FROM doctors) d
+CROSS JOIN generate_series(
+    (CURRENT_DATE + '06:00'::time)::timestamp,
+    (CURRENT_DATE + '21:30'::time)::timestamp,
+    '30 minutes'::interval
+) AS s(start_time)
+WHERE 
+    (
+        (d.doctor_id = 1 AND extract(isodow from d.day) <= 5 AND s.start_time::time >= '08:00' AND s.start_time::time < '18:00')
+        OR
+        (d.doctor_id = 2 AND s.start_time::time >= '09:00' AND s.start_time::time < '20:00')
+        OR
+        (d.doctor_id = 3 AND extract(isodow from d.day) IN (1, 3, 5) AND s.start_time::time >= '07:00' AND s.start_time::time < '16:00')
+        OR
+        (d.doctor_id = 4 AND extract(isodow from d.day) IN (2, 4, 6) AND s.start_time::time >= '14:00' AND s.start_time::time < '22:00')
+        OR
+        (d.doctor_id = 5 AND extract(isodow from d.day) IN (1, 2, 3) AND s.start_time::time >= '10:00' AND s.start_time::time < '15:00')
+        OR
+        (d.doctor_id = 6 AND extract(isodow from d.day) <= 6 AND s.start_time::time >= '06:00' AND s.start_time::time < '16:00')
+        OR
+        (d.doctor_id = 7 AND s.start_time::time >= '12:00' AND s.start_time::time < '21:00')
+    );
 
 -- -----------------------------------------------------------------
 -- --                7. ТАЛОНЫ И ЗАПИСИ НА ПРИЕМ                  --
