@@ -292,8 +292,8 @@ if [[ "$GO_MODE" == "true" ]]; then
     echo "Archiving all builds into a single archive..."
     GO_ARCHIVE_NAME="backend_build.zip"
     
-    if [ ! -f ".env.example" ]; then
-        echo "Error: .env.example not found. Cannot create archive."
+    if [ ! -f ".env" ]; then
+        echo "Error: .env not found. Cannot create archive."
         exit 1
     fi
 
@@ -306,7 +306,7 @@ if [[ "$GO_MODE" == "true" ]]; then
     cp ./build/* "$BUILD_DIR/"
     cp -r docs "$BUILD_DIR/"
     cp -r assets "$BUILD_DIR/"
-    cp .env.example "$BUILD_DIR/.env"
+    cp .env "$BUILD_DIR/.env"
     cp -r migrations "$BUILD_DIR/"
     if [ -f "fill_db.sql" ]; then
       cp fill_db.sql "$BUILD_DIR/"
@@ -431,11 +431,22 @@ if [[ "$FLUTTER_MODE" == "true" ]]; then
       echo "    Using base href: '$BASE_HREF_VALUE'"
       echo "    Output directory: '$OUTPUT_DIR'"
       
-      if ! MSYS_NO_PATHCONV=1 flutter build web --release -t "lib/$MAIN_FILE" --output "$OUTPUT_DIR" --base-href="$BASE_HREF_VALUE"; then
+      if ! MSYS_NO_PATHCONV=1 flutter build web --release -t "lib/$MAIN_FILE" --output "$OUTPUT_DIR" --base-href="$BASE_HREF_VALUE" --no-web-resources-cdn; then
         echo "Failed to build '$BASE_HREF_PATH'."
         exit 1
       fi
       echo "Build for '$BASE_HREF_PATH' successful."
+
+      echo "    Injecting local CanvasKit configuration for '$BASE_HREF_PATH'..."
+      INDEX_HTML_FILE="$OUTPUT_DIR/index.html"
+      
+      if sed -i 's|<body>|&\n  <script>\n    window.flutterConfiguration = {\n      canvasKitBaseUrl: "./canvaskit/"\n    };\n  </script>|' "$INDEX_HTML_FILE"; then
+        echo "    Successfully injected configuration into '$INDEX_HTML_FILE'."
+      else
+        echo "    ERROR: Failed to inject CanvasKit configuration into '$INDEX_HTML_FILE'."
+        exit 1
+      fi
+
     done
 
     echo "----------------------------------------------------"
@@ -502,7 +513,7 @@ COPY . .
 
 ARG TARGET_MAIN
 ARG BASE_HREF_VALUE # Добавляем аргумент для base_href
-RUN flutter build web --release -t lib/\${TARGET_MAIN} --base-href=\${BASE_HREF_VALUE}
+RUN flutter build web --release -t lib/\${TARGET_MAIN} --base-href=\${BASE_HREF_VALUE} --no-web-resources-cdn
 
 FROM nginx:alpine
 COPY --from=build /app/build/web /usr/share/nginx/html
