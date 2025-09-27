@@ -5,6 +5,31 @@ set -o allexport
 source ./.env
 set +o allexport
 
+# --- НАЧАЛО ИЗМЕНЕНИЙ ---
+
+# Массив для хранения PID всех фоновых процессов
+pids=()
+
+# Функция очистки, которая будет вызвана при выходе
+cleanup() {
+    echo # Перевод строки для красоты
+    echo "Caught signal, cleaning up background processes..."
+    for pid in "${pids[@]}"; do
+        # Проверяем, существует ли еще процесс, перед тем как его завершать
+        if kill -0 "$pid" 2>/dev/null; then
+            echo "Stopping process with PID: $pid"
+            # Отправляем сигнал SIGTERM для корректного завершения
+            kill "$pid"
+        fi
+    done
+    echo "Cleanup complete."
+}
+
+# Устанавливаем "ловушку" для сигналов SIGINT (Ctrl+C), SIGTERM (стандартное завершение) и EXIT (любой выход)
+trap cleanup SIGINT SIGTERM EXIT
+
+# --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
 # Автоматический поиск main файлов Flutter frontend
 cd "$(dirname "$0")" && docker compose down > /dev/null 2>&1
 cd "$(dirname "$0")/../electronicqueue-frontend" && docker compose down > /dev/null 2>&1
@@ -116,14 +141,10 @@ if [[ "$RUN_GO" == "true" ]]; then
     exit 1
   fi
   echo "Starting Go backend..."
-  if (cd "$(dirname "$0")" && go run cmd/main.go &); then
-    echo "Go backend started."
-  else
-    echo "Failed to start Go backend."
-    exit 1
-  fi
-
-
+  # ИЗМЕНЕНО: Запускаем в фоне и сохраняем PID
+  (cd "$(dirname "$0")" && go run cmd/main.go) &
+  pids+=($!)
+  echo "Go backend started with PID: ${pids[-1]}."
 
 elif [[ "$RUN_GO_DOCKER" == "true" ]]; then
   echo "Starting Go backend via Docker Compose..."
@@ -132,12 +153,10 @@ elif [[ "$RUN_GO_DOCKER" == "true" ]]; then
     exit 1
   fi
   docker compose down > /dev/null 2>&1
-  if (cd "$(dirname "$0")" && docker compose up &); then
-    echo "Go backend (Docker Compose) started."
-  else
-    echo "Failed to start Go backend (Docker Compose)."
-    exit 1
-  fi
+  # ИЗМЕНЕНО: Запускаем в фоне и сохраняем PID
+  (cd "$(dirname "$0")" && docker compose up) &
+  pids+=($!)
+  echo "Go backend (Docker Compose) started with PID: ${pids[-1]}."
 fi
 
 
@@ -158,13 +177,14 @@ if [[ "$RUN_FLUTTER" == "true" ]]; then
   PORT=$FRONTEND_PORT
   for MAIN_FILE in "${FLUTTER_MAIN_FILES[@]}"; do
     echo "Starting Flutter frontend: $MAIN_FILE on port $PORT..."
+    # ИЗМЕНЕНО: Запускаем в фоне и сохраняем PID
     flutter run -t "lib/$MAIN_FILE" -d ${BROWSER:-chrome} --web-port=$PORT &
+    pids+=($!)
+    echo "Flutter frontend for $MAIN_FILE started with PID ${pids[-1]}."
     PORT=$((PORT+1))
   done
   echo "All Flutter frontends started."
   cd - > /dev/null
-
-
 
 elif [[ "$RUN_FLUTTER_DOCKER" == "true" ]]; then
   echo "Starting Flutter frontend containers from compose.yaml..."
@@ -184,9 +204,19 @@ elif [[ "$RUN_FLUTTER_DOCKER" == "true" ]]; then
     start "" "http://localhost:$PORT/"
     PORT=$((PORT+1))
   done
+  # ИЗМЕНЕНО: Запускаем в фоне и сохраняем PID
   docker compose up &
+  pids+=($!)
+  echo "Flutter frontends (Docker Compose) started with PID ${pids[-1]}."
   cd - > /dev/null
 fi
 
+# --- НАЧАЛО ИЗМЕНЕНИЙ ---
+# Ждем завершения всех фоновых процессов. 
+# Скрипт будет "висеть" здесь, пока его не прервут (например, через Ctrl+C)
+echo
+echo "All processes are running. Press Ctrl+C to stop all."
 wait
+# --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
 exit 0

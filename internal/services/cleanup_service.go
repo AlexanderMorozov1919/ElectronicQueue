@@ -3,8 +3,6 @@ package services
 import (
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/repository"
-
-	"github.com/sirupsen/logrus"
 )
 
 type CleanupService struct {
@@ -19,35 +17,25 @@ func NewCleanupService(repo repository.CleanupRepository) *CleanupService {
 	}
 }
 
-// CleanTickets удаляет завершенные tickets и осиротевшие appointments
+// CleanTickets выполняет полную очистку таблицы tickets.
 func (s *CleanupService) CleanTickets() error {
-	s.log.Info("Начинаю очистку завершенных tickets и осиротевших appointments")
+	s.log.Info("Начинаю ежедневную очистку всех талонов и связанных записей.")
 
-	// Получаем количество завершенных tickets
-	ticketsCount, err := s.repo.GetTicketsCount()
+	// Получаем общее количество талонов перед удалением для логирования
+	ticketsCount, err := s.repo.GetTotalTicketsCount()
 	if err != nil {
-		s.log.WithError(err).Error("Ошибка получения количества завершенных tickets")
-		return err
+		s.log.WithError(err).Error("Ошибка получения общего количества талонов.")
+		// Продолжаем выполнение, даже если не удалось посчитать
+	} else {
+		s.log.WithField("total_tickets_to_delete", ticketsCount).Info("Найдено записей для полной очистки.")
 	}
 
-	// Получаем количество осиротевших appointments
-	appointmentsCount, err := s.repo.GetOrphanedAppointmentsCount()
-	if err != nil {
-		s.log.WithError(err).Error("Ошибка получения количества осиротевших appointments")
-		return err
-	}
-
-	s.log.WithFields(logrus.Fields{
-		"completed_tickets_count":     ticketsCount,
-		"orphaned_appointments_count": appointmentsCount,
-	}).Info("Найдено записей для очистки")
-
-	// Выполняем очистку
+	// Выполняем полную очистку
 	if err := s.repo.TruncateTickets(); err != nil {
-		s.log.WithError(err).Error("Ошибка очистки завершенных tickets и appointments")
+		s.log.WithError(err).Error("Произошла ошибка во время полной очистки талонов.")
 		return err
 	}
 
-	s.log.Info("Очистка завершенных tickets и осиротевших appointments завершена успешно")
+	s.log.Info("Ежедневная очистка талонов и сброс счетчиков успешно завершены.")
 	return nil
 }
