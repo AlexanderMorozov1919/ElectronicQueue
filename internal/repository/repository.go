@@ -103,8 +103,7 @@ type ServiceRepository interface {
 // CleanupRepository определяет методы для очистки данных.
 type CleanupRepository interface {
 	TruncateTickets() error
-	GetTicketsCount() (int64, error)
-	GetOrphanedAppointmentsCount() (int64, error)
+	GetTotalTicketsCount() (int64, error)
 }
 
 // BusinessProcessRepository определяет методы для управления бизнес-процессами.

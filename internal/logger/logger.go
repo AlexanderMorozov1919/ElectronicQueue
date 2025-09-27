@@ -220,7 +220,9 @@ func (f *CustomFormatter) formatGorm(b *bytes.Buffer, entry *logrus.Entry) {
 
 // formatDefault форматирует лог по умолчанию
 func (f *CustomFormatter) formatDefault(b *bytes.Buffer, entry *logrus.Entry) {
-	// Формат: CALLER | MESSAGE | ERROR
+	// Формат: CALLER | MESSAGE | OTHER_FIELDS | ERROR
+
+	// 1. Вывод информации о вызывающем коде
 	if caller, ok := entry.Data["caller"]; ok {
 		if !f.DisableColors {
 			fmt.Fprintf(b, "%s%s%s | ", ColorPurple, caller, ColorReset)
@@ -229,8 +231,30 @@ func (f *CustomFormatter) formatDefault(b *bytes.Buffer, entry *logrus.Entry) {
 		}
 	}
 
+	// 2. Основное сообщение
 	b.WriteString(entry.Message)
 
+	// 3. Вывод всех остальных полей, кроме зарезервированных
+	hasFields := false
+	for key, value := range entry.Data {
+		switch key {
+		case "module", "caller", "error":
+			// Эти поля уже обработаны или будут обработаны отдельно
+		default:
+			if !hasFields {
+				b.WriteString(" |") // Добавляем разделитель только перед первым полем
+				hasFields = true
+			}
+			// Добавляем поле в формате key=value
+			if !f.DisableColors {
+				fmt.Fprintf(b, " %s%s%s=%v", ColorDarkCyan, key, ColorReset, value)
+			} else {
+				fmt.Fprintf(b, " %s=%v", key, value)
+			}
+		}
+	}
+
+	// 4. Вывод ошибки (если есть)
 	if err, ok := entry.Data["error"]; ok {
 		errMsg := err.(error).Error()
 		if !f.DisableColors {
