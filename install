@@ -90,6 +90,17 @@ if [[ "$DATABASE_MODE" == "true" ]]; then
     export PGPASSWORD="$DB_PASSWORD"
     export PGCLIENTENCODING="UTF8"
     if [[ "$CLEAR_MODE" == "true" ]]; then
+      # === НАЧАЛО ИЗМЕНЕНИЙ ===
+      # Принудительно завершаем все активные сессии для данной БД
+      echo "Terminating any active connections to database '$DB_NAME'..."
+      if PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "postgres" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_NAME' AND pid <> pg_backend_pid();" > /dev/null 2>&1; then
+          echo "Active connections terminated."
+      else
+          echo "Warning: Could not terminate connections (perhaps none existed). Proceeding..."
+      fi
+      sleep 1 # Небольшая пауза, чтобы дать время процессам завершиться
+      # === КОНЕЦ ИЗМЕНЕНИЙ ===
+      
       # Удаляем базу данных, если указан флаг clear или fill
       echo "Dropping database '$DB_NAME' due to 'clear' or 'fill' flag..."
       if PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "postgres" -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"; then
@@ -154,6 +165,17 @@ fi
 if [[ "$GO_MODE" == "true" ]]; then
   echo "--- Go Backend Setup ---"
   if [[ "$CLEAR_MODE" == "true" ]]; then
+    # === НАЧАЛО ИЗМЕНЕНИЙ ===
+    # Принудительно завершаем все активные сессии для данной БД
+    echo "Terminating any active connections to database '$DB_NAME'..."
+    if PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "postgres" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_NAME' AND pid <> pg_backend_pid();" > /dev/null 2>&1; then
+        echo "Active connections terminated."
+    else
+        echo "Warning: Could not terminate connections (perhaps none existed). Proceeding..."
+    fi
+    sleep 1 # Небольшая пауза, чтобы дать время процессам завершиться
+    # === КОНЕЦ ИЗМЕНЕНИЙ ===
+
     # Удаляем базу данных
     echo "Dropping database '$DB_NAME'..."
     if PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"; then
