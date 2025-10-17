@@ -164,7 +164,10 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	}
 
 	repo := repository.NewRepository(db)
-	oneCService := services.NewOneCService(cfg.OneCURL, cfg.OneCAPIKey)
+	oneCService, err := services.NewOneCService(cfg)
+	if err != nil {
+		logger.Default().WithError(err).Fatal("Failed to initialize 1C Service")
+	}
 
 	ticketService := services.NewTicketService(repo.Ticket, repo.Service, repo.ReceptionLog, repo.Patient, repo.Appointment, repo.RegistrarPriority, oneCService)
 	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
