@@ -623,6 +623,27 @@ info:
 paths:
   /api/1c/getdoctorschedule:
     get:
+      description: Обращается к сервису-прокси 1С для получения общего расписания.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Расписание из 1С
+          schema:
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить общее расписание из 1С
+      tags:
+      - 1C
+  /api/1c/getschedule:
+    get:
       description: По номеру телефона пациента получает из 1С время, на которое он
         записан к врачу.
       parameters:
@@ -653,27 +674,6 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Получить время записи пациента из 1С
-      tags:
-      - 1C
-  /api/1c/getschedule:
-    get:
-      description: Обращается к сервису-прокси 1С для получения общего расписания.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Расписание из 1С
-          schema:
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Получить общее расписание из 1С
       tags:
       - 1C
   /api/admin/ads:

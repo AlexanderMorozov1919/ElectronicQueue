@@ -30,6 +30,7 @@ type Config struct {
 	MaintenanceTime             string
 	AudioBackgroundMusicEnabled bool
 	OneCURL                     string
+	OneCAPIKey                  string
 }
 
 // LoadConfig загружает переменные среды из .env и возвращает структуру Config
@@ -61,6 +62,7 @@ func LoadConfig() (*Config, error) {
 		MaintenanceTime:             getEnv("MAINTENANCE_TIME", "00:00"),
 		AudioBackgroundMusicEnabled: getEnv("BACKGROUND_MUSIC", "true") == "true",
 		OneCURL:                     getEnv("1C_URL"),
+		OneCAPIKey:                  getEnv("1C_API_KEY"),
 	}
 
 	// Валидация обязательных полей

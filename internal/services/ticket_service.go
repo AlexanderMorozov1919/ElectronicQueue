@@ -256,7 +256,7 @@ func (s *TicketService) GetInvitedTicketForWindow(windowNumber int) (*models.Tic
 }
 
 func (s *TicketService) CheckInByPhone(phone string) (*models.Ticket, error) {
-	data, err := s.oneCService.GetDoctorSchedule(phone)
+	data, err := s.oneCService.GetSchedule(phone)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка сервиса 1С: %w", err)
 	}
@@ -266,14 +266,13 @@ func (s *TicketService) CheckInByPhone(phone string) (*models.Ticket, error) {
 		return nil, fmt.Errorf("неверный формат ответа от сервиса 1С")
 	}
 
-	times, ok := dataMap["appointment_times"].([]interface{})
-	if !ok || len(times) == 0 {
-		return nil, fmt.Errorf("время записи не найдено в ответе от сервиса 1С")
+	timeStr, ok := dataMap["appointment_time"].(string)
+	if !ok {
+		return nil, fmt.Errorf("поле 'appointment_time' не найдено или имеет неверный формат в ответе от сервиса 1С")
 	}
 
-	timeStr, ok := times[0].(string)
-	if !ok {
-		return nil, fmt.Errorf("неверный формат времени записи в ответе от 1С")
+	if timeStr == "" {
+		return nil, errors.New("запись по данному номеру телефона не найдена на сегодня")
 	}
 
 	now := time.Now()
