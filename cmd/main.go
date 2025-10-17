@@ -177,11 +177,12 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	appointmentService := services.NewAppointmentService(repo.Appointment, repo.Ticket)
 	cleanupService := services.NewCleanupService(repo.Cleanup)
 	tasksTimerService := services.NewTasksTimerService(cleanupService, cfg)
-	scheduleService := services.NewScheduleService(repo.Schedule, repo.Doctor)
+	scheduleService := services.NewScheduleService(repo.Schedule, repo.Doctor, oneCService, broker)
 	adService := services.NewAdService(repo.Ad)
 	registrarService := services.NewRegistrarService(repo.RegistrarPriority, repo.Service)
 
 	go tasksTimerService.Start(context.Background())
+	go scheduleService.StartPolling(context.Background())
 
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
 	doctorHandler := handlers.NewDoctorHandler(doctorService, broker)
