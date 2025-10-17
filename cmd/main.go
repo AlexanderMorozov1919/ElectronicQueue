@@ -164,8 +164,12 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	}
 
 	repo := repository.NewRepository(db)
+	oneCService, err := services.NewOneCService(cfg)
+	if err != nil {
+		logger.Default().WithError(err).Fatal("Failed to initialize 1C Service")
+	}
 
-	ticketService := services.NewTicketService(repo.Ticket, repo.Service, repo.ReceptionLog, repo.Patient, repo.Appointment, repo.RegistrarPriority)
+	ticketService := services.NewTicketService(repo.Ticket, repo.Service, repo.ReceptionLog, repo.Patient, repo.Appointment, repo.RegistrarPriority, oneCService)
 	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
 	authService := services.NewAuthService(repo.Registrar, repo.Doctor, repo.Administrator, jwtManager)
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db))
@@ -173,11 +177,12 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	appointmentService := services.NewAppointmentService(repo.Appointment, repo.Ticket)
 	cleanupService := services.NewCleanupService(repo.Cleanup)
 	tasksTimerService := services.NewTasksTimerService(cleanupService, cfg)
-	scheduleService := services.NewScheduleService(repo.Schedule, repo.Doctor)
+	scheduleService := services.NewScheduleService(repo.Schedule, repo.Doctor, oneCService, broker)
 	adService := services.NewAdService(repo.Ad)
 	registrarService := services.NewRegistrarService(repo.RegistrarPriority, repo.Service)
 
 	go tasksTimerService.Start(context.Background())
+	go scheduleService.StartPolling(context.Background())
 
 	ticketHandler := handlers.NewTicketHandler(ticketService, cfg)
 	doctorHandler := handlers.NewDoctorHandler(doctorService, broker)
@@ -190,6 +195,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	scheduleHandler := handlers.NewScheduleHandler(scheduleService, broker)
 	processHandler := handlers.NewBusinessProcessHandler(processService)
 	adHandler := handlers.NewAdHandler(adService)
+	oneCHandler := handlers.NewOneCHandler(oneCService)
 
 	r.GET("/tickets", middleware.CheckBusinessProcess(processService, "reception"), sseHandler(broker, "reception_sse"))
 
@@ -282,6 +288,13 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		dbAPI.POST("/:table/insert", databaseHandler.InsertData)
 		dbAPI.PATCH("/:table/update", databaseHandler.UpdateData)
 		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
+	}
+
+	// New routes for 1C
+	oneC := r.Group("/api/1c").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
+	{
+		oneC.GET("/getschedule", oneCHandler.GetSchedule)
+		oneC.GET("/getdoctorschedule", oneCHandler.GetDoctorSchedule)
 	}
 
 	processes := r.Group("/api/processes")

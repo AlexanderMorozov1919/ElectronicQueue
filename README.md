@@ -89,7 +89,7 @@ INTERNAL_API_KEY=iak12345         # API ключ для внутренних с�
 EXTERNAL_API_KEY=eak12345         # API ключ для внешних сервисов
 
 # 🖨️ Принтер талонов
-PRINTER="DeskJet 5000 series"     # Имя принтера для печати
+PRINTER="VKP80II"     # Имя принтера для печати
 ```
 
 ---

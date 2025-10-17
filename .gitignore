@@ -7,6 +7,7 @@ tickets/
 *.log
 tmp/
 temp/
+1C/
 
 # Локальная документация
 *.txt
@@ -27,6 +28,7 @@ temp/
 *.dll
 *.lib
 *.so
+*.zip
 
 # Автогенерируемые файлы
 *.sqlite3

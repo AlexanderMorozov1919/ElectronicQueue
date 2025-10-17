@@ -7,7 +7,6 @@ import (
 	"ElectronicQueue/internal/utils"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -23,6 +22,7 @@ type TicketService struct {
 	patientRepo      repository.PatientRepository
 	appointmentRepo  repository.AppointmentRepository
 	priorityRepo     repository.RegistrarPriorityRepository
+	oneCService      *OneCService
 }
 
 func NewTicketService(
@@ -32,6 +32,7 @@ func NewTicketService(
 	patientRepo repository.PatientRepository,
 	appointmentRepo repository.AppointmentRepository,
 	priorityRepo repository.RegistrarPriorityRepository,
+	oneCService *OneCService,
 ) *TicketService {
 	return &TicketService{
 		repo:             repo,
@@ -40,6 +41,7 @@ func NewTicketService(
 		patientRepo:      patientRepo,
 		appointmentRepo:  appointmentRepo,
 		priorityRepo:     priorityRepo,
+		oneCService:      oneCService,
 	}
 }
 
@@ -254,25 +256,36 @@ func (s *TicketService) GetInvitedTicketForWindow(windowNumber int) (*models.Tic
 }
 
 func (s *TicketService) CheckInByPhone(phone string) (*models.Ticket, error) {
-	nonAlphanumericRegex := regexp.MustCompile(`[^0-9]+`)
-	sanitizedPhone := nonAlphanumericRegex.ReplaceAllString(phone, "")
-
-	patient, err := s.patientRepo.FindByPhone(sanitizedPhone)
+	data, err := s.oneCService.GetSchedule(phone)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("пациент с указанным номером телефона не найден")
-		}
-		return nil, fmt.Errorf("ошибка поиска пациента: %w", err)
+		return nil, fmt.Errorf("ошибка сервиса 1С: %w", err)
+	}
+
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("неверный формат ответа от сервиса 1С")
+	}
+
+	timeStr, ok := dataMap["appointment_time"].(string)
+	if !ok {
+		return nil, fmt.Errorf("поле 'appointment_time' не найдено или имеет неверный формат в ответе от сервиса 1С")
+	}
+
+	if timeStr == "" {
+		return nil, errors.New("запись по данному номеру телефона не найдена на сегодня")
 	}
 
 	now := time.Now()
-	appointment, err := s.appointmentRepo.FindUpcomingByPatientID(patient.ID, now)
+	appointmentTime, err := time.ParseInLocation("15:04:05", timeStr, now.Location())
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("у вас нет предстоящих записей на сегодня")
-		}
-		return nil, fmt.Errorf("ошибка поиска записи: %w", err)
+		return nil, fmt.Errorf("не удалось разобрать время записи '%s': %w", timeStr, err)
 	}
+
+	fullAppointmentTime := time.Date(
+		now.Year(), now.Month(), now.Day(),
+		appointmentTime.Hour(), appointmentTime.Minute(), appointmentTime.Second(), 0,
+		now.Location(),
+	)
 
 	serviceID := "confirm_appointment"
 	ticketNumber, err := s.generateTicketNumber(serviceID)
@@ -281,14 +294,15 @@ func (s *TicketService) CheckInByPhone(phone string) (*models.Ticket, error) {
 	}
 
 	newTicket := &models.Ticket{
-		TicketNumber: ticketNumber,
-		Status:       models.StatusWaiting,
-		CreatedAt:    time.Now(),
-		ServiceType:  &serviceID,
+		TicketNumber:    ticketNumber,
+		Status:          models.StatusWaiting,
+		CreatedAt:       time.Now(),
+		ServiceType:     &serviceID,
+		AppointmentTime: &fullAppointmentTime,
 	}
 
-	if err := s.appointmentRepo.AssignTicketToAppointment(appointment, newTicket); err != nil {
-		return nil, fmt.Errorf("не удалось создать талон и привязать к записи: %w", err)
+	if err := s.repo.Create(newTicket); err != nil {
+		return nil, fmt.Errorf("не удалось создать талон в базе данных: %w", err)
 	}
 
 	return newTicket, nil
@@ -297,20 +311,14 @@ func (s *TicketService) CheckInByPhone(phone string) (*models.Ticket, error) {
 func (s *TicketService) finalizeReceptionAndUpdateTicket(ticket *models.Ticket) error {
 	log := logger.Default().WithField("ticket_id", ticket.ID)
 
-	// FETCH a fresh copy from DB to check its CURRENT status
 	currentTicket, err := s.repo.GetByID(ticket.ID)
 	if err != nil {
 		log.WithError(err).Error("finalizeReception: failed to fetch current ticket state")
-		return err // Ticket not found
+		return err
 	}
 
-	// This is the CRUCIAL check. If the ticket is ALREADY registered for a doctor,
-	// and the registrar is trying to mark it as 'completed', we should PREVENT this.
 	if currentTicket.Status == models.StatusRegistered && ticket.Status == models.StatusCompleted {
 		log.Warn("finalizeReception: Attempted to mark a 'registered' ticket as 'completed'. Action ignored.")
-		// We return `nil` to not show an error to the registrar.
-		// The ticket status remains 'registered'.
-		// The registrar's screen will be cleared by them calling the next patient.
 		return nil
 	}
 

@@ -1,3 +1,5 @@
+// D:\vs\go\ElectronicQueue\internal\handlers\schedule_handler.go
+
 package handlers
 
 import (
@@ -9,7 +11,9 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
+
+	// Удален неиспользуемый импорт
+	// "strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,20 +27,7 @@ func NewScheduleHandler(service *services.ScheduleService, broker *pubsub.Broker
 	return &ScheduleHandler{service: service, broker: broker}
 }
 
-// CreateSchedule godoc
-// @Summary      Создать слот в расписании (Админ)
-// @Description  Создает новый временной слот для врача. Требует INTERNAL_API_KEY.
-// @Tags         admin
-// @Accept       json
-// @Produce      json
-// @Param        request body models.CreateScheduleRequest true "Данные для создания слота"
-// @Success      201 {object} models.Schedule "Успешно созданный слот"
-// @Failure      400 {object} map[string]string "Ошибка: неверный формат запроса"
-// @Failure      401 {object} map[string]string "Отсутствует ключ API"
-// @Failure      403 {object} map[string]string "Неверный ключ API"
-// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
-// @Security     ApiKeyAuth
-// @Router       /api/admin/schedules [post]
+// ... (методы CreateSchedule и DeleteSchedule остаются без изменений) ...
 func (h *ScheduleHandler) CreateSchedule(c *gin.Context) {
 	log := logger.Default()
 	var req models.CreateScheduleRequest
@@ -56,20 +47,6 @@ func (h *ScheduleHandler) CreateSchedule(c *gin.Context) {
 	c.JSON(http.StatusCreated, schedule)
 }
 
-// DeleteSchedule godoc
-// @Summary      Удалить слот из расписания (Админ)
-// @Description  Удаляет временной слот из расписания по его ID. Требует INTERNAL_API_KEY.
-// @Tags         admin
-// @Produce      json
-// @Param        id path int true "ID слота расписания"
-// @Success      200 {object} map[string]string "Слот успешно удален"
-// @Failure      400 {object} map[string]string "Ошибка: неверный ID"
-// @Failure      401 {object} map[string]string "Отсутствует ключ API"
-// @Failure      403 {object} map[string]string "Неверный ключ API"
-// @Failure      404 {object} map[string]string "Слот не найден"
-// @Failure      500 {object} map[string]string "Внутренняя ошибка сервера"
-// @Security     ApiKeyAuth
-// @Router       /api/admin/schedules/{id} [delete]
 func (h *ScheduleHandler) DeleteSchedule(c *gin.Context) {
 	log := logger.Default()
 	idStr := c.Param("id")
@@ -94,9 +71,10 @@ func (h *ScheduleHandler) DeleteSchedule(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Слот расписания успешно удален"})
 }
 
+// --- ЛОГИКА МЕТОДА ПОЛНОСТЬЮ ИЗМЕНЕНА ---
 // GetTodayScheduleUpdates godoc
 // @Summary      Получить обновления расписания на сегодня
-// @Description  Отправляет начальное состояние расписания (`event: schedule_initial`) и последующие изменения (`event: schedule_update`) через Server-Sent Events.
+// @Description  Отправляет начальное состояние расписания (`event: schedule_initial`) и последующие полные обновления (`event: schedule_initial`) через Server-Sent Events.
 // @Tags         schedule
 // @Produce      text/event-stream
 // @Success      200 {object} services.TodayScheduleResponse "Поток событий с состоянием расписания"
@@ -110,7 +88,7 @@ func (h *ScheduleHandler) GetTodayScheduleUpdates(c *gin.Context) {
 	clientChan := h.broker.Subscribe()
 	defer h.broker.Unsubscribe(clientChan)
 
-	// --- 1. Отправка начального состояния ---
+	// --- 1. Отправка начального состояния из кэша ---
 	initialState, err := h.service.GetTodayScheduleState()
 	if err != nil {
 		log.WithError(err).Error("Критическая ошибка в GetTodayScheduleState")
@@ -121,15 +99,11 @@ func (h *ScheduleHandler) GetTodayScheduleUpdates(c *gin.Context) {
 		return
 	}
 
-	log.Info("Отправка начального состояния расписания")
-	c.SSEvent("schedule_initial", initialState)
+	log.Info("Отправка начального состояния расписания из кэша.")
+	// Отправляем как json.RawMessage, чтобы избежать двойной сериализации
+	c.SSEvent("schedule_initial", json.RawMessage(initialState))
 	if f, ok := c.Writer.(http.Flusher); ok {
 		f.Flush()
-		_, err := c.Writer.Write([]byte{})
-		if err != nil {
-			log.WithError(err).Info("Клиент отключился сразу после отправки начального состояния.")
-			return
-		}
 	}
 
 	// --- 2. Ожидание и отправка обновлений ---
@@ -141,19 +115,15 @@ func (h *ScheduleHandler) GetTodayScheduleUpdates(c *gin.Context) {
 				return false
 			}
 
-			if !strings.Contains(msg, "\"operation\"") {
+			// Простая проверка, что сообщение похоже на JSON объект
+			if len(msg) < 2 || msg[0] != '{' {
 				return true
 			}
 
-			log.WithField("payload", msg).Info("Получено уведомление, отправка обновления клиенту.")
-
-			var rawData json.RawMessage
-			if err := json.Unmarshal([]byte(msg), &rawData); err != nil {
-				log.WithError(err).Warn("Получено невалидное JSON-уведомление от PostgreSQL, пропуск.")
-				return true
-			}
-
-			c.SSEvent("schedule_update", rawData)
+			log.Info("Получено новое расписание, отправка полного обновления клиенту.")
+			// Каждое обновление от поллера - это полный новый JSON расписания.
+			// Мы отправляем его как 'schedule_initial', чтобы frontend просто заменил все данные.
+			c.SSEvent("schedule_initial", json.RawMessage(msg))
 
 			if f, ok := w.(http.Flusher); ok {
 				f.Flush()

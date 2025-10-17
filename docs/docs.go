@@ -15,6 +15,92 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/1c/getdoctorschedule": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Обращается к сервису-прокси 1С для получения общего расписания.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "1C"
+                ],
+                "summary": "Получить общее расписание из 1С",
+                "responses": {
+                    "200": {
+                        "description": "Расписание из 1С",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/1c/getschedule": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "По номеру телефона пациента получает из 1С время, на которое он записан к врачу.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "1C"
+                ],
+                "summary": "Получить время записи пациента из 1С",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Номер телефона пациента",
+                        "name": "phone",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Время записи пациента из 1С",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: отсутствует параметр 'phone'",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/admin/ads": {
             "get": {
                 "security": [
@@ -530,163 +616,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Процесс не найден",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/admin/schedules": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Создает новый временной слот для врача. Требует INTERNAL_API_KEY.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Создать слот в расписании (Админ)",
-                "parameters": [
-                    {
-                        "description": "Данные для создания слота",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.CreateScheduleRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Успешно созданный слот",
-                        "schema": {
-                            "$ref": "#/definitions/models.Schedule"
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный формат запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Отсутствует ключ API",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Неверный ключ API",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/admin/schedules/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Удаляет временной слот из расписания по его ID. Требует INTERNAL_API_KEY.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Удалить слот из расписания (Админ)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID слота расписания",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Слот успешно удален",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Отсутствует ключ API",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Неверный ключ API",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Слот не найден",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2211,7 +2140,7 @@ const docTemplate = `{
         },
         "/api/schedules/today/updates": {
             "get": {
-                "description": "Отправляет начальное состояние расписания (` + "`" + `event: schedule_initial` + "`" + `) и последующие изменения (` + "`" + `event: schedule_update` + "`" + `) через Server-Sent Events.",
+                "description": "Отправляет начальное состояние расписания (` + "`" + `event: schedule_initial` + "`" + `) и последующие полные обновления (` + "`" + `event: schedule_initial` + "`" + `) через Server-Sent Events.",
                 "produces": [
                     "text/event-stream"
                 ],
@@ -2989,41 +2918,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.CreateScheduleRequest": {
-            "type": "object",
-            "required": [
-                "date",
-                "doctor_id",
-                "end_time",
-                "start_time"
-            ],
-            "properties": {
-                "cabinet": {
-                    "type": "integer",
-                    "example": 101
-                },
-                "date": {
-                    "type": "string",
-                    "example": "2025-07-20T00:00:00Z"
-                },
-                "doctor_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "end_time": {
-                    "type": "string",
-                    "example": "2025-01-01T10:00:00Z"
-                },
-                "is_available": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "start_time": {
-                    "type": "string",
-                    "example": "2025-01-01T09:00:00Z"
-                }
-            }
-        },
         "models.DeleteRequest": {
             "type": "object",
             "required": [
@@ -3250,6 +3144,9 @@ const docTemplate = `{
         "models.Ticket": {
             "type": "object",
             "properties": {
+                "appointment_time": {
+                    "type": "string"
+                },
                 "called_at": {
                     "type": "string"
                 },
@@ -3288,6 +3185,9 @@ const docTemplate = `{
         "models.TicketResponse": {
             "type": "object",
             "properties": {
+                "appointment_time": {
+                    "type": "string"
+                },
                 "called_at": {
                     "type": "string"
                 },
