@@ -29,6 +29,7 @@ type Config struct {
 	PrinterName                 string
 	MaintenanceTime             string
 	AudioBackgroundMusicEnabled bool
+	OneCURL                     string
 }
 
 // LoadConfig загружает переменные среды из .env и возвращает структуру Config
@@ -59,6 +60,7 @@ func LoadConfig() (*Config, error) {
 		PrinterName:                 getEnv("PRINTER"),
 		MaintenanceTime:             getEnv("MAINTENANCE_TIME", "00:00"),
 		AudioBackgroundMusicEnabled: getEnv("BACKGROUND_MUSIC", "true") == "true",
+		OneCURL:                     getEnv("1C_URL"),
 	}
 
 	// Валидация обязательных полей

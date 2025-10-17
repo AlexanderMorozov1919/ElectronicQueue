@@ -15,6 +15,92 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/1c/getdoctorschedule": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "По номеру телефона пациента получает из 1С время, на которое он записан к врачу.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "1C"
+                ],
+                "summary": "Получить время записи пациента из 1С",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Номер телефона пациента",
+                        "name": "phone",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Время записи пациента из 1С",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: отсутствует параметр 'phone'",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/1c/getschedule": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Обращается к сервису-прокси 1С для получения общего расписания.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "1C"
+                ],
+                "summary": "Получить общее расписание из 1С",
+                "responses": {
+                    "200": {
+                        "description": "Расписание из 1С",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/admin/ads": {
             "get": {
                 "security": [
@@ -3250,6 +3336,9 @@ const docTemplate = `{
         "models.Ticket": {
             "type": "object",
             "properties": {
+                "appointment_time": {
+                    "type": "string"
+                },
                 "called_at": {
                     "type": "string"
                 },
@@ -3288,6 +3377,9 @@ const docTemplate = `{
         "models.TicketResponse": {
             "type": "object",
             "properties": {
+                "appointment_time": {
+                    "type": "string"
+                },
                 "called_at": {
                     "type": "string"
                 },

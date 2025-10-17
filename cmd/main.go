@@ -164,8 +164,9 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	}
 
 	repo := repository.NewRepository(db)
+	oneCService := services.NewOneCService(cfg.OneCURL)
 
-	ticketService := services.NewTicketService(repo.Ticket, repo.Service, repo.ReceptionLog, repo.Patient, repo.Appointment, repo.RegistrarPriority)
+	ticketService := services.NewTicketService(repo.Ticket, repo.Service, repo.ReceptionLog, repo.Patient, repo.Appointment, repo.RegistrarPriority, oneCService)
 	doctorService := services.NewDoctorService(repo.Ticket, repo.Doctor, repo.Schedule, broker)
 	authService := services.NewAuthService(repo.Registrar, repo.Doctor, repo.Administrator, jwtManager)
 	databaseService := services.NewDatabaseService(repository.NewDatabaseRepository(db))
@@ -190,6 +191,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 	scheduleHandler := handlers.NewScheduleHandler(scheduleService, broker)
 	processHandler := handlers.NewBusinessProcessHandler(processService)
 	adHandler := handlers.NewAdHandler(adService)
+	oneCHandler := handlers.NewOneCHandler(oneCService)
 
 	r.GET("/tickets", middleware.CheckBusinessProcess(processService, "reception"), sseHandler(broker, "reception_sse"))
 
@@ -282,6 +284,13 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		dbAPI.POST("/:table/insert", databaseHandler.InsertData)
 		dbAPI.PATCH("/:table/update", databaseHandler.UpdateData)
 		dbAPI.DELETE("/:table/delete", databaseHandler.DeleteData)
+	}
+
+	// New routes for 1C
+	oneC := r.Group("/api/1c").Use(middleware.RequireAPIKey(cfg.ExternalAPIKey))
+	{
+		oneC.GET("/getschedule", oneCHandler.GetSchedule)
+		oneC.GET("/getdoctorschedule", oneCHandler.GetDoctorSchedule)
 	}
 
 	processes := r.Group("/api/processes")

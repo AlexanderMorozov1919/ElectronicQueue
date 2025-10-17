@@ -18,7 +18,7 @@ func NewTicketRepository(db *gorm.DB) TicketRepository {
 func (r *ticketRepo) FindForRegistrar(statuses []models.TicketStatus, categoryPrefixes []string) ([]models.RegistrarTicketResponse, error) {
 	var tickets []models.RegistrarTicketResponse
 	query := r.db.Table("tickets as t").
-		Select("t.*, to_char(s.date + s.start_time, 'YYYY-MM-DD HH24:MI:SS') as appointment_time").
+		Select("t.*, to_char(COALESCE(t.appointment_time, s.date + s.start_time), 'YYYY-MM-DD HH24:MI:SS') as appointment_time").
 		Joins("LEFT JOIN appointments a ON t.ticket_id = a.ticket_id").
 		Joins("LEFT JOIN schedules s ON a.schedule_id = s.schedule_id").
 		Where("t.status IN ?", statuses)
@@ -81,12 +81,11 @@ func (r *ticketRepo) GetNextWaitingTicket(categoryPrefixes []string) (*models.Ti
 
 	orderedQuery := baseQuery.Order(`
         CASE
-            WHEN s.start_time IS NOT NULL AND s.start_time < NOW()::time THEN 0
-            WHEN s.start_time IS NOT NULL AND s.start_time BETWEEN NOW()::time AND (NOW() + INTERVAL '5 minutes')::time THEN 1
+            WHEN COALESCE(t.appointment_time, s.date + s.start_time) < NOW() THEN 0
+            WHEN COALESCE(t.appointment_time, s.date + s.start_time) BETWEEN NOW() AND (NOW() + INTERVAL '5 minutes') THEN 1
             ELSE 2
         END,
-        s.start_time ASC,
-        t.created_at ASC
+        COALESCE(t.appointment_time, s.date + s.start_time, t.created_at) ASC
     `).Limit(1)
 
 	err := orderedQuery.First(&ticket).Error
@@ -174,11 +173,10 @@ func (r *ticketRepo) GetDailyReport(date time.Time) ([]models.DailyReportRow, er
 	err := r.db.Table("tickets as t").
 		Select(`
             t.ticket_number,
-            -- p.full_name as patient_full_name, -- УДАЛЕНО
             d.full_name as doctor_full_name,
             d.specialization as doctor_specialization,
             s.cabinet as cabinet_number,
-            to_char(s.start_time, 'HH24:MI') as appointment_time,
+            to_char(COALESCE(t.appointment_time, s.date + s.start_time), 'HH24:MI') as appointment_time,
             t.status,
             t.called_at,
             t.completed_at,

@@ -459,6 +459,8 @@ definitions:
     type: object
   models.Ticket:
     properties:
+      appointment_time:
+        type: string
       called_at:
         type: string
       completed_at:
@@ -484,6 +486,8 @@ definitions:
     type: object
   models.TicketResponse:
     properties:
+      appointment_time:
+        type: string
       called_at:
         type: string
       completed_at:
@@ -617,6 +621,61 @@ info:
   title: Electronic Queue API
   version: "1.0"
 paths:
+  /api/1c/getdoctorschedule:
+    get:
+      description: По номеру телефона пациента получает из 1С время, на которое он
+        записан к врачу.
+      parameters:
+      - description: Номер телефона пациента
+        in: query
+        name: phone
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Время записи пациента из 1С
+          schema:
+            type: object
+        "400":
+          description: 'Ошибка: отсутствует параметр ''phone'''
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить время записи пациента из 1С
+      tags:
+      - 1C
+  /api/1c/getschedule:
+    get:
+      description: Обращается к сервису-прокси 1С для получения общего расписания.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Расписание из 1С
+          schema:
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Получить общее расписание из 1С
+      tags:
+      - 1C
   /api/admin/ads:
     get:
       description: Возвращает список всех рекламных материалов без самих изображений.
