@@ -3,9 +3,9 @@ module ElectronicQueue
 go 1.24.2
 
 require (
+	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327
 	github.com/gin-gonic/gin v1.10.1
 	github.com/golang-jwt/jwt/v5 v5.2.2
-	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/sirupsen/logrus v1.9.3
@@ -14,14 +14,12 @@ require (
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.4
 	golang.org/x/crypto v0.42.0
-	golang.org/x/image v0.32.0
 	golang.zx2c4.com/wireguard v0.0.0-20250521234502-f333402bd9cb
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.30.0
 )
 
 require (
-	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/go-json-experiment/json v0.0.0-20250725192818-e39067aee2d2 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect

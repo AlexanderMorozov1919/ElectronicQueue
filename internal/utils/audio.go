@@ -367,13 +367,14 @@ func normalizeWavData(wav *WAVData, targetSampleRate uint32, targetChannels uint
 
 	// Конвертируем в нужный формат
 	var newData []byte
-	if targetBitsPerSample == 32 {
+	switch targetBitsPerSample {
+	case 32:
 		newHeader.AudioFormat = 3 // IEEE float
 		newData = float32SamplesToBytes(targetSamples)
-	} else if targetBitsPerSample == 16 {
+	case 16:
 		newHeader.AudioFormat = 1 // PCM
 		newData = int16SamplesToBytes(float32SamplesToInt16(targetSamples))
-	} else {
+	default:
 		return nil, fmt.Errorf("неподдерживаемая целевая битность: %d", targetBitsPerSample)
 	}
 

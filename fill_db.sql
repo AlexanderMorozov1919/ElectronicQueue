@@ -22,7 +22,7 @@ RESTART IDENTITY CASCADE;
 -- --                        1. УСЛУГИ                            --
 -- -----------------------------------------------------------------
 INSERT INTO services (service_id, name, letter) VALUES
-  ('make_appointment', 'Записаться', 'A'),
+  ('make_appointment', 'Записаться к врачу', 'A'),
   ('confirm_appointment', 'Прием по записи', 'B'),
   ('lab_tests', 'Сдать анализы', 'C'),
   ('documents', 'Получить результаты', 'D');
