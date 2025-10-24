@@ -62,9 +62,9 @@ func LoadConfig() (*Config, error) {
 		PrinterName:                 getEnv("PRINTER"),
 		MaintenanceTime:             getEnv("MAINTENANCE_TIME", "00:00"),
 		AudioBackgroundMusicEnabled: getEnv("BACKGROUND_MUSIC", "true") == "true",
-		OneCURL:                     getEnv("1C_URL"),
-		OneCAPIKey:                  getEnv("1C_API_KEY"),
-		OneCConf:                    getEnv("1C_CONF"),
+		OneCURL:                     getEnv("ONE_C_URL"),
+		OneCAPIKey:                  getEnv("ONE_C_API_KEY"),
+		OneCConf:                    getEnv("ONE_C_CONF"),
 	}
 
 	// Валидация обязательных полей
