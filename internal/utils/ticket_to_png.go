@@ -2,19 +2,17 @@ package utils
 
 import (
 	"bytes"
+	"context"
+	"encoding/base64"
 	"fmt"
-	"image"
-	"image/color"
-	"image/draw"
-	"image/png"
+	"html/template"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/golang/freetype"
-	"github.com/golang/freetype/truetype"
+	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/chromedp"
 	"github.com/skip2/go-qrcode"
-	"golang.org/x/image/font"
 )
 
 // TicketConfig содержит конфигурацию и данные для генерации талона
@@ -31,76 +29,198 @@ type TicketConfig struct {
 	WaitingNumber  int
 }
 
-// --- НОВАЯ ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ---
-// drawRoundedRect рисует закрашенный прямоугольник с закругленными углами.
-func drawRoundedRect(img *image.RGBA, r image.Rectangle, c color.Color, cornerRadius int) {
-	// Рисуем центральный прямоугольник
-	draw.Draw(img, image.Rect(r.Min.X+cornerRadius, r.Min.Y, r.Max.X-cornerRadius, r.Max.Y), &image.Uniform{c}, image.Point{}, draw.Src)
-	draw.Draw(img, image.Rect(r.Min.X, r.Min.Y+cornerRadius, r.Max.X, r.Max.Y-cornerRadius), &image.Uniform{c}, image.Point{}, draw.Src)
-
-	// Рисуем круги в углах для создания закруглений
-	// Верхний левый
-	drawCircle(img, r.Min.X+cornerRadius, r.Min.Y+cornerRadius, cornerRadius, c)
-	// Верхний правый
-	drawCircle(img, r.Max.X-cornerRadius-1, r.Min.Y+cornerRadius, cornerRadius, c)
-	// Нижний левый
-	drawCircle(img, r.Min.X+cornerRadius, r.Max.Y-cornerRadius-1, cornerRadius, c)
-	// Нижний правый
-	drawCircle(img, r.Max.X-cornerRadius-1, r.Max.Y-cornerRadius-1, cornerRadius, c)
+// ticketHTMLData содержит данные для HTML шаблона
+type ticketHTMLData struct {
+	Width            int
+	Height           int
+	BackgroundBase64 string
+	QRCodeBase64     string
+	ServiceName      string
+	TicketNumber     string
+	Date             string
+	Time             string
+	WaitingText      string
+	IsColor          bool
+	FontBase64       string
+	BoldFontBase64   string
 }
 
-// drawCircle - вспомогательная функция для рисования круга.
-func drawCircle(img *image.RGBA, x0, y0, r int, c color.Color) {
-	for y := -r; y <= r; y++ {
-		for x := -r; x <= r; x++ {
-			if x*x+y*y <= r*r {
-				img.Set(x0+x, y0+y, c)
-			}
-		}
-	}
-}
+const htmlTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @font-face {
+            font-family: 'CustomFont';
+            src: url(data:font/truetype;base64,{{.FontBase64}}) format('truetype');
+            font-weight: normal;
+        }
+        @font-face {
+            font-family: 'CustomFont';
+            src: url(data:font/truetype;base64,{{.BoldFontBase64}}) format('truetype');
+            font-weight: bold;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'CustomFont', Arial, sans-serif;
+            width: {{.Width}}px;
+            height: {{.Height}}px;
+            overflow: hidden;
+        }
+        .ticket {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-image: url(data:image/png;base64,{{.BackgroundBase64}});
+            background-size: cover;
+            background-position: center;
+        }
+        .top-section {
+            position: absolute;
+            left: {{mul .Width 0.083}}px;
+            top: {{mul .Height 0.08}}px;
+            width: 55%;
+            color: {{if .IsColor}}#ffffff{{else}}#000000{{end}};
+        }
+        .service-label {
+            font-size: {{mul .Width 0.065}}px;
+            font-weight: normal;
+            margin-bottom: {{mul .Height 0.02}}px;
+            letter-spacing: 0.5px;
+        }
+        .service-name {
+            font-size: {{mul .Width 0.070}}px; /* Еще раз уменьшен шрифт */
+            font-weight: bold;
+            line-height: 1.15;
+            text-transform: uppercase;
+            word-wrap: break-word;
+            color: {{if .IsColor}}#ffffff{{else}}#000000{{end}};
+            margin-top: {{mul .Height 0.015}}px;
+        }
+        .ticket-number-section {
+            position: absolute;
+            left: {{mul .Width 0.083}}px;
+            top: {{mul .Height 0.54}}px;
+            color: #ffffff;
+            z-index: 10;
+        }
+        .ticket-number-label {
+            font-size: {{mul .Width 0.058}}px;
+            font-weight: normal;
+            margin-bottom: {{mul .Height 0.015}}px; /* Уменьшен отступ */
+            letter-spacing: 0.5px;
+        }
+        .ticket-number {
+            font-size: {{mul .Width 0.19}}px;
+            font-weight: bold;
+            line-height: 1;
+            margin-top: {{mul .Height 0.01}}px;
+        }
+        .time-section {
+            position: absolute;
+            left: {{mul .Width 0.083}}px;
+            top: {{mul .Height 0.76}}px;
+            color: #ffffff;
+            z-index: 10;
+        }
+        .time-label {
+            font-size: {{mul .Width 0.058}}px;
+            font-weight: normal;
+            margin-bottom: {{mul .Height 0.01}}px; /* Уменьшен отступ */
+            letter-spacing: 0.5px;
+        }
+        .date {
+            font-size: {{mul .Width 0.065}}px;
+            font-weight: bold;
+            margin-bottom: {{mul .Height 0.01}}px; /* Отступ снизу для одинакового интервала */
+        }
+        .time {
+            font-size: {{mul .Width 0.065}}px;
+            font-weight: bold;
+        }
+        .qr-code {
+            position: absolute;
+            right: {{mul .Width 0.065}}px;
+            bottom: {{mul .Height 0.11}}px;
+            width: {{mul .Width 0.35}}px;
+            height: {{mul .Width 0.35}}px;
+            background: #ffffff;
+            border-radius: {{mul .Width 0.03}}px;
+            padding: {{mul .Width 0.015}}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .qr-code img {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .waiting-text {
+            position: absolute;
+            bottom: {{mul .Height 0.035}}px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: {{mul .Width 0.028}}px;
+            font-weight: normal;
+            text-transform: uppercase;
+            color: #ffffff;
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket">
+        <div class="top-section">
+            <div class="service-label">УСЛУГА</div>
+            <div class="service-name">{{.ServiceName}}</div>
+        </div>
+        
+        <div class="ticket-number-section">
+            <div class="ticket-number-label">НОМЕР ТАЛОНА</div>
+            <div class="ticket-number">{{.TicketNumber}}</div>
+        </div>
+        
+        <div class="time-section">
+            <div class="time-label">ВРЕМЯ</div>
+            <div class="date">{{.Date}}</div>
+            <div class="time">{{.Time}}</div>
+        </div>
+        
+        <div class="qr-code">
+            <img src="data:image/png;base64,{{.QRCodeBase64}}" alt="QR Code">
+        </div>
+        
+        {{if .WaitingText}}
+        <div class="waiting-text">{{.WaitingText}}</div>
+        {{end}}
+    </div>
+</body>
+</html>
+`
 
-// resizeImage масштабирует изображение с сохранением пропорций
-func resizeImage(src image.Image, width, height int) image.Image {
-	srcBounds := src.Bounds()
-	srcWidth := srcBounds.Dx()
-	srcHeight := srcBounds.Dy()
-	dst := image.NewRGBA(image.Rect(0, 0, width, height))
-	scaleX := float64(width) / float64(srcWidth)
-	scaleY := float64(height) / float64(srcHeight)
-	scale := scaleX
-	if scaleY > scaleX {
-		scale = scaleY
-	}
-	newWidth := int(float64(srcWidth) * scale)
-	newHeight := int(float64(srcHeight) * scale)
-	offsetX := (width - newWidth) / 2
-	offsetY := (height - newHeight) / 2
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			srcX := int(float64(x-offsetX) / scale)
-			srcY := int(float64(y-offsetY) / scale)
-			if srcX >= 0 && srcX < srcWidth && srcY >= 0 && srcY < srcHeight {
-				srcColor := src.At(srcX+srcBounds.Min.X, srcY+srcBounds.Min.Y)
-				dst.Set(x, y, srcColor)
-			}
-		}
-	}
-	return dst
-}
-
-// wrapText разбивает текст на строки
-func wrapText(text string, maxLength int) []string {
+// wrapText разбивает текст на строки с учетом максимальной длины символов
+func wrapText(text string, maxLength int) string {
 	if len(text) <= maxLength {
-		return []string{text}
+		return text
 	}
+
 	var lines []string
 	runes := []rune(text)
+
 	for len(runes) > 0 {
 		if len(runes) <= maxLength {
 			lines = append(lines, string(runes))
 			break
 		}
+
 		breakPoint := maxLength
 		for i := maxLength - 1; i >= 0; i-- {
 			if runes[i] == ' ' {
@@ -108,6 +228,7 @@ func wrapText(text string, maxLength int) []string {
 				break
 			}
 		}
+
 		if breakPoint == maxLength && runes[maxLength-1] != ' ' {
 			for i := maxLength; i < len(runes); i++ {
 				if runes[i] == ' ' {
@@ -115,7 +236,11 @@ func wrapText(text string, maxLength int) []string {
 					break
 				}
 			}
+			if breakPoint == maxLength {
+				breakPoint = maxLength
+			}
 		}
+
 		lines = append(lines, strings.TrimSpace(string(runes[:breakPoint])))
 		if breakPoint < len(runes) {
 			runes = runes[breakPoint:]
@@ -126,161 +251,153 @@ func wrapText(text string, maxLength int) []string {
 			break
 		}
 	}
-	return lines
+
+	return strings.Join(lines, "<br>")
 }
 
-// --- ОСНОВНАЯ ФУНКЦИЯ С ИЗМЕНЕНИЯМИ ---
+// fileToBase64 преобразует файл в base64
+func fileToBase64(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(data), nil
+}
+
+// generateQRCode генерирует QR-код и возвращает его в base64
+func generateQRCode(data []byte, size int) (string, error) {
+	qrCode, err := qrcode.New(string(data), qrcode.Medium)
+	if err != nil {
+		return "", err
+	}
+
+	qrBytes, err := qrCode.PNG(size)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(qrBytes), nil
+}
+
 // GenerateTicketImage генерирует изображение талона с фоном, текстом и QR-кодом
 func GenerateTicketImage(config TicketConfig, isColor bool) ([]byte, error) {
-	bgFile, err := os.Open(config.BackgroundPath)
+	// Преобразуем фоновое изображение в base64
+	bgBase64, err := fileToBase64(config.BackgroundPath)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка открытия фонового изображения: %v", err)
+		return nil, fmt.Errorf("ошибка чтения фонового изображения: %v", err)
 	}
-	defer bgFile.Close()
 
-	bgImg, _, err := image.Decode(bgFile)
+	// Преобразуем шрифты в base64
+	fontBase64, err := fileToBase64(config.FontPath)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка декодирования фонового изображения: %v", err)
+		return nil, fmt.Errorf("ошибка чтения шрифта: %v", err)
 	}
 
-	img := image.NewRGBA(image.Rect(0, 0, config.Width, config.Height))
-	scaledBg := resizeImage(bgImg, config.Width, config.Height)
-	draw.Draw(img, img.Bounds(), scaledBg, image.Point{}, draw.Src)
-
-	fontBytes, err := os.ReadFile(config.FontPath)
+	boldFontBase64, err := fileToBase64(config.BoldFontPath)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка чтения файла шрифта: %v", err)
+		return nil, fmt.Errorf("ошибка чтения жирного шрифта: %v", err)
 	}
-	ttfFont, err := truetype.Parse(fontBytes)
+
+	// Генерируем QR-код
+	qrSize := int(float64(config.Width) * 0.28)
+	qrBase64, err := generateQRCode(config.QRData, qrSize)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка парсинга шрифта: %v", err)
+		return nil, fmt.Errorf("ошибка генерации QR-кода: %v", err)
 	}
 
-	boldFontBytes, err := os.ReadFile(config.BoldFontPath)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка чтения файла жирного шрифта: %v", err)
-	}
-	boldTtfFont, err := truetype.Parse(boldFontBytes)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка парсинга жирного шрифта: %v", err)
-	}
-
-	c := freetype.NewContext()
-	c.SetDPI(72)
-	c.SetClip(img.Bounds())
-	c.SetDst(img)
-	c.SetSrc(image.NewUniform(color.RGBA{255, 255, 255, 255}))
-
-	// Размеры шрифтов, пропорциональные ширине
-	labelSize := float64(config.Width) * 0.062
-	// *** ИЗМЕНЕНИЕ: Уменьшен размер шрифта для услуги, чтобы избежать переноса ***
-	serviceSize := float64(config.Width) * 0.068
-	numberSize := float64(config.Width) * 0.17
-	timeSize := float64(config.Width) * 0.062
-	waitingSize := float64(config.Width) * 0.035
-
-	// --- Рисуем УСЛУГА ---
-	textColor := image.NewUniform(color.RGBA{0, 0, 0, 255}) // Черный для текста на белом фоне
-	c.SetFont(ttfFont)
-	c.SetFontSize(labelSize)
-	c.SetSrc(textColor)
-	pt := freetype.Pt(config.Width/12, int(float64(config.Height)*0.11))
-	_, _ = c.DrawString("УСЛУГА", pt)
-
-	// --- Рисуем название услуги ---
-	c.SetFont(boldTtfFont)
-	c.SetFontSize(serviceSize)
-	// *** ИЗМЕНЕНИЕ: Увеличена длина строки, чтобы предотвратить перенос ***
-	serviceLines := wrapText(strings.ToUpper(config.ServiceName), 20)
-	startY := float64(config.Height) * 0.18
-	lineHeight := serviceSize * 1.2
-	for i, line := range serviceLines {
-		pt = freetype.Pt(config.Width/12, int(startY+float64(i)*lineHeight))
-		_, _ = c.DrawString(strings.TrimSpace(line), pt)
-	}
-
-	// --- Рисуем НОМЕР ТАЛОНА ---
-	whiteColor := image.NewUniform(color.RGBA{255, 255, 255, 255})
-	c.SetSrc(whiteColor)
-	c.SetFont(ttfFont)
-	c.SetFontSize(labelSize)
-	pt = freetype.Pt(config.Width/12, int(float64(config.Height)*0.57))
-	_, _ = c.DrawString("НОМЕР ТАЛОНА", pt)
-
-	// --- Рисуем номер талона (A008) ---
-	c.SetFont(boldTtfFont)
-	c.SetFontSize(numberSize)
-	pt = freetype.Pt(config.Width/13, int(float64(config.Height)*0.69))
-	_, _ = c.DrawString(config.TicketNumber, pt)
-
-	// --- Рисуем ВРЕМЯ ---
-	c.SetFont(ttfFont)
-	c.SetFontSize(labelSize)
-	timeStartY := float64(config.Height) * 0.78
-	pt = freetype.Pt(config.Width/12, int(timeStartY))
-	_, _ = c.DrawString("ВРЕМЯ", pt)
-
-	// --- Рисуем дату и время ---
-	c.SetFont(boldTtfFont)
-	c.SetFontSize(timeSize)
-	pt = freetype.Pt(config.Width/12, int(timeStartY+float64(config.Height)*0.06))
-	_, _ = c.DrawString(config.DateTime.Format("02.01.2006"), pt)
-	pt = freetype.Pt(config.Width/12, int(timeStartY+float64(config.Height)*0.11))
-	_, _ = c.DrawString(config.DateTime.Format("15:04:05"), pt)
-
-	// --- *** НАЧАЛО ИЗМЕНЕНИЙ: ЛОГИКА QR-КОДА *** ---
-	// 1. Рассчитываем размер и положение белого фона для QR-кода
-	// Увеличиваем размер фона
-	qrBgSize := int(float64(config.Width) / 2.8)
-	qrBgCornerRadius := qrBgSize / 10
-	qrBgX := config.Width - qrBgSize - config.Width/15
-	qrBgY := int(float64(config.Height) * 0.6)
-	qrBgRect := image.Rect(qrBgX, qrBgY, qrBgX+qrBgSize, qrBgY+qrBgSize)
-
-	// 2. Рисуем белый закругленный прямоугольник на основном изображении
-	drawRoundedRect(img, qrBgRect, color.White, qrBgCornerRadius)
-
-	// 3. Рассчитываем размер и положение самого QR-кода (он будет меньше фона)
-	// Увеличиваем QR-код, оставляя небольшие отступы
-	margin := int(float64(qrBgSize) * 0.08)
-	qrCodeSize := qrBgSize - (2 * margin)
-	qrCodeX := qrBgX + margin
-	qrCodeY := qrBgY + margin
-
-	// 4. Генерируем стандартный (не закругленный) QR-код
-	qrCode, err := qrcode.New(string(config.QRData), qrcode.Medium)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка создания QR-кода: %v", err)
-	}
-	qrCode.DisableBorder = true // Убираем собственную рамку QR-кода
-	qrImg := qrCode.Image(qrCodeSize)
-
-	// 5. Накладываем QR-код на белый фон
-	draw.Draw(img, image.Rect(qrCodeX, qrCodeY, qrCodeX+qrCodeSize, qrCodeY+qrCodeSize), qrImg, image.Point{}, draw.Over)
-	// --- *** КОНЕЦ ИЗМЕНЕНИЙ: ЛОГИКА QR-КОДА *** ---
-
-	// --- Рисуем надпись об очереди ---
+	// Подготавливаем данные для шаблона
+	waitingText := ""
 	if config.WaitingNumber > 0 {
-		c.SetFont(ttfFont)
-		c.SetFontSize(waitingSize)
-		c.SetSrc(whiteColor)
-		queueText := strings.ToUpper(fmt.Sprintf("Перед вами %d человек в очереди", config.WaitingNumber))
-
-		face := truetype.NewFace(ttfFont, &truetype.Options{Size: waitingSize, DPI: 72})
-		bounds, _ := font.BoundString(face, queueText)
-		textWidthPixels := int(bounds.Max.X-bounds.Min.X) >> 6
-		textY := float64(config.Height) * 0.96
-		textX := (config.Width - textWidthPixels) / 2
-
-		pt = freetype.Pt(textX, int(textY))
-		_, _ = c.DrawString(queueText, pt)
+		waitingText = strings.ToUpper(fmt.Sprintf("Перед вами %d человек в очереди", config.WaitingNumber))
 	}
 
-	var buf bytes.Buffer
-	err = png.Encode(&buf, img)
+	data := ticketHTMLData{
+		Width:            config.Width,
+		Height:           config.Height,
+		BackgroundBase64: bgBase64,
+		QRCodeBase64:     qrBase64,
+		ServiceName:      wrapText(strings.ToUpper(config.ServiceName), 12),
+		TicketNumber:     config.TicketNumber,
+		Date:             config.DateTime.Format("02.01.2006"),
+		Time:             config.DateTime.Format("15:04:05"),
+		WaitingText:      waitingText,
+		IsColor:          isColor,
+		FontBase64:       fontBase64,
+		BoldFontBase64:   boldFontBase64,
+	}
+
+	// Создаем функции для шаблона
+	funcMap := template.FuncMap{
+		"mul": func(a interface{}, b float64) int {
+			var aFloat float64
+			switch v := a.(type) {
+			case int:
+				aFloat = float64(v)
+			case float64:
+				aFloat = v
+			default:
+				aFloat = 0
+			}
+			return int(aFloat * b)
+		},
+		"div": func(a interface{}, b float64) int {
+			var aFloat float64
+			switch v := a.(type) {
+			case int:
+				aFloat = float64(v)
+			case float64:
+				aFloat = v
+			default:
+				aFloat = 1
+			}
+			return int(aFloat / b)
+		},
+	}
+
+	// Парсим и выполняем шаблон
+	tmpl, err := template.New("ticket").Funcs(funcMap).Parse(htmlTemplate)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка кодирования PNG: %v", err)
+		return nil, fmt.Errorf("ошибка парсинга шаблона: %v", err)
 	}
 
-	return buf.Bytes(), nil
+	var htmlBuf bytes.Buffer
+	err = tmpl.Execute(&htmlBuf, data)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка выполнения шаблона: %v", err)
+	}
+
+	// Преобразуем HTML в PNG с помощью chromedp
+	pngBytes, err := htmlToPNG(htmlBuf.String(), config.Width, config.Height)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка преобразования HTML в PNG: %v", err)
+	}
+
+	return pngBytes, nil
+}
+
+// htmlToPNG преобразует HTML в PNG используя headless Chrome
+func htmlToPNG(htmlContent string, width, height int) ([]byte, error) {
+	ctx, cancel := chromedp.NewContext(context.Background())
+	defer cancel()
+
+	var buf []byte
+	err := chromedp.Run(ctx,
+		chromedp.EmulateViewport(int64(width), int64(height)),
+		chromedp.Navigate("about:blank"),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			frameTree, err := page.GetFrameTree().Do(ctx)
+			if err != nil {
+				return err
+			}
+			return page.SetDocumentContent(frameTree.Frame.ID, htmlContent).Do(ctx)
+		}),
+		chromedp.Sleep(1000*time.Millisecond),
+		chromedp.FullScreenshot(&buf, 100),
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return buf, nil
 }
