@@ -1,12 +1,15 @@
 package services
 
 import (
+	"ElectronicQueue/internal/config"
 	"ElectronicQueue/internal/logger"
 	"ElectronicQueue/internal/models"
 	"ElectronicQueue/internal/repository"
 	"ElectronicQueue/internal/utils"
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +26,7 @@ type TicketService struct {
 	appointmentRepo  repository.AppointmentRepository
 	priorityRepo     repository.RegistrarPriorityRepository
 	oneCService      *OneCService
+	config           *config.Config
 }
 
 func NewTicketService(
@@ -33,6 +37,7 @@ func NewTicketService(
 	appointmentRepo repository.AppointmentRepository,
 	priorityRepo repository.RegistrarPriorityRepository,
 	oneCService *OneCService,
+	cfg *config.Config,
 ) *TicketService {
 	return &TicketService{
 		repo:             repo,
@@ -42,6 +47,7 @@ func NewTicketService(
 		appointmentRepo:  appointmentRepo,
 		priorityRepo:     priorityRepo,
 		oneCService:      oneCService,
+		config:           cfg,
 	}
 }
 
@@ -389,7 +395,7 @@ func (s *TicketService) MapServiceIDToName(serviceID string) string {
 	return service.Name
 }
 
-func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket, serviceName string, mode string, qrData []byte) ([]byte, error) {
+func (s *TicketService) GenerateTicketImage(ticket *models.Ticket, serviceName string, mode string, qrData []byte) ([]byte, error) {
 	waitingTickets, err := s.repo.FindByStatuses([]models.TicketStatus{models.StatusWaiting})
 	waitingNumber := 0
 	if err == nil {
@@ -407,13 +413,23 @@ func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket,
 		isColor = true
 	}
 
-	sqrt2 := 1.414
-	width := int(float64(baseSize) / sqrt2)
-	height := baseSize
+	paperWidthMM, err := strconv.ParseFloat(s.config.PrinterPaperWidthMM, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid PRINTER_PAPER_WIDTH_MM: %w", err)
+	}
+
+	dpi, err := strconv.ParseFloat(s.config.PrinterDPI, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid PRINTER_DPI: %w", err)
+	}
+
+	// Используем математическое округление для большей точности
+	widthPx := int(math.Round((paperWidthMM / 25.4) * dpi))
+	heightPx := int(float64(widthPx) * 1.414) // Сохраняем пропорции
 
 	config := utils.TicketConfig{
-		Width:          width,
-		Height:         height,
+		Width:          widthPx,
+		Height:         heightPx,
 		QRData:         qrData,
 		FontPath:       "assets/fonts/Arial.ttf",
 		BoldFontPath:   "assets/fonts/Arial_bold.ttf",
@@ -424,7 +440,8 @@ func (s *TicketService) GenerateTicketImage(baseSize int, ticket *models.Ticket,
 		WaitingNumber:  waitingNumber,
 	}
 
-	img, err := utils.GenerateTicketImage(config, isColor)
+	// Передаем DPI в функцию генерации
+	img, err := utils.GenerateTicketImage(config, isColor, int(dpi))
 	if err != nil {
 		logger.Default().Error(fmt.Sprintf("GenerateTicketImage: failed to generate image: %v", err))
 		return nil, err

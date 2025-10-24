@@ -4,8 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"html/template"
+	"image"
+	"image/color"
+	"image/png"
 	"os"
 	"strings"
 	"time"
@@ -279,8 +284,95 @@ func generateQRCode(data []byte, size int) (string, error) {
 	return base64.StdEncoding.EncodeToString(qrBytes), nil
 }
 
+// ConvertToMonochrome применяет пороговое преобразование для конвертации в 1-битное монохромное изображение,
+// сохраняя резкие края текста и QR-кодов.
+func ConvertToMonochrome(src image.Image) image.Image {
+	bounds := src.Bounds()
+	// Создаем новое палитровое изображение для итогового 1-битного вывода.
+	// Индекс 0 в палитре - Белый, индекс 1 - Черный.
+	palette := color.Palette{color.White, color.Black}
+	dst := image.NewPaletted(bounds, palette)
+
+	// Пороговое значение (0-255). 128 - это 50% серого, хороший компромисс.
+	const threshold = 128
+
+	// Итерируемся по каждому пикселю
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			// Получаем исходный цвет и конвертируем его в оттенок серого,
+			// используя стандартную формулу светимости для лучшего восприятия яркости.
+			r, g, b, _ := src.At(x, y).RGBA()
+
+			// Значения из RGBA() являются 16-битными (0-65535), поэтому мы сдвигаем их вправо на 8 бит,
+			// чтобы получить 8-битное значение (0-255).
+			gray := 0.299*float64(r>>8) + 0.587*float64(g>>8) + 0.114*float64(b>>8)
+
+			// Применяем порог
+			if gray > threshold {
+				dst.SetColorIndex(x, y, 0) // Белый
+			} else {
+				dst.SetColorIndex(x, y, 1) // Черный
+			}
+		}
+	}
+	return dst
+}
+
+// setDPI встраивает чанк pHYs в PNG-файл для установки DPI.
+func setDPI(pngBytes []byte, dpi int) ([]byte, error) {
+	// Конвертируем DPI в пиксели на метр
+	ppm := uint32(float64(dpi) / 0.0254)
+
+	// pHYs чанк имеет длину 9 байт
+	// 4 байта: pixels per unit, X axis
+	// 4 байта: pixels per unit, Y axis
+	// 1 байт: unit specifier (1 = meters)
+	pHYsData := make([]byte, 9)
+	binary.BigEndian.PutUint32(pHYsData[0:4], ppm)
+	binary.BigEndian.PutUint32(pHYsData[4:8], ppm)
+	pHYsData[8] = 1 // Unit is meter
+
+	// Создаем буфер для записи чанка
+	chunk := new(bytes.Buffer)
+	// Записываем тип чанка
+	chunk.Write([]byte("pHYs"))
+	// Записываем данные
+	chunk.Write(pHYsData)
+
+	// Вычисляем CRC32
+	crc := crc32.NewIEEE()
+	crc.Write(chunk.Bytes())
+	crcSum := crc.Sum(nil)
+
+	// Собираем полный чанк: Длина + Тип + Данные + CRC
+	finalChunk := new(bytes.Buffer)
+	// Длина данных (9)
+	binary.Write(finalChunk, binary.BigEndian, uint32(9))
+	// Тип и данные
+	finalChunk.Write(chunk.Bytes())
+	// CRC
+	finalChunk.Write(crcSum)
+
+	// Вставляем чанк в PNG. pHYs должен идти после IHDR и перед IDAT.
+	// IHDR всегда первый чанк после 8-байтной сигнатуры PNG, и он имеет фиксированную длину 25 байт.
+	// (4-длина, 4-тип, 13-данные, 4-crc)
+	// Вставляем наш чанк сразу после IHDR.
+	insertionPoint := 8 + 25
+	if len(pngBytes) < insertionPoint {
+		return nil, fmt.Errorf("PNG-файл слишком короткий для вставки DPI")
+	}
+
+	// Собираем новый PNG
+	result := new(bytes.Buffer)
+	result.Write(pngBytes[:insertionPoint])
+	result.Write(finalChunk.Bytes())
+	result.Write(pngBytes[insertionPoint:])
+
+	return result.Bytes(), nil
+}
+
 // GenerateTicketImage генерирует изображение талона с фоном, текстом и QR-кодом
-func GenerateTicketImage(config TicketConfig, isColor bool) ([]byte, error) {
+func GenerateTicketImage(config TicketConfig, isColor bool, dpi int) ([]byte, error) {
 	// Преобразуем фоновое изображение в base64
 	bgBase64, err := fileToBase64(config.BackgroundPath)
 	if err != nil {
@@ -367,12 +459,33 @@ func GenerateTicketImage(config TicketConfig, isColor bool) ([]byte, error) {
 	}
 
 	// Преобразуем HTML в PNG с помощью chromedp
-	pngBytes, err := htmlToPNG(htmlBuf.String(), config.Width, config.Height)
+	rgbaPngBytes, err := htmlToPNG(htmlBuf.String(), config.Width, config.Height)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка преобразования HTML в PNG: %v", err)
 	}
 
-	return pngBytes, nil
+	// Декодируем RGBA PNG
+	img, err := png.Decode(bytes.NewReader(rgbaPngBytes))
+	if err != nil {
+		return nil, fmt.Errorf("ошибка декодирования RGBA PNG: %w", err)
+	}
+
+	// Применяем пороговое преобразование для конвертации в монохромный
+	monoImage := ConvertToMonochrome(img)
+
+	// Кодируем монохромное изображение обратно в PNG
+	var pngBuf bytes.Buffer
+	if err := png.Encode(&pngBuf, monoImage); err != nil {
+		return nil, fmt.Errorf("ошибка кодирования монохромного PNG: %w", err)
+	}
+
+	// Внедряем информацию о DPI в готовый PNG файл
+	finalPngBytes, err := setDPI(pngBuf.Bytes(), dpi)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка установки DPI: %w", err)
+	}
+
+	return finalPngBytes, nil
 }
 
 // htmlToPNG преобразует HTML в PNG используя headless Chrome
