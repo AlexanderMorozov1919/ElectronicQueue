@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -142,17 +141,12 @@ func (h *TicketHandler) Confirmation(c *gin.Context) {
 	serviceName := h.service.MapServiceIDToName(req.ServiceID)
 
 	if req.Action == "print_ticket" {
-		height := 800
-		if h.config != nil && h.config.TicketHeight != "" {
-			if parsed, err := strconv.Atoi(h.config.TicketHeight); err == nil {
-				height = parsed
-			}
-		}
 		qrData := []byte(fmt.Sprintf("Талон: %s\nВремя: %s\nУслуга: %s",
 			ticket.TicketNumber,
 			ticket.CreatedAt.Format("02.01.2006 15:04:05"),
 			serviceName))
-		imageBytes, err := h.service.GenerateTicketImage(height, ticket, serviceName, h.config.TicketMode, qrData)
+
+		imageBytes, err := h.service.GenerateTicketImage(ticket, serviceName, h.config.TicketMode, qrData)
 		if err != nil {
 			logger.Default().Error(fmt.Sprintf("Confirmation: image generation failed: %v", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Image generation failed: %v", err)})

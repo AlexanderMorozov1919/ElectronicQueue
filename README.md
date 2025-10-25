@@ -58,38 +58,38 @@ cp .env.example .env
 Отредактируйте файл `.env`:
 
 ```ini
-# 🗄️ База данных
-DB_USER=postgres                  # Имя пользователя для подключения к БД
-DB_PASSWORD=1234                  # Пароль пользователя для подключения к БД
-DB_HOST=localhost                 # Адрес сервера базы данных PostgreSQL
-DB_PORT=5432                      # Порт базы данных PostgreSQL
-DB_NAME=el_queue                  # Имя базы данных
-DB_SSLMODE=disable                # Режим SSL для подключения к БД
+DB_USER=postgres
+DB_PASSWORD=1234
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=el_queue
+DB_SSLMODE=disable
 
-# 🌐 Сервер
-BACKEND_PORT=8080                 # Порт, на котором запускается backend-сервер
-FRONTEND_PORT=3000                # Порт, на котором запускается frontend-сервер
-API_BASE_URL=http://localhost:8080# URL для доступа к backend API
-BROWSER=chrome                    # Браузер для запуска Flutter frontend (chrome | edge)
+BACKEND_PORT=8081
+FRONTEND_PORT=3000
+API_BASE_URL=http://localhost:8081
+BROWSER=chrome
 
-# 🔐 Безопасность
-JWT_SECRET=your-secret-key        # Секретный ключ для подписи JWT
-JWT_EXPIRATION=24h                # Время жизни токена (например, 24h)
+JWT_SECRET=your-secret-key
+JWT_EXPIRATION=24h
 
-# 🎫 Настройки талонов
-TICKET_MODE=color                 # Режим генерации талона (color | b/w)
-TICKET_HEIGHT=1024                # Высота талона для печати в пикселях
+LOG_DIR=logs
+TICKET_DIR=tickets
 
-# 📝 Каталоги
-LOG_DIR=logs                      # Путь к папке логов приложения
-TICKET_DIR=tickets                # Путь к папке со сгенерированными талонами
+INTERNAL_API_KEY=iak12345
+EXTERNAL_API_KEY=eak12345
 
-# 🔑 API ключи
-INTERNAL_API_KEY=iak12345         # API ключ для внутренних сервисов
-EXTERNAL_API_KEY=eak12345         # API ключ для внешних сервисов
+TICKET_MODE=b/w
+PRINTER_PAPER_WIDTH_MM=80
+PRINTER_DPI=200
+PRINTER_NAME=ThermalPrinter
 
-# 🖨️ Принтер талонов
-PRINTER="VKP80II"     # Имя принтера для печати
+ONE_C_URL=http://localhost:8081/umc/ru/hs/electronicqueue
+ONE_C_API_KEY="..."
+ONE_C_CONF=1C.conf
+
+MAINTENANCE_TIME=00:00
+BACKGROUND_MUSIC=false
 ```
 
 ---

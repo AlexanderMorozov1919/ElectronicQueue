@@ -28,7 +28,7 @@ type OneCService struct {
 }
 
 // NewOneCService creates a new instance of OneCService.
-// If a WireGuard config path is provided in the main .env config (1C_CONF),
+// If a WireGuard config path is provided in the main .env config (ONE_C_CONF),
 // it creates a tunneled HTTP client. Otherwise, it uses a default client.
 func NewOneCService(cfg *config.Config) (*OneCService, error) {
 	var httpClient *http.Client

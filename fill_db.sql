@@ -22,7 +22,7 @@ RESTART IDENTITY CASCADE;
 -- --                        1. УСЛУГИ                            --
 -- -----------------------------------------------------------------
 INSERT INTO services (service_id, name, letter) VALUES
-  ('make_appointment', 'Записаться', 'A'),
+  ('make_appointment', 'Записаться к врачу', 'A'),
   ('confirm_appointment', 'Прием по записи', 'B'),
   ('lab_tests', 'Сдать анализы', 'C'),
   ('documents', 'Получить результаты', 'D');
@@ -37,18 +37,18 @@ INSERT INTO registrars (window_number, login, password_hash) VALUES
 (3, 'admin3', '$2a$10$LFWIFiiMooFIOXX2IsW4vuQwvNE3vtUqPLDyvKA8cdO/1YSjKzAsu'),
 (4, 'admin4', '$2a$10$NOnwKKyVVyhAZGPgtOUF9uQzbWYSmtVZSHUosreJfbxj/vYL/XmC2');
 
--- -----------------------------------------------------------------
--- --                         3. ВРАЧИ                            --
--- -----------------------------------------------------------------
+-----------------------------------------------------------------
+--                         3. ВРАЧИ                            --
+-----------------------------------------------------------------
 -- Пароли: 'pass1' - 'pass7'
--- INSERT INTO doctors (full_name, specialization, login, password_hash, status) VALUES
--- ('Иванов Иван Иванович', 'Терапевт', 'doctor1', '$2a$10$9S2D6Vr.2Cv2wSest1EwPe2x/wZKW0raBzZ4CyX906iq7vB2cJ8Za', 'активен'),
--- ('Петров Петр Петрович', 'Хирург', 'doctor2', '$2a$10$80G/wVQ/dwtI8TZpHwhKfOMX36bL3y5dPBbLcBdeLEiDNA8Ogg9FC', 'активен'),
--- ('Смирнова Мария Викторовна', 'Кардиолог', 'doctor3', '$2a$10$Otd/PbC3Dhvxo7rVsyHrHerP460E.t4XiWHMkHvStcU4ijG5A6Ap.', 'перерыв'),
--- ('Кузнецова Ольга Дмитриевна', 'Невролог', 'doctor4', '$2a$10$1yAN3/hB8O93vSZjPw/B4O0R0NgWuddnAPy.tDiCTNxWW6rQyzOqW', 'активен'),
--- ('Михайлов Михаил Михайлович', 'Офтальмолог', 'doctor5', '$2a$10$n68/soTxF/YVkR1olmR16u3FwyFoHLxj5IDrscjy.DeGl7pK9w1x.', 'неактивен'),
--- ('Васильева Елена Сергеевна', 'Педиатр', 'doctor6', '$2a$10$ZmSQHlwqr/25oZdSg3Zod.hvvSdcLg0M.8K0b.D5hZBK9BqXLga..', 'активен'),
--- ('Соколов Сергей Александрович', 'ЛОР', 'doctor7', '$2a$10$9dSK.8zXoR0lCfatQ4mBn.2l./3g.JYNbZCUEMZauwD.nFrJ115he', 'активен');
+INSERT INTO doctors (full_name, specialization, login, password_hash, status) VALUES
+('Иванов Иван Иванович', 'Терапевт', 'doctor1', '$2a$10$9S2D6Vr.2Cv2wSest1EwPe2x/wZKW0raBzZ4CyX906iq7vB2cJ8Za', 'активен'),
+('Петров Петр Петрович', 'Хирург', 'doctor2', '$2a$10$80G/wVQ/dwtI8TZpHwhKfOMX36bL3y5dPBbLcBdeLEiDNA8Ogg9FC', 'активен'),
+('Смирнова Мария Викторовна', 'Кардиолог', 'doctor3', '$2a$10$Otd/PbC3Dhvxo7rVsyHrHerP460E.t4XiWHMkHvStcU4ijG5A6Ap.', 'перерыв'),
+('Кузнецова Ольга Дмитриевна', 'Невролог', 'doctor4', '$2a$10$1yAN3/hB8O93vSZjPw/B4O0R0NgWuddnAPy.tDiCTNxWW6rQyzOqW', 'активен'),
+('Михайлов Михаил Михайлович', 'Офтальмолог', 'doctor5', '$2a$10$n68/soTxF/YVkR1olmR16u3FwyFoHLxj5IDrscjy.DeGl7pK9w1x.', 'неактивен'),
+('Васильева Елена Сергеевна', 'Педиатр', 'doctor6', '$2a$10$ZmSQHlwqr/25oZdSg3Zod.hvvSdcLg0M.8K0b.D5hZBK9BqXLga..', 'активен'),
+('Соколов Сергей Александрович', 'ЛОР', 'doctor7', '$2a$10$9dSK.8zXoR0lCfatQ4mBn.2l./3g.JYNbZCUEMZauwD.nFrJ115he', 'активен');
 
 -- -----------------------------------------------------------------
 -- --                      4. АДМИНИСТРАТОРЫ                      --

@@ -21,7 +21,6 @@ type Config struct {
 	JWTSecret                   string
 	JWTExpiration               string
 	TicketMode                  string
-	TicketHeight                string
 	LogDir                      string
 	TicketDir                   string
 	InternalAPIKey              string
@@ -32,6 +31,8 @@ type Config struct {
 	OneCURL                     string
 	OneCAPIKey                  string
 	OneCConf                    string
+	PrinterPaperWidthMM         string
+	PrinterDPI                  string
 }
 
 // LoadConfig загружает переменные среды из .env и возвращает структуру Config
@@ -54,17 +55,18 @@ func LoadConfig() (*Config, error) {
 		JWTSecret:                   getEnv("JWT_SECRET"),
 		JWTExpiration:               getEnv("JWT_EXPIRATION", "24h"),
 		TicketMode:                  getEnv("TICKET_MODE", "b/w"),
-		TicketHeight:                getEnv("TICKET_HEIGHT", "800"),
 		LogDir:                      getEnv("LOG_DIR", "logs"),
 		TicketDir:                   getEnv("TICKET_DIR", "tickets"),
 		InternalAPIKey:              getEnv("INTERNAL_API_KEY"),
 		ExternalAPIKey:              getEnv("EXTERNAL_API_KEY"),
-		PrinterName:                 getEnv("PRINTER"),
+		PrinterName:                 getEnv("PRINTER_NAME"),
 		MaintenanceTime:             getEnv("MAINTENANCE_TIME", "00:00"),
 		AudioBackgroundMusicEnabled: getEnv("BACKGROUND_MUSIC", "true") == "true",
-		OneCURL:                     getEnv("1C_URL"),
-		OneCAPIKey:                  getEnv("1C_API_KEY"),
-		OneCConf:                    getEnv("1C_CONF"),
+		OneCURL:                     getEnv("ONE_C_URL"),
+		OneCAPIKey:                  getEnv("ONE_C_API_KEY"),
+		OneCConf:                    getEnv("ONE_C_CONF"),
+		PrinterPaperWidthMM:         getEnv("PRINTER_PAPER_WIDTH_MM", "80"),
+		PrinterDPI:                  getEnv("PRINTER_DPI", "200"),
 	}
 
 	// Валидация обязательных полей
