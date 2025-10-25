@@ -208,7 +208,7 @@ func setupRouter(broker *pubsub.Broker, db *gorm.DB, cfg *config.Config, process
 		auth.POST("/login/administrator", authHandler.LoginAdministrator)
 	}
 
-	admin := r.Group("/api/admin").Use(middleware.RequireAPIKey(cfg.InternalAPIKey))
+	admin := r.Group("/api/admin").Use(middleware.RequireRole(jwtManager, "administrator"))
 	{
 		admin.POST("/create/doctor", authHandler.CreateDoctor)
 		admin.POST("/create/registrar", authHandler.CreateRegistrar)
